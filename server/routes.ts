@@ -998,10 +998,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
       for (let i = 0; i < 30; i++) {
         const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
         const newCodeString = `BULK-${year}-${randomPart}`;
-        
         codesToCreate.push({
-          id: Date.now() + i,
-          legacyId: Date.now() + i,
           code: newCodeString,
           role: "admin",
           usageLimit: 1,
@@ -1035,14 +1032,14 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
       const { code, role, usageLimit, expiresAt, isActive } = req.body;
 
-      const existingCode = await storage.getCompanyCode(id);
+      const existingCode = await storage.getCompanyCode(Number(id));
       if (!existingCode) {
         return res.status(404).json({ message: "Codice aziendale non trovato" });
       }
 
       if (code && code !== existingCode.code) {
         const duplicateCode = await storage.getCompanyCodeByCode(code);
-        if (duplicateCode && duplicateCode.id !== id) {
+        if (duplicateCode && String(duplicateCode.legacyId) !== id) {
           return res.status(400).json({ message: "Questo codice aziendale esiste già" });
         }
       }
@@ -1056,7 +1053,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
       }
       if (isActive !== undefined) updateData.isActive = isActive;
 
-      const updatedCode = await storage.updateCompanyCode(id, updateData);
+      const updatedCode = await storage.updateCompanyCode(Number(id), updateData);
 
       await storage.createLog({
         userId: req.user?.legacyId || 0,
@@ -1081,12 +1078,12 @@ export async function registerRoutes(app: Express): Promise<Express> {
     try {
       const id = req.params.id;
 
-      const existingCode = await storage.getCompanyCode(id);
+      const existingCode = await storage.getCompanyCode(Number(id));
       if (!existingCode) {
         return res.status(404).json({ message: "Codice aziendale non trovato" });
       }
 
-      const deleted = await storage.deleteCompanyCode(id);
+      const deleted = await storage.deleteCompanyCode(Number(id));
 
       if (deleted) {
         await storage.createLog({

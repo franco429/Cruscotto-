@@ -252,7 +252,7 @@ export class MemStorage implements IStorage {
       const newUser = await this.createUser({
         email,
         password: passwordHash,
-        role: "admin",
+        role: "admin" as "admin",
         clientId: newClient.legacyId,
         lastLogin: null,
         sessionExpiry: null,
@@ -385,18 +385,17 @@ export class MemStorage implements IStorage {
   }
 
   async createClient(client: InsertClient): Promise<Client> {
-    const id = this.clientIdCounter++;
+    const legacyId = this.clientIdCounter++;
     const createdAt = new Date();
     const updatedAt = new Date();
     const newClient: Client = {
       ...client,
-      id,
-      legacyId: id,
+      legacyId,
       createdAt,
       updatedAt,
       google: {}, // Sempre presente, anche se vuoto
     };
-    this.clients.set(id, newClient);
+    this.clients.set(legacyId, newClient);
     return newClient;
   }
 
@@ -485,12 +484,12 @@ export class MemStorage implements IStorage {
   }
 
   async createDocument(insertDocument: InsertDocument): Promise<Document> {
-    const id = this.documentIdCounter++;
+    const legacyId = this.documentIdCounter++;
     const createdAt = new Date();
     const updatedAt = new Date();
     const document: Document = {
       ...insertDocument,
-      legacyId: id,
+      legacyId,
       createdAt,
       updatedAt,
       parentId: insertDocument.parentId ?? null,
@@ -504,7 +503,7 @@ export class MemStorage implements IStorage {
       alertStatus: (insertDocument as any).alertStatus || "none",
       expiryDate: (insertDocument as any).expiryDate ?? null,
     };
-    this.documents.set(id, document);
+    this.documents.set(legacyId, document);
     return document;
   }
 
@@ -570,19 +569,20 @@ export class MemStorage implements IStorage {
   // --- LOG METHODS (WITH legacyId BUG FIX) ---
 
   async createLog(
-    insertLog: Omit<InsertLog, "documentId"> & { documentId?: number }
+    log: InsertLog,
+    session?: any
   ): Promise<Log> {
-    const id = this.logIdCounter++;
+    const legacyId = this.logIdCounter++;
     const timestamp = new Date();
-    const log: Log = {
-      ...insertLog,
-      legacyId: id,
-      documentId: insertLog.documentId ?? null,
+    const logObj: Log = {
+      ...log,
+      legacyId,
+      documentId: log.documentId ?? null,
       timestamp: timestamp,
-      details: insertLog.details || {},
+      details: log.details || {},
     };
-    this.logs.set(id, log);
-    return log;
+    this.logs.set(legacyId, logObj);
+    return logObj;
   }
 
   async getAllLogs(): Promise<Log[]> {
@@ -643,12 +643,11 @@ export class MemStorage implements IStorage {
   // --- COMPANY CODE METHODS (WITH legacyId BUG FIX) ---
 
   async createCompanyCode(code: InsertCompanyCode): Promise<CompanyCode> {
-    const id = this.companyCodeIdCounter++;
+    const legacyId = this.companyCodeIdCounter++;
     const createdAt = new Date();
     const updatedAt = new Date();
     const newCode: CompanyCode = {
-      id,
-      legacyId: id,
+      legacyId,
       code: code.code,
       role: code.role || "admin",
       usageLimit: code.usageLimit || 1,
@@ -659,7 +658,7 @@ export class MemStorage implements IStorage {
       createdAt,
       updatedAt,
     };
-    this.companyCodes.set(id, newCode);
+    this.companyCodes.set(legacyId, newCode);
     return newCode;
   }
 
@@ -740,6 +739,10 @@ export class MemStorage implements IStorage {
     };
     this.companyCodes.set(id, updatedCode);
     return updatedCode;
+  }
+
+  async createManyCompanyCodes(codes: InsertCompanyCode[]): Promise<CompanyCode[]> {
+    return Promise.all(codes.map((code) => this.createCompanyCode(code)));
   }
 
   // --- BACKUP METHODS ---
@@ -839,6 +842,11 @@ export class MemStorage implements IStorage {
 
   private getEncryptedCachePath(doc: Document): string {
     // ... existing code ...
+  }
+
+  // Fix: funzione che deve restituire un valore
+  public cleanup(): void {
+    // implementazione vuota
   }
 }
 

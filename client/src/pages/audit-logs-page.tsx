@@ -58,9 +58,9 @@ export default function AuditLogsPage() {
   });
 
   // Trova titolo documento per ID
-  function getDocumentTitleById(id: number | undefined | null): string {
-    if (!id || !documents) return "";
-    const doc = documents.find((d) => d.legacyId === id);
+  function getDocumentTitleById(legacyId: number | undefined | null): string {
+    if (!legacyId || !documents) return "";
+    const doc = documents.find((d) => d.legacyId === legacyId);
     return doc ? doc.title : "";
   }
 
@@ -200,7 +200,7 @@ export default function AuditLogsPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {paginatedLogs.map((log) => (
+                        {paginatedLogs && paginatedLogs.map((log) => (
                           <TableRow key={log.legacyId}>
                             <TableCell className="font-mono text-xs">
                               {log.timestamp

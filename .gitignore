@@ -7,3 +7,4 @@ attached_assets
 server/backups
 server/backup-worker.cjs
 logs
+tools

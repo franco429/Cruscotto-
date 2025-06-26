@@ -484,15 +484,14 @@ export async function processDocumentFile(
       driveUrl,
       fileType,
       isObsolete: false,
-      // --- CORREZIONE QUI ---
-      alertStatus, // Aggiungi il valore calcolato
-      expiryDate,  // Aggiungi il valore calcolato
-      // --- FINE CORREZIONE ---
-      parentId: undefined,
-      fileHash: undefined,
-      encryptedCachePath: undefined,
-      ownerId: undefined,
-      clientId: undefined,
+      alertStatus: alertStatus as 'none' | 'warning' | 'expired',
+      expiryDate,
+      parentId: null,
+      fileHash: null,
+      encryptedCachePath: null,
+      ownerId: null,
+      clientId: null,
+      googleFileId: null,
     };
 
     return document;
@@ -1031,8 +1030,8 @@ async function processBatchWithAnalysis(
       }
 
       const documentData = {
-        ...docInfo, // Include path, title, revision, etc.
-        alertStatus: analysis.alertStatus,
+        ...docInfo,
+        alertStatus: (analysis.alertStatus as 'none' | 'warning' | 'expired'),
         expiryDate: analysis.expiryDate,
         clientId,
         ownerId: userId,
@@ -1269,12 +1268,12 @@ async function syncAllClientsOnce(): Promise<void> {
 
     for (const client of clients) {
       const admin = users.find(
-        (u) => u.clientId === client.id && u.role === "admin"
+        (u) => u.clientId === client.legacyId && u.role === "admin"
       );
 
       if (!admin) {
         logger.warn('No admin user found for client', {
-          clientId: client.id,
+          clientId: client.legacyId,
           clientName: client.name
         });
         continue;
@@ -1294,7 +1293,7 @@ async function syncAllClientsOnce(): Promise<void> {
           'CLIENT_SYNC_FAILED',
           true,
           {
-            clientId: client.id,
+            clientId: client.legacyId,
             clientName: client.name,
             userId,
             originalError: syncError instanceof Error ? syncError.message : String(syncError)

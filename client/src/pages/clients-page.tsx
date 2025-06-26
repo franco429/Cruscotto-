@@ -131,13 +131,13 @@ export default function ClientsPage() {
   // Mutation per aggiornare un client esistente
   const updateMutation = useMutation({
     mutationFn: async ({
-      id,
+      legacyId,
       data,
     }: {
-      id: number;
+      legacyId: number;
       data: ClientFormValues;
     }) => {
-      const res = await apiRequest("PUT", `/api/clients/${id}`, data);
+      const res = await apiRequest("PUT", `/api/clients/${legacyId}`, data);
       return await res.json();
     },
     onSuccess: () => {
@@ -186,7 +186,7 @@ export default function ClientsPage() {
       driveFolderId: extractedId,
     };
 
-    updateMutation.mutate({ id: editingClient.legacyId, data: dataToSubmit });
+    updateMutation.mutate({ legacyId: editingClient.legacyId, data: dataToSubmit });
   };
 
   const connectGoogleDrive = async (clientId: number) => {

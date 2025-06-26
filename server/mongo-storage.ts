@@ -97,7 +97,7 @@ export class MongoStorage implements IStorage {
 
     try {
       await UserModel.updateOne(
-        { _id: userDoc._id },
+        { legacyId: userDoc.legacyId },
         {
           $set: {
             failedLoginAttempts: newAttemptCount,
@@ -486,9 +486,9 @@ export class MongoStorage implements IStorage {
     const legacyId = await getNextSequence("documentId");
     const document = new DocumentModel({
       ...insertDocument,
-      id: legacyId,
       legacyId,
-      
+      alertStatus: insertDocument.alertStatus || 'none',
+      googleFileId: insertDocument.googleFileId || undefined,
     });
     await document.save({ session });
     return document.toObject();
@@ -573,7 +573,7 @@ export class MongoStorage implements IStorage {
   }
 
   async deleteCompanyCode(id: string): Promise<boolean> {
-    const result = await CompanyCodeModel.deleteOne({ _id: id });
+    const result = await CompanyCodeModel.deleteOne({ legacyId: id });
     return result.deletedCount > 0;
   }
 
@@ -616,7 +616,6 @@ export class MongoStorage implements IStorage {
     const legacyId = await getNextSequence("logId");
     const log = new LogModel({
       ...insertLog,
-      id: legacyId,
       legacyId,
       documentId: insertLog.documentId || null,
     });
@@ -703,7 +702,7 @@ export class MongoStorage implements IStorage {
         const owner = await UserModel.findOne({ legacyId: doc.ownerId });
         if (owner && owner.clientId) {
           await DocumentModel.updateOne(
-            { _id: doc._id },
+            { legacyId: doc.legacyId },
             { $set: { clientId: owner.clientId } }
           );
         }
