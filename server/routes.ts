@@ -1031,11 +1031,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
   app.patch("/api/company-codes/:id", isAdmin, async (req, res) => {
     try {
-      const id = parseInt(req.params.id, 10);
-
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "ID non valido" });
-      }
+      const id = req.params.id;
 
       const { code, role, usageLimit, expiresAt, isActive } = req.body;
 
@@ -1083,11 +1079,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
   app.delete("/api/company-codes/:id", isAdmin, async (req, res) => {
     try {
-      const id = parseInt(req.params.id, 10);
-
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "ID non valido" });
-      }
+      const id = req.params.id;
 
       const existingCode = await storage.getCompanyCode(id);
       if (!existingCode) {

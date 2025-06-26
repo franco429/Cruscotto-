@@ -559,11 +559,11 @@ export class MongoStorage implements IStorage {
   }
 
   async updateCompanyCode(
-    id: number,
+    id: string,
     update: Partial<InsertCompanyCode>
   ): Promise<CompanyCode | undefined> {
     const code = await CompanyCodeModel.findOneAndUpdate(
-      { legacyId: id },
+      { _id: id },
       { ...update, updatedAt: new Date() },
       { new: true }
     )
@@ -572,8 +572,8 @@ export class MongoStorage implements IStorage {
     return code ? (code as CompanyCode) : undefined;
   }
 
-  async deleteCompanyCode(id: number): Promise<boolean> {
-    const result = await CompanyCodeModel.deleteOne({ legacyId: id });
+  async deleteCompanyCode(id: string): Promise<boolean> {
+    const result = await CompanyCodeModel.deleteOne({ _id: id });
     return result.deletedCount > 0;
   }
 

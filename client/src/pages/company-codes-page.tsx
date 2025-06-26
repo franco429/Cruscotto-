@@ -25,7 +25,7 @@ import { useAuth } from "../hooks/use-auth";
 
 // Tipo di dato che riceviamo dall'API
 type CompanyCode = {
-  id: number;
+  _id: string;
   code: string;
   role: string;
   usageLimit: number;
@@ -91,7 +91,7 @@ export default function CompanyCodesPage() {
 
   // Mutation per l'aggiornamento
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<CompanyCodeFormValues> }) =>
+    mutationFn: ({ id, data }: { id: string; data: Partial<CompanyCodeFormValues> }) =>
       apiRequest("PATCH", `/api/company-codes/${id}`, data).then(res => res.json()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/company-codes", currentPage] });
@@ -109,7 +109,7 @@ export default function CompanyCodesPage() {
 
   // Mutation per l'eliminazione
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => apiRequest("DELETE", `/api/company-codes/${id}`),
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/company-codes/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/company-codes", currentPage] });
       toast({ title: "Codice eliminato", description: "Il codice aziendale è stato eliminato con successo." });
@@ -150,7 +150,7 @@ export default function CompanyCodesPage() {
   // Gestione invio form (solo per modifica)
   const onSubmit = (values: CompanyCodeFormValues) => {
     if (editingCode) {
-      updateMutation.mutate({ id: editingCode.id, data: values });
+      updateMutation.mutate({ id: editingCode._id, data: values });
     }
   };
 
@@ -310,7 +310,7 @@ export default function CompanyCodesPage() {
                     </TableHeader>
                     <TableBody>
                         {companyCodes.map((code: CompanyCode) => (
-                            <TableRow key={code.id}>
+                            <TableRow key={code._id}>
                                 <TableCell className="font-medium">{code.code}</TableCell>
                                 <TableCell>
                                   <Badge variant={code.role === 'superadmin' ? 'default' : 'secondary'}>{code.role.charAt(0).toUpperCase() + code.role.slice(1)}</Badge>
@@ -327,7 +327,7 @@ export default function CompanyCodesPage() {
                                 <TableCell className="hidden md:table-cell">{formatDate(code.createdAt)}</TableCell>
                                 <TableCell className="text-right space-x-1">
                                   <Button variant="ghost" size="icon" onClick={() => handleEditCode(code)}><Edit className="h-4 w-4" /></Button>
-                                  <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(code.id)} disabled={deleteMutation.isPending}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                  <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(code._id)} disabled={deleteMutation.isPending}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                                 </TableCell>
                             </TableRow>
                         ))}

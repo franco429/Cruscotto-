@@ -101,24 +101,19 @@ export interface IStorage {
   clearClientTokens(clientId: number): Promise<void>;
 
   // Company Code methods
-  createCompanyCode(code: InsertCompanyCode): Promise<CompanyCode>;
+  createCompanyCode(code: InsertCompanyCode, session?: any): Promise<CompanyCode>;
   getCompanyCode(id: number): Promise<CompanyCode | undefined>;
   getCompanyCodeByCode(code: string): Promise<CompanyCode | undefined>;
   getAllCompanyCodes(): Promise<CompanyCode[]>;
-  updateCompanyCode(
-    id: number,
-    code: Partial<InsertCompanyCode>
-  ): Promise<CompanyCode | undefined>;
-  deleteCompanyCode(id: number): Promise<boolean>;
-  verifyCompanyCode(
-    code: string
-  ): Promise<{ valid: boolean; role?: string; codeId?: number }>;
-  incrementCompanyCodeUsage(id: number): Promise<CompanyCode | undefined>;
+  getPaginatedCompanyCodes(options: { page: number, limit: number }): Promise<{ data: CompanyCode[], total: number }>;
+  updateCompanyCode(id: string, code: Partial<InsertCompanyCode>): Promise<CompanyCode | undefined>;
+  deleteCompanyCode(id: string): Promise<boolean>;
+  verifyCompanyCode(code: string): Promise<{ valid: boolean; role?: string; codeId?: number }>;
+  incrementCompanyCodeUsage(id: number, session?: any): Promise<CompanyCode | undefined>;
+  createManyCompanyCodes(codes: InsertCompanyCode[]): Promise<CompanyCode[]>;
 
   // Log methods
-  createLog(
-    log: Omit<InsertLog, "documentId"> & { documentId?: number }
-  ): Promise<Log>;
+  createLog(log: InsertLog, session?: any): Promise<Log>;
   getAllLogs(): Promise<Log[]>;
 
   // Backup methods
@@ -682,20 +677,25 @@ export class MemStorage implements IStorage {
     return Array.from(this.companyCodes.values());
   }
 
-  async updateCompanyCode(
-    id: number,
-    codeUpdate: Partial<InsertCompanyCode>
-  ): Promise<CompanyCode | undefined> {
-    const code = this.companyCodes.get(id);
-    if (!code) return undefined;
-    const updatedCode = { ...code, ...codeUpdate, updatedAt: new Date() };
-    this.companyCodes.set(id, updatedCode);
+  async getPaginatedCompanyCodes(options: { page: number, limit: number }): Promise<{ data: CompanyCode[], total: number }> {
+    const total = this.companyCodes.size;
+    const data = Array.from(this.companyCodes.values())
+      .sort((a, b) => a.code.localeCompare(b.code))
+      .slice((options.page - 1) * options.limit, options.page * options.limit);
+    return { data, total };
+  }
+
+  async updateCompanyCode(id: string, code: Partial<InsertCompanyCode>): Promise<CompanyCode | undefined> {
+    const codeDoc = this.companyCodes.get(Number(id));
+    if (!codeDoc) return undefined;
+    const updatedCode = { ...codeDoc, ...code, updatedAt: new Date() };
+    this.companyCodes.set(Number(id), updatedCode);
     return updatedCode;
   }
 
-  async deleteCompanyCode(id: number): Promise<boolean> {
-    if (this.companyCodes.has(id)) {
-      this.companyCodes.delete(id);
+  async deleteCompanyCode(id: string): Promise<boolean> {
+    if (this.companyCodes.has(Number(id))) {
+      this.companyCodes.delete(Number(id));
       return true;
     }
     return false;

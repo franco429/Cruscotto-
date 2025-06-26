@@ -161,12 +161,12 @@ export default function SettingsPage() {
           })
             .then(() => {
               // Dopo il logout, reindirizza alla pagina di login
-              window.location.href = "/auth";
+              window.location.href = "/";
             })
             .catch((err) => {
               
               // In caso di errore, reindirizza comunque alla pagina di login
-              window.location.href = "/auth";
+              window.location.href = "/";
             });
         }, 3000);
       } else {
