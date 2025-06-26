@@ -192,7 +192,19 @@ export default function ClientsPage() {
   const connectGoogleDrive = async (clientId: number) => {
     setIsConnecting(true);
     try {
-      const res = await apiRequest("GET", `/api/google/auth-url/${clientId}`);
+      const baseUrl = import.meta.env.VITE_API_GOOGLE_URL;
+      if (!baseUrl) {
+        toast({
+          title: "Errore",
+          description: "Variabile d'ambiente VITE_API_GOOGLE_URL non configurata",
+          variant: "destructive",
+        });
+        setIsConnecting(false);
+        return;
+      }
+      const res = await fetch(`${baseUrl}/api/google/auth-url/${clientId}`, {
+        credentials: "include",
+      });
       const data = await res.json();
       window.open(data.url, "_blank");
     } catch (error) {
