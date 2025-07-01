@@ -43,7 +43,7 @@ export default function MobileSidebar({ isAuthenticated }: MobileSidebarProps) {
       onSuccess: () => {
         // Forza il reindirizzamento alla pagina di login dopo un breve delay
         setTimeout(() => {
-          window.location.href = "/auth";
+          window.location.href = "/";
         }, 1000);
       },
       onError: () => {

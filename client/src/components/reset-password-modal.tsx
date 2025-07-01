@@ -124,7 +124,7 @@ export default function ResetPasswordModal({ isOpen, onClose, tokenData }: Reset
      
       setTimeout(() => {
         onClose();
-        window.location.href = '/auth';
+        window.location.href = '/';
       }, 2000);
     } catch (err) {
       

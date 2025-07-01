@@ -192,27 +192,25 @@ export default function ClientsPage() {
   const connectGoogleDrive = async (clientId: number) => {
     setIsConnecting(true);
     try {
-      const baseUrl = import.meta.env.VITE_API_GOOGLE_URL;
-      if (!baseUrl) {
-        toast({
-          title: "Errore",
-          description: "Variabile d'ambiente VITE_API_GOOGLE_URL non configurata",
-          variant: "destructive",
-        });
-        setIsConnecting(false);
-        return;
-      }
-      const res = await fetch(`${baseUrl}/api/google/auth-url/${clientId}`, {
+     
+      const res = await fetch(`/api/google/auth-url/${clientId}`, {
         credentials: "include",
       });
+
+      if (!res.ok) {
+        // Gestiamo il caso in cui la richiesta al backend fallisca
+        throw new Error("Impossibile ottenere l'URL di autenticazione dal server.");
+      }
+
       const data = await res.json();
       window.open(data.url, "_blank");
     } catch (error) {
       toast({
         title: "Errore",
-        description: "Impossibile connettersi a Google Drive",
+        description: error instanceof Error ? error.message : "Impossibile connettersi a Google Drive",
         variant: "destructive",
       });
+    } finally {
       setIsConnecting(false);
     }
   };
@@ -226,7 +224,6 @@ export default function ClientsPage() {
           description: "Connessione Google Drive completata! Sincronizzazione in corso...",
         });
         
-        // Avvia polling per verificare quando la sync è completata
         startSyncPolling();
       }
     };
@@ -235,10 +232,10 @@ export default function ClientsPage() {
     return () => window.removeEventListener("message", handleMessage);
   }, []);
 
-  // Funzione per polling dello stato della sincronizzazione
+ 
   const startSyncPolling = () => {
     let attempts = 0;
-    const maxAttempts = 60; // Massimo 5 minuti (60 * 5 secondi)
+    const maxAttempts = 60; 
     
     const checkSyncStatus = async () => {
       try {
@@ -248,7 +245,7 @@ export default function ClientsPage() {
         if (response.ok) {
           const syncStatus = await response.json();
           
-          // Se ci sono documenti, la sync è probabilmente completata
+        
           if (syncStatus.hasDocuments && syncStatus.documentCount > 0) {
             toast({
               title: "Sincronizzazione completata",
@@ -263,19 +260,19 @@ export default function ClientsPage() {
           }
         }
         
-        // Se non ci sono ancora documenti, continua il polling
+  
         attempts++;
         if (attempts < maxAttempts) {
-          // Aggiorna il messaggio di toast con il progresso
+          
           toast({
             title: "Sincronizzazione in corso",
             description: `Attendere... Tentativo ${attempts}/${maxAttempts}`,
           });
           
-          // Riprova tra 5 secondi
+         
           setTimeout(checkSyncStatus, 5000);
         } else {
-          // Timeout raggiunto, reindirizza comunque
+          
           toast({
             title: "Sincronizzazione in corso",
             description: "Reindirizzamento alla home page. I documenti appariranno presto.",
@@ -288,18 +285,16 @@ export default function ClientsPage() {
       } catch (error) {
         console.error("Errore durante il polling della sincronizzazione:", error);
         
-        // In caso di errore, reindirizza dopo un breve delay
         setTimeout(() => {
           window.location.href = "/?fromDrive=true";
         }, 2000);
       }
     };
     
-    // Avvia il polling dopo 2 secondi per dare tempo alla sync di iniziare
     setTimeout(checkSyncStatus, 2000);
   };
 
-  // Formatta la data
+  
   const formatDate = (dateString: string | Date) => {
     return format(new Date(dateString), "dd/MM/yyyy HH:mm");
   };

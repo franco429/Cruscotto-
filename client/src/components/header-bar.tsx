@@ -54,7 +54,7 @@ export default function HeaderBar({ onSearch, user }: HeaderBarProps) {
       onSuccess: () => {
         // Forza il reindirizzamento alla pagina di login dopo un breve delay
         setTimeout(() => {
-          window.location.href = "/auth";
+          window.location.href = "/";
         }, 1000);
       },
       onError: () => {
