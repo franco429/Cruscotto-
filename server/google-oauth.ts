@@ -3,10 +3,12 @@ import { Request, Response } from "express";
 import { mongoStorage } from "./mongo-storage";
 import dotenv from "dotenv";
 import logger from "./logger";
-import crypto from 'crypto'; 
-
+import crypto from 'crypto';
 dotenv.config();
 
+/* -------------------------------------------------------------------------- */
+/* HELPERS                                                                    */
+/* -------------------------------------------------------------------------- */
 function buildOAuthClient() {
   return new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID!,
@@ -15,7 +17,7 @@ function buildOAuthClient() {
   );
 }
 
-function successHtml(nonce: string) {
+function successHtml() {
   return `
     <html><body style="font:16px system-ui;-webkit-user-select:none;
                        display:flex;flex-direction:column;align-items:center;
@@ -24,8 +26,7 @@ function successHtml(nonce: string) {
                   border-radius:50%;width:40px;height:40px;
                   animation:spin 1s linear infinite"></div>
       <div>Connessione completata! Chiudi pure la finestra…</div>
-      {/* <-- MODIFICA: Il nonce viene inserito nel tag script */}
-      <script nonce="${nonce}">
+      <script>
         window.opener?.postMessage({type:"GOOGLE_DRIVE_CONNECTED"},"*");
         setTimeout(()=>window.close(),1500);
       </script>
@@ -50,7 +51,7 @@ export async function googleAuth(req: Request, res: Response) {
     ...(hasRefresh ? {} : { prompt: "consent" }),
   });
 
-  res.redirect(authUrl);
+  res.redirect("/");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -65,23 +66,15 @@ export async function googleAuthCallback(req: Request, res: Response) {
     return res.status(400).send("clientId non valido");
 
   try {
-    
-    const nonce = crypto.randomBytes(16).toString('base64');
-
-    res.setHeader(
-      'Content-Security-Policy',
-      `script-src 'self' 'nonce-${nonce}'`
-    );
-
     const { tokens } = await buildOAuthClient().getToken(String(code));
 
     if (!tokens.refresh_token) {
       const existing = await mongoStorage.getClient(clientId);
       if (existing?.google?.refreshToken) {
-      
-        return res.send(successHtml(nonce));
+        return res.send(successHtml());
       }
 
+      // Errore che andrebbe loggato centralmente.
       return res
         .status(400)
         .send(
@@ -103,10 +96,10 @@ export async function googleAuthCallback(req: Request, res: Response) {
         const adminUser = users.find(user => user.role === 'admin');
         
         if (adminUser) {
-          
+          // Importa la funzione di sync
           const { syncWithGoogleDrive } = await import('./google-drive');
           
-          
+          // Avvia la sincronizzazione in background
           syncWithGoogleDrive(client.driveFolderId, adminUser.legacyId)
             .then(result => {
               logger.info('Auto-sync completed after Google Drive connection', {
@@ -135,10 +128,9 @@ export async function googleAuthCallback(req: Request, res: Response) {
       });
     }
 
-
-    res.send(successHtml(nonce));
+    res.send(successHtml());
   } catch (err) {
-    
+    // Errore che andrebbe loggato centralmente.
     res
       .status(500)
       .send("Errore durante l'accesso a Google. Chiudi la finestra e riprova.");
@@ -155,7 +147,7 @@ export async function getDriveClientForClient(clientId: number) {
   const auth = buildOAuthClient();
   auth.setCredentials({ refresh_token: g.refreshToken });
 
-
+  // Tentiamo subito un refresh per verificare il token
   try {
     await auth.getAccessToken();
   } catch (err: any) {
@@ -171,7 +163,9 @@ export async function getDriveClientForClient(clientId: number) {
   return google.drive({ version: "v3", auth });
 }
 
-
+/* -------------------------------------------------------------------------- */
+/* Se serve generare manualmente l'URL                                        */
+/* -------------------------------------------------------------------------- */
 export function getGoogleAuthUrl(clientId: number): string {
   const url = buildOAuthClient().generateAuthUrl({
     access_type: "offline",
