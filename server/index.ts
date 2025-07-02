@@ -16,7 +16,10 @@ logger.info("Avvio server...");
 const app = express();
 
 // ✅ CORS config
-const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173").split(",");
+const allowedOrigins = [
+  "https://cruscotto-frontend.onrender.com",
+  ...(process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(",") : ["http://localhost:5173"])
+];
 app.use(
   cors({
     origin: function (origin, callback) {

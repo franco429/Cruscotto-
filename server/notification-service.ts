@@ -25,6 +25,9 @@ const DEFAULT_WARNING_DAYS = 30; // Preavviso standard di 30 giorni
 // Variabile per tenere traccia dell'intervallo di controllo
 let expirationCheckInterval: NodeJS.Timeout | null = null;
 
+// Definizione base URL per i link nell'applicazione
+const APP_URL = "https://cruscotto-frontend.onrender.com";
+
 /**
  * Verifica i documenti con date di scadenza imminenti e invia notifiche
  * @param warningDays Giorni di preavviso prima della scadenza
@@ -227,9 +230,7 @@ async function sendExpirationNotifications(
           </table>
           
           <p style="margin-top: 20px;">
-            Accedi al <a href="${
-              process.env.APP_URL || "http://localhost:5000"
-            }">Sistema di Cruscotto SGI</a> per gestire questi documenti.
+            Accedi al <a href="${APP_URL}">Sistema di Cruscotto SGI</a> per gestire questi documenti.
           </p>
           
           <hr style="border-top: 1px solid #ddd; margin: 20px 0;">
@@ -450,9 +451,7 @@ export async function sendSyncErrorNotifications(
         </div>
         
         <p style="margin-top: 20px;">
-          Accedi al <a href="${
-            process.env.APP_URL || "http://localhost:5000"
-          }">Sistema di Cruscotto SGI</a> per verificare lo stato della sincronizzazione.
+          Accedi al <a href="${APP_URL}">Sistema di Cruscotto SGI</a> per verificare lo stato della sincronizzazione.
         </p>
         
         <hr style="border-top: 1px solid #ddd; margin: 20px 0;">

@@ -52,7 +52,7 @@ transporter.verify()
 
 // Definizione base URL per i link nell'applicazione
 const APP_URL =
-  process.env.FRONTEND_URL || `http://localhost:${process.env.FRONTEND_PORT || 5173}`;
+  "https://cruscotto-frontend.onrender.com";
 
 /**
  * Invia un'email di recupero password all'utente

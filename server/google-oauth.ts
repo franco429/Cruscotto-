@@ -3,7 +3,8 @@ import { Request, Response } from "express";
 import { mongoStorage } from "./mongo-storage";
 import dotenv from "dotenv";
 import logger from "./logger";
-import crypto from 'crypto';
+import crypto from 'crypto'; 
+
 dotenv.config();
 
 /* -------------------------------------------------------------------------- */
@@ -17,7 +18,8 @@ function buildOAuthClient() {
   );
 }
 
-function successHtml() {
+// <-- MODIFICA: La funzione ora accetta un parametro 'nonce'
+function successHtml(nonce: string) {
   return `
     <html><body style="font:16px system-ui;-webkit-user-select:none;
                        display:flex;flex-direction:column;align-items:center;
@@ -26,7 +28,8 @@ function successHtml() {
                   border-radius:50%;width:40px;height:40px;
                   animation:spin 1s linear infinite"></div>
       <div>Connessione completata! Chiudi pure la finestra…</div>
-      <script>
+      {/* <-- MODIFICA: Il nonce viene inserito nel tag script */}
+      <script nonce="${nonce}">
         window.opener?.postMessage({type:"GOOGLE_DRIVE_CONNECTED"},"*");
         setTimeout(()=>window.close(),1500);
       </script>
@@ -51,7 +54,8 @@ export async function googleAuth(req: Request, res: Response) {
     ...(hasRefresh ? {} : { prompt: "consent" }),
   });
 
-  res.redirect("/");
+  // MODIFICA: Invece di res.redirect("/"), reindirizziamo all'URL di autenticazione
+  res.redirect(authUrl);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -66,12 +70,22 @@ export async function googleAuthCallback(req: Request, res: Response) {
     return res.status(400).send("clientId non valido");
 
   try {
+    // <-- MODIFICA: Genera il nonce all'inizio della funzione try
+    const nonce = crypto.randomBytes(16).toString('base64');
+
+    // <-- MODIFICA: Imposta l'header CSP per permettere lo script con il nonce
+    res.setHeader(
+      'Content-Security-Policy',
+      `script-src 'self' 'nonce-${nonce}'`
+    );
+
     const { tokens } = await buildOAuthClient().getToken(String(code));
 
     if (!tokens.refresh_token) {
       const existing = await mongoStorage.getClient(clientId);
       if (existing?.google?.refreshToken) {
-        return res.send(successHtml());
+        // <-- MODIFICA: Invia l'HTML di successo con il nonce
+        return res.send(successHtml(nonce));
       }
 
       // Errore che andrebbe loggato centralmente.
@@ -128,7 +142,8 @@ export async function googleAuthCallback(req: Request, res: Response) {
       });
     }
 
-    res.send(successHtml());
+    // <-- MODIFICA: Invia l'HTML di successo finale con il nonce
+    res.send(successHtml(nonce));
   } catch (err) {
     // Errore che andrebbe loggato centralmente.
     res
