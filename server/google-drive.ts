@@ -155,10 +155,10 @@ export function parseISOPath(filePath: string): string | null {
 }
 
 function parseISOPathWithRevision(fileName: string): { baseName: string, revision: number } | null {
-  const match = fileName.match(/^((\d+(?:\.\d+)*_[\p{L}\p{N} .,'’()-]+?)_Rev\.)(\d+)(_.*)$/u);
+  const match = fileName.match(fileNamePattern);
   if (!match) return null;
   return {
-    baseName: match[1], // Es: "4.2_scadenziario_Rev."
+    baseName: match[1], // Es: "4.2_"
     revision: parseInt(match[3], 10),
   };
 }
@@ -744,8 +744,9 @@ async function processSingleFile(
   const { baseName, revision: newRevision } = parsedName;
 
   // 3. Rendi obsolete le revisioni precedenti
-  // Cerca tutti i documenti ATTIVI con lo stesso nome base per questo client
-  const olderRevisions = await mongoStorage.getDocumentsByPathAndClientId(baseName, clientId);
+  // Cerca tutti i documenti ATTIVI con lo stesso path per questo client
+  const documentPath = `${baseName}_${parseTitle(file.name)}`;
+  const olderRevisions = await mongoStorage.getDocumentsByPathAndClientId(documentPath, clientId);
   let obsoletedCount = 0;
   for (const doc of olderRevisions) {
     const docParsed = parseISOPathWithRevision(doc.title);
@@ -779,7 +780,7 @@ async function processSingleFile(
 
   const newDocumentData: InsertDocument = {
     title: file.name,
-    path: baseName, // Usiamo il baseName come "serie" del documento
+    path: documentPath, // Usiamo il path completo come "serie" del documento
     revision: `Rev.${newRevision}`,
     driveUrl: file.webViewLink,
     googleFileId: file.id,
