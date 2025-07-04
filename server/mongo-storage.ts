@@ -735,6 +735,15 @@ export class MongoStorage implements IStorage {
     >;
   }
 
+  public async getDocumentsByPathAndClientId(
+    path: string,
+    clientId: number
+  ): Promise<Document[]> {
+    return DocumentModel.find({ path, clientId, isObsolete: false }).lean().exec() as Promise<
+      Document[]
+    >;
+  }
+
   public async getObsoleteDocuments(): Promise<Document[]> {
     return DocumentModel.find({ isObsolete: true }).lean().exec() as Promise<
       Document[]
