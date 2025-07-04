@@ -171,6 +171,8 @@ export class MongoStorage implements IStorage {
           clientId: newClient.legacyId,
           lastLogin: null,
           sessionExpiry: null,
+          failedLoginAttempts: 0,
+          lockoutUntil: null,
         },
         session
       );
@@ -211,7 +213,6 @@ export class MongoStorage implements IStorage {
     const legacyId = await getNextSequence("userId");
     const user = new UserModel({
       ...insertUser,
-      id: legacyId,
       legacyId,
       failedLoginAttempts: insertUser.failedLoginAttempts ?? 0,
       lockoutUntil: insertUser.lockoutUntil ?? null,
@@ -339,7 +340,7 @@ export class MongoStorage implements IStorage {
       throw new Error("Nome e ID cartella Drive sono obbligatori");
     }
     const legacyId = await getNextSequence("clientId");
-    const newClient = new ClientModel({ ...client, id: legacyId, legacyId });
+    const newClient = new ClientModel({ ...client, legacyId });
     await newClient.save({ session });
     return newClient.toObject();
   }
@@ -440,7 +441,7 @@ export class MongoStorage implements IStorage {
 
   async createManyCompanyCodes(
     codes: InsertCompanyCode[]
-  ): Promise<CompanyCodeDocument[]> {
+  ): Promise<CompanyCode[]> {
     const createdDocuments = await CompanyCodeModel.insertMany(codes);
     return createdDocuments.map((doc) => doc.toObject());
   }
@@ -532,7 +533,6 @@ export class MongoStorage implements IStorage {
     const legacyId = await getNextSequence("companyCodeId");
     const newCode = new CompanyCodeModel({
       ...companyCode,
-      id: legacyId,
       legacyId,
       
       usageCount: 0,
@@ -610,17 +610,17 @@ export class MongoStorage implements IStorage {
 
   // --- LOG METHODS ---
   async createLog(
-    insertLog: Omit<InsertLog, "documentId"> & { documentId?: number },
+    log: InsertLog,
     session?: ClientSession
   ): Promise<Log> {
     const legacyId = await getNextSequence("logId");
-    const log = new LogModel({
-      ...insertLog,
+    const newLog = new LogModel({
+      ...log,
       legacyId,
-      documentId: insertLog.documentId || null,
+      documentId: log.documentId ?? null,
     });
-    await log.save({ session });
-    return log.toObject();
+    await newLog.save({ session });
+    return newLog.toObject();
   }
 
   async getAllLogs(): Promise<Log[]> {
