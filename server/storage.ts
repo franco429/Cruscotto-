@@ -106,11 +106,11 @@ export interface IStorage {
   getCompanyCodeByCode(code: string): Promise<CompanyCode | undefined>;
   getAllCompanyCodes(): Promise<CompanyCode[]>;
   getPaginatedCompanyCodes(options: { page: number, limit: number }): Promise<{ data: CompanyCode[], total: number }>;
-  updateCompanyCode(id: string, code: Partial<InsertCompanyCode>): Promise<CompanyCode | undefined>;
-  deleteCompanyCode(id: string): Promise<boolean>;
+  updateCompanyCode(id: number, code: Partial<InsertCompanyCode>): Promise<CompanyCode | undefined>; // MODIFICA: id è number
+  deleteCompanyCode(id: number): Promise<boolean>; // MODIFICA: id è number
   verifyCompanyCode(code: string): Promise<{ valid: boolean; role?: string; codeId?: number }>;
   incrementCompanyCodeUsage(id: number, session?: any): Promise<CompanyCode | undefined>;
-  createManyCompanyCodes(codes: InsertCompanyCode[]): Promise<CompanyCode[]>;
+  createManyCompanyCodes(codes: (InsertCompanyCode & { legacyId: number })[]): Promise<CompanyCode[]>; // MODIFICA
 
   // Log methods
   createLog(log: InsertLog, session?: any): Promise<Log>;
@@ -684,17 +684,17 @@ export class MemStorage implements IStorage {
     return { data, total };
   }
 
-  async updateCompanyCode(id: string, code: Partial<InsertCompanyCode>): Promise<CompanyCode | undefined> {
-    const codeDoc = this.companyCodes.get(Number(id));
+  async updateCompanyCode(id: number, code: Partial<InsertCompanyCode>): Promise<CompanyCode | undefined> {
+    const codeDoc = this.companyCodes.get(id);
     if (!codeDoc) return undefined;
     const updatedCode = { ...codeDoc, ...code, updatedAt: new Date() };
-    this.companyCodes.set(Number(id), updatedCode);
+    this.companyCodes.set(id, updatedCode);
     return updatedCode;
   }
 
-  async deleteCompanyCode(id: string): Promise<boolean> {
-    if (this.companyCodes.has(Number(id))) {
-      this.companyCodes.delete(Number(id));
+  async deleteCompanyCode(id: number): Promise<boolean> {
+    if (this.companyCodes.has(id)) {
+      this.companyCodes.delete(id);
       return true;
     }
     return false;
@@ -741,8 +741,19 @@ export class MemStorage implements IStorage {
     return updatedCode;
   }
 
-  async createManyCompanyCodes(codes: InsertCompanyCode[]): Promise<CompanyCode[]> {
-    return Promise.all(codes.map((code) => this.createCompanyCode(code)));
+  async createManyCompanyCodes(codes: (InsertCompanyCode & { legacyId: number })[]): Promise<CompanyCode[]> {
+    return Promise.all(codes.map((code) => {
+      const { legacyId, ...codeData } = code;
+      const newCode: CompanyCode = {
+        ...codeData,
+        legacyId,
+        usageCount: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      this.companyCodes.set(legacyId, newCode);
+      return newCode;
+    }));
   }
 
   // --- BACKUP METHODS ---

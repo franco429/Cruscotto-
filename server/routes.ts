@@ -6,6 +6,7 @@ import * as path from "path"; // Aggiunto import mancante
 import { v4 as uuidv4 } from "uuid"; // Aggiunto import mancante
 
 import { mongoStorage as storage } from "./mongo-storage";
+import { getNextSequence } from "./models/mongoose-models";
 import {
   hashPassword,
   comparePasswords,
@@ -987,31 +988,35 @@ export async function registerRoutes(app: Express): Promise<Express> {
     }
   });
 
-  // POST - Crea un nuovo codice aziendale (solo admin)
+  // POST - Crea un nuovo codice aziendale (solo admin) - VERSIONE CORRETTA
   app.post("/api/company-codes/bulk-generate", isSuperAdmin, async (req, res) => {
     try {
-      const startId = await storage.getNextCompanyCodeId();
-
-      const codesToCreate: InsertCompanyCode[] = [];
+      const codesToCreate: (InsertCompanyCode & { legacyId: number })[] = [];
       const year = new Date().getFullYear();
+      const createdBy = req.user?.legacyId || 0;
 
+      // Genera 30 codici, ognuno con il proprio legacyId univoco
       for (let i = 0; i < 30; i++) {
+        const legacyId = await getNextSequence("companyCodeId"); // Usa la sequenza per ogni codice
         const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
         const newCodeString = `BULK-${year}-${randomPart}`;
+        
         codesToCreate.push({
+          legacyId, // Aggiungi il legacyId generato
           code: newCodeString,
           role: "admin",
           usageLimit: 1,
           expiresAt: null,
           isActive: true,
-          createdBy: req.user?.legacyId || 0,
+          createdBy,
         });
       }
 
+      // Usa insertMany per efficienza
       const newCodes = await storage.createManyCompanyCodes(codesToCreate);
 
       await storage.createLog({
-        userId: req.user?.legacyId || 0,
+        userId: createdBy,
         action: "company_code_bulk_created",
         details: {
           message: "30 company codes created in bulk",
@@ -1022,24 +1027,30 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
       res.status(201).json({ message: `${newCodes.length} codici creati con successo.` });
     } catch (error) {
+      logger.error("Errore durante la generazione in blocco dei codici", error);
       res.status(500).json({ message: "Errore durante la generazione dei codici." });
     }
   });
 
+  // PATCH - Aggiorna un codice - VERSIONE CORRETTA
   app.patch("/api/company-codes/:id", isAdmin, async (req, res) => {
     try {
-      const id = req.params.id;
+      // Converte l'ID da stringa (parametro URL) a numero
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "ID non valido." });
+      }
 
       const { code, role, usageLimit, expiresAt, isActive } = req.body;
 
-      const existingCode = await storage.getCompanyCode(Number(id));
+      const existingCode = await storage.getCompanyCode(id);
       if (!existingCode) {
         return res.status(404).json({ message: "Codice aziendale non trovato" });
       }
 
       if (code && code !== existingCode.code) {
         const duplicateCode = await storage.getCompanyCodeByCode(code);
-        if (duplicateCode && String(duplicateCode.legacyId) !== id) {
+        if (duplicateCode && duplicateCode.legacyId !== id) {
           return res.status(400).json({ message: "Questo codice aziendale esiste già" });
         }
       }
@@ -1047,13 +1058,14 @@ export async function registerRoutes(app: Express): Promise<Express> {
       const updateData: Partial<CompanyCodeDocument> = {};
       if (code !== undefined) updateData.code = code;
       if (role !== undefined) updateData.role = role;
-      if (usageLimit !== undefined) updateData.usageLimit = usageLimit;
+      if (usageLimit !== undefined) updateData.usageLimit = Number(usageLimit);
       if (expiresAt !== undefined) {
         updateData.expiresAt = expiresAt ? new Date(expiresAt) : null;
       }
       if (isActive !== undefined) updateData.isActive = isActive;
 
-      const updatedCode = await storage.updateCompanyCode(Number(id), updateData);
+      // Passa l'ID numerico alla funzione di storage
+      const updatedCode = await storage.updateCompanyCode(id, updateData);
 
       await storage.createLog({
         userId: req.user?.legacyId || 0,
@@ -1068,22 +1080,29 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
       res.json(updatedCode);
     } catch (error) {
+      logger.error(`Errore durante l'aggiornamento del codice aziendale ${req.params.id}`, error);
       res.status(500).json({
         message: "Errore durante l'aggiornamento del codice aziendale",
       });
     }
   });
 
+  // DELETE - Elimina un codice - VERSIONE CORRETTA
   app.delete("/api/company-codes/:id", isAdmin, async (req, res) => {
     try {
-      const id = req.params.id;
+      // Converte l'ID da stringa (parametro URL) a numero
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "ID non valido." });
+      }
 
-      const existingCode = await storage.getCompanyCode(Number(id));
+      const existingCode = await storage.getCompanyCode(id);
       if (!existingCode) {
         return res.status(404).json({ message: "Codice aziendale non trovato" });
       }
 
-      const deleted = await storage.deleteCompanyCode(Number(id));
+      // Passa l'ID numerico alla funzione di storage
+      const deleted = await storage.deleteCompanyCode(id);
 
       if (deleted) {
         await storage.createLog({
@@ -1101,6 +1120,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
         res.status(404).json({ message: "Codice aziendale non trovato o già eliminato" });
       }
     } catch (error) {
+      logger.error(`Errore durante l'eliminazione del codice aziendale ${req.params.id}`, error);
       res.status(500).json({
         message: "Errore durante l'eliminazione del codice aziendale",
       });

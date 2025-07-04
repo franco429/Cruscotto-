@@ -28,7 +28,6 @@ function successHtml(nonce: string) {
                   border-radius:50%;width:40px;height:40px;
                   animation:spin 1s linear infinite"></div>
       <div>Connessione completata! Chiudi pure la finestra…</div>
-      {/* <-- MODIFICA: Il nonce viene inserito nel tag script */}
       <script nonce="${nonce}">
         window.opener?.postMessage({type:"GOOGLE_DRIVE_CONNECTED"},"*");
         setTimeout(()=>window.close(),1500);

@@ -25,7 +25,7 @@ import { useAuth } from "../hooks/use-auth";
 
 // Tipo di dato che riceviamo dall'API
 type CompanyCode = {
-  legacyId: string;
+  legacyId: number; // MODIFICA: da string a number
   code: string;
   role: string;
   usageLimit: number;
@@ -91,7 +91,7 @@ export default function CompanyCodesPage() {
 
   // Mutation per l'aggiornamento
   const updateMutation = useMutation({
-    mutationFn: ({ legacyId, data }: { legacyId: string; data: Partial<CompanyCodeFormValues> }) =>
+    mutationFn: ({ legacyId, data }: { legacyId: number; data: Partial<CompanyCodeFormValues> }) =>
       apiRequest("PATCH", `/api/company-codes/${legacyId}`, data).then(res => res.json()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/company-codes", currentPage] });
@@ -109,7 +109,7 @@ export default function CompanyCodesPage() {
 
   // Mutation per l'eliminazione
   const deleteMutation = useMutation({
-    mutationFn: (legacyId: string) => apiRequest("DELETE", `/api/company-codes/${legacyId}`),
+    mutationFn: (legacyId: number) => apiRequest("DELETE", `/api/company-codes/${legacyId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/company-codes", currentPage] });
       toast({ title: "Codice eliminato", description: "Il codice aziendale è stato eliminato con successo." });
