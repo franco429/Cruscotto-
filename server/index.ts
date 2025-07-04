@@ -3,6 +3,7 @@ import * as dotenv from "dotenv";
 import cors from "cors";
 import { mongoStorage } from "./mongo-storage";
 import logger, { logRequest, logError } from "./logger";
+import path from "path";
 
 // Carica le variabili d'ambiente prima di ogni altro import.
 if (process.env.NODE_ENV === "production") {
@@ -74,6 +75,17 @@ app.use((req, res, next) => {
     logger.info("Registro le route di backup...");
     const { registerBackupRoutes } = await import("./backup-routes");
     registerBackupRoutes(app);
+
+    // --- INIZIO AGGIUNTA SPA FALLBACK ---
+    // Serve i file statici della build Vite
+    const viteDistPath = path.join(__dirname, "..", "client", "dist");
+    app.use(express.static(viteDistPath));
+
+    // Catch-all: tutte le richieste non API servono index.html (SPA fallback)
+    app.get(/^\/(?!api).*/, (req, res) => {
+      res.sendFile(path.join(viteDistPath, "index.html"));
+    });
+    // --- FINE AGGIUNTA SPA FALLBACK ---
 
     // ✅ Middleware per gestione errori centralizzata (alla fine di tutto)
     app.use((err: any, req: Request, res: Response, next: NextFunction) => {
