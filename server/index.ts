@@ -3,7 +3,11 @@ import * as dotenv from "dotenv";
 import cors from "cors";
 import { mongoStorage } from "./mongo-storage";
 import logger, { logRequest, logError } from "./logger";
+import { fileURLToPath } from "url";
 import path from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Carica le variabili d'ambiente prima di ogni altro import.
 if (process.env.NODE_ENV === "production") {
