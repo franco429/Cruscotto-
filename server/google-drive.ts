@@ -7,13 +7,13 @@ import fs from "fs";
 import ExcelJS from "exceljs";
 import os from "os";
 import { v4 as uuidv4 } from "uuid";
-import { mongoStorage } from "./mongo-storage";
+import { mongoStorage } from "../server/mongo-storage";
 import {
   googleDriveListFiles,
   googleDriveDownloadFile,
 } from "./google-drive-api";
 
-import { google, drive_v3 } from "googleapis";
+import { google } from "googleapis";
 import { getDriveClientForClient } from "./google-oauth";
 import logger from "./logger";
 import { sendSyncErrorNotifications } from "./notification-service";
@@ -152,15 +152,6 @@ const fileNamePattern =
 export function parseISOPath(filePath: string): string | null {
   const match = filePath.match(fileNamePattern);
   return match ? match[1] : null;
-}
-
-function parseISOPathWithRevision(fileName: string): { baseName: string, revision: number } | null {
-  const match = fileName.match(fileNamePattern);
-  if (!match) return null;
-  return {
-    baseName: match[1], // Es: "4.2_"
-    revision: parseInt(match[3], 10),
-  };
 }
 
 export function parseTitle(filePath: string): string | null {
@@ -714,106 +705,13 @@ async function processBatchOptimized(
 }
 
 /**
- * Processa un singolo file da Google Drive, gestendo le revisioni.
- */
-async function processSingleFile(
-  file: drive_v3.Schema$File,
-  drive: drive_v3.Drive,
-  clientId: number,
-  userId: number
-) {
-  if (!file.name || !file.id || !file.webViewLink) {
-    logger.warn("File da Drive saltato per metadati mancanti", { fileId: file.id, clientId });
-    return { status: "skipped", reason: "Metadati mancanti" };
-  }
-
-  // 1. Controlla se il documento esiste già tramite googleFileId
-  const existingDocByGoogleId = await mongoStorage.getDocumentByGoogleFileId(file.id);
-  if (existingDocByGoogleId) {
-    // Il file è già nel DB, non fare nulla. Potremmo aggiungere una logica di aggiornamento qui se necessario.
-    logger.debug(`File ${file.name} già sincronizzato (ID: ${file.id}). Saltato.`, { clientId });
-    return { status: "skipped", reason: "Già sincronizzato" };
-  }
-
-  // 2. Esegui il parsing del nome del file per ottenere base e revisione
-  const parsedName = parseISOPathWithRevision(file.name);
-  if (!parsedName) {
-    logger.warn(`File da Drive saltato perché il nome non corrisponde al formato ISO: ${file.name}`, { fileId: file.id, clientId });
-    return { status: "skipped", reason: "Formato nome non valido" };
-  }
-  const { baseName, revision: newRevision } = parsedName;
-
-  // 3. Rendi obsolete le revisioni precedenti
-  // Cerca tutti i documenti ATTIVI con lo stesso path per questo client
-  const documentPath = `${baseName}_${parseTitle(file.name)}`;
-  const olderRevisions = await mongoStorage.getDocumentsByPathAndClientId(documentPath, clientId);
-  let obsoletedCount = 0;
-  for (const doc of olderRevisions) {
-    const docParsed = parseISOPathWithRevision(doc.title);
-    // Rendi obsoleto solo se non è già obsoleto e la revisione è inferiore
-    if (docParsed && docParsed.revision < newRevision && !doc.isObsolete) {
-      await mongoStorage.markDocumentObsolete(doc.legacyId);
-      await mongoStorage.createLog({
-        userId,
-        action: "revision-obsolete",
-        documentId: doc.legacyId,
-        details: { message: `Documento ${doc.title} reso obsoleto dalla nuova revisione ${newRevision}` },
-      });
-      obsoletedCount++;
-      logger.info(`Documento reso obsoleto: ${doc.title}`, { documentId: doc.legacyId, clientId });
-    }
-  }
-
-  // 4. Crea il nuovo documento
-  const title = parseTitle(file.name);
-  const fileType = file.name.split('.').pop()?.toLowerCase() || 'unknown';
-
-  // Analisi Excel se necessario
-  let alertStatus: "none" | "warning" | "expired" = "none";
-  let expiryDate: Date | null = null;
-  if (fileType === 'xlsx' || file.mimeType === 'application/vnd.google-apps.spreadsheet') {
-      // La funzione analyzeExcelContentOptimized gestisce il download temporaneo
-      const analysis = await analyzeExcelContentOptimized(drive, file.id);
-      alertStatus = analysis.alertStatus;
-      expiryDate = analysis.expiryDate;
-  }
-
-  const newDocumentData: InsertDocument = {
-    title: file.name,
-    path: documentPath, // Usiamo il path completo come "serie" del documento
-    revision: `Rev.${newRevision}`,
-    driveUrl: file.webViewLink,
-    googleFileId: file.id,
-    fileType: file.mimeType || "application/octet-stream",
-    alertStatus,
-    expiryDate,
-    parentId: null,
-    isObsolete: false,
-    fileHash: null,
-    encryptedCachePath: null,
-    ownerId: userId,
-    clientId: clientId,
-  };
-
-  const createdDoc = await mongoStorage.createDocument(newDocumentData);
-  await mongoStorage.createLog({
-      userId,
-      action: "sync-create",
-      documentId: createdDoc.legacyId,
-      details: { message: `Nuovo documento sincronizzato: ${createdDoc.title}` },
-  });
-  logger.info(`Nuovo documento creato: ${createdDoc.title}`, { documentId: createdDoc.legacyId, clientId });
-
-  return { status: "processed", created: createdDoc, obsoleted: obsoletedCount };
-}
-
-/**
  * Sincronizza una cartella Google Drive (e tutte le sue sottocartelle) con il DB.
- * Versione con logica di revisione corretta.
+ * Versione ottimizzata per velocità e performance.
  */
 export async function syncWithGoogleDrive(
-  syncFolderId: string,
-  userId: number
+  syncFolder: string,
+  userId: number,
+  onProgress?: (processed: number, total: number, currentBatch: number, totalBatches: number) => void
 ): Promise<SyncResult> {
   const startTime = Date.now();
   const result: SyncResult = {
@@ -821,62 +719,266 @@ export async function syncWithGoogleDrive(
     processed: 0,
     failed: 0,
     errors: [],
-    duration: 0,
+    duration: 0
   };
 
+  let clientName = 'Unknown';
+  let clientId: number | undefined;
+
   try {
-    const user = await mongoStorage.getUser(userId);
-    if (!user || !user.clientId) {
-      throw new Error("Utente non valido o non associato a un client.");
+    logger.info('Starting optimized Google Drive sync', { 
+      userId, 
+      syncFolder,
+      timestamp: new Date().toISOString()
+    });
+
+    // 1. Recupero dati utente e client
+    logger.info('Retrieving user data', { userId });
+    const user = await withRetry(
+      () => mongoStorage.getUser(userId),
+      'getUser',
+      2
+    );
+
+    if (!user) {
+      const error = createSyncError(
+        'User not found',
+        'USER_NOT_FOUND',
+        false,
+        { userId }
+      );
+      result.errors.push(error);
+      logger.error('User not found during sync', { userId });
+      throw error;
     }
-    const clientId = user.clientId;
 
-    const drive = await getDriveClientForClient(clientId);
-    if (!drive) {
-      throw new Error("Connessione a Google Drive non configurata per questo client.");
+    clientId = user?.clientId || undefined;
+    logger.info('User data retrieved', { 
+      userId, 
+      clientId, 
+      userEmail: user.email,
+      userRole: user.role
+    });
+
+    if (!clientId) {
+      const error = createSyncError(
+        'User not found or has no client ID',
+        'USER_NOT_FOUND',
+        false,
+        { userId }
+      );
+      result.errors.push(error);
+      logger.error('User has no client ID', { userId });
+      throw error;
     }
 
-    logger.info(`Inizio sincronizzazione per client ${clientId}, cartella ${syncFolderId}`);
-    const allFiles = await googleDriveListFiles(drive, syncFolderId);
-    logger.info(`Trovati ${allFiles.length} file in Google Drive. Inizio processamento.`);
+    // Recupera il nome del client per le notifiche
+    try {
+      const client = await mongoStorage.getClient(clientId);
+      clientName = client?.name || 'Unknown';
+      logger.info('Client data retrieved', { 
+        clientId, 
+        clientName,
+        hasGoogleTokens: !!client?.google?.refreshToken,
+        driveFolderId: client?.driveFolderId
+      });
+    } catch (clientError) {
+      logger.warn('Failed to get client name for notifications', { 
+        clientId, 
+        error: clientError instanceof Error ? clientError.message : String(clientError)
+      });
+    }
 
-    for (const file of allFiles) {
-      try {
-        const processResult = await processSingleFile(file, drive, clientId, userId);
-        if (processResult.status === 'processed') {
-          result.processed++;
+    const folderId = await withRetry(
+      () => mongoStorage.getFolderIdForUser(userId),
+      'getFolderId',
+      2
+    ) || syncFolder;
+
+    logger.info('Folder ID determined', { 
+      userId, 
+      clientId, 
+      folderId, 
+      syncFolder 
+    });
+
+    // 2. Inizializzazione del client di Google Drive
+    logger.info('Initializing Google Drive client', { clientId });
+    const drive = await withRetry(
+      () => getDriveClientForClient(clientId!),
+      'getDriveClient',
+      3
+    );
+
+    logger.info('Google Drive client initialized successfully', { clientId });
+
+    // 3. Validazione connessione
+    logger.info('Validating Google Drive connection', { clientId });
+    const isConnected = await validateDriveConnection(drive);
+    if (!isConnected) {
+      const error = createSyncError(
+        'Google Drive connection failed',
+        'DRIVE_CONNECTION_FAILED',
+        true,
+        { clientId, folderId }
+      );
+      result.errors.push(error);
+      logger.error('Google Drive connection validation failed', { clientId, folderId });
+      throw error;
+    }
+
+    logger.info('Google Drive connection validated successfully', { clientId });
+
+    // 4. Elenco ricorsivo dei file
+    const files = await withRetry(
+      () => googleDriveListFiles(drive, folderId),
+      'listFiles',
+      3
+    );
+
+    logger.info(`Found ${files.length} files to process`, {
+      userId,
+      clientId,
+      folderId,
+      fileCount: files.length
+    });
+
+    // 5. Processamento in batch ottimizzato con analisi contenuti
+    const batches = [];
+    for (let i = 0; i < files.length; i += SYNC_CONFIG.batchSize) {
+      batches.push(files.slice(i, i + SYNC_CONFIG.batchSize));
+    }
+
+    for (const [batchIndex, batch] of batches.entries()) {
+      logger.debug(`Processing batch ${batchIndex + 1}/${batches.length}`, {
+        batchSize: batch.length,
+        userId,
+        clientId
+      });
+
+      const batchResults = await processBatchWithAnalysis(
+        drive,
+        batch,
+        userId,
+        clientId!,
+        (processed, total) => {
+          if (onProgress) {
+            const totalProcessed = result.processed + processed;
+            const totalFiles = files.length;
+            onProgress(totalProcessed, totalFiles, batchIndex + 1, batches.length);
+          }
         }
-      } catch (error) {
-        result.failed++;
-        const syncError = createSyncError(
-          `Errore durante il processamento del file ${file.name}: ${error instanceof Error ? error.message : String(error)}`,
-          'FILE_PROCESSING_ERROR',
-          false,
-          { fileId: file.id, fileName: file.name, clientId }
-        );
-        result.errors.push(syncError);
-        logger.error(syncError.message, syncError.context);
+      );
+
+      // Aggiorna risultati totali
+      result.processed += batchResults.processed;
+      result.failed += batchResults.failed;
+      result.errors.push(...batchResults.errors);
+
+      // Pausa ridotta tra i batch
+      if (batchIndex < batches.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
     }
 
     result.success = result.failed === 0;
     result.duration = Date.now() - startTime;
-    logger.info(`Sincronizzazione completata per client ${clientId}. Processati: ${result.processed}, Errori: ${result.failed}. Durata: ${result.duration}ms`);
 
-    return result;
+    logger.info('Optimized Google Drive sync completed', {
+      userId,
+      clientId,
+      success: result.success,
+      processed: result.processed,
+      failed: result.failed,
+      duration: result.duration,
+      errorCount: result.errors.length,
+      avgTimePerFile: result.duration / (result.processed + result.failed)
+    });
+
+    // Log dettagliato degli errori se ce ne sono
+    if (result.errors.length > 0) {
+      logger.warn('Sync completed with errors', {
+        userId,
+        clientId,
+        errors: result.errors.map(e => ({
+          message: e.message,
+          code: e.code,
+          retryable: e.retryable
+        }))
+      });
+    }
+
+    // Invia notifiche per errori critici
+    if (result.errors.length > 0) {
+      try {
+        await sendSyncErrorNotifications(result.errors, {
+          userId,
+          clientId,
+          clientName,
+          syncFolder,
+          processed: result.processed,
+          failed: result.failed,
+          duration: result.duration
+        });
+      } catch (notificationError) {
+        logger.error('Failed to send sync error notifications', {
+          error: notificationError instanceof Error ? notificationError.message : String(notificationError),
+          userId,
+          clientId
+        });
+      }
+    }
 
   } catch (error) {
     result.duration = Date.now() - startTime;
+    result.success = false;
+
     const syncError = createSyncError(
-        `Errore fatale durante la sincronizzazione: ${error instanceof Error ? error.message : String(error)}`,
-        'FATAL_SYNC_ERROR',
-        false,
-        { userId, syncFolderId }
+      'Sync operation failed',
+      error instanceof Error && 'code' in error ? String(error.code) : 'SYNC_FAILED',
+      true,
+      {
+        userId,
+        syncFolder,
+        duration: result.duration,
+        originalError: error instanceof Error ? error.message : String(error)
+      }
     );
+
     result.errors.push(syncError);
-    logger.error(syncError.message, syncError.context);
-    return result;
+
+    logger.error('Google Drive sync failed', {
+      userId,
+      syncFolder,
+      error: syncError.message,
+      code: syncError.code,
+      duration: result.duration,
+      context: syncError.context
+    });
+
+    // Invia notifiche anche per errori fatali
+    if (clientId) {
+      try {
+        await sendSyncErrorNotifications([syncError], {
+          userId,
+          clientId,
+          clientName,
+          syncFolder,
+          processed: result.processed,
+          failed: result.failed,
+          duration: result.duration
+        });
+      } catch (notificationError) {
+        logger.error('Failed to send sync error notifications for fatal error', {
+          error: notificationError instanceof Error ? notificationError.message : String(notificationError),
+          userId,
+          clientId
+        });
+      }
+    }
   }
+
+  return result;
 }
 
 // Nuova funzione batch con analisi contenuti

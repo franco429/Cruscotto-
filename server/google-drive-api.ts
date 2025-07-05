@@ -58,73 +58,60 @@ export async function googleDriveDownloadFile(
 }
 
 /**
- * Elenca tutti i file in una cartella di Google Drive e in tutte le sue sottocartelle (OAuth2).
- * Supporta paginazione e ritorna tutti i file presenti.
- * CORRETTA CON ESPLORAZIONE RICORSIVA (BFS).
+ * Elenca tutti i file in una cartella di Google Drive (OAuth2)
+ * Supporta paginazione e ritorna tutti i file presenti
  */
 export async function googleDriveListFiles(
   drive: drive_v3.Drive,
   folderId: string
 ): Promise<drive_v3.Schema$File[]> {
   const files: drive_v3.Schema$File[] = [];
-  // Coda per l'esplorazione Breadth-First Search (BFS) delle cartelle.
-  const pending: string[] = [folderId]; // Inizia con la cartella radice.
+  const pending: string[] = []; // Inizia con una coda vuota.
 
   // Controlla se folderId è una cartella valida prima di iniziare.
-  try {
-    const initialFolder = await drive.files.get({
-      fileId: folderId,
-      fields: "id, mimeType",
-      supportsAllDrives: true,
-    });
+  const initialFolder = await drive.files.get({
+    fileId: folderId,
+    fields: "id, mimeType",
+    supportsAllDrives: true,
+  });
 
-    if (initialFolder.data.mimeType !== "application/vnd.google-apps.folder") {
-      // Se non è una cartella, restituisce un array vuoto.
-      console.warn(`L'ID fornito (${folderId}) non corrisponde a una cartella. Restituzione di un elenco vuoto.`);
-      return [];
-    }
-  } catch (error) {
-    console.error(`Errore nel verificare l'ID della cartella ${folderId}:`, error);
-    // Se non è possibile accedere alla cartella, restituisce un array vuoto.
+  if (initialFolder.data.mimeType === "application/vnd.google-apps.folder") {
+    // Se è una cartella, aggiungila alla coda per l'esplorazione.
+    pending.push(folderId);
+  } else {
+    // Se non è una cartella, potrebbe essere un file singolo.
+    // In questo scenario, restituiamo un array vuoto o gestiamo il caso specifico.
+    // Per ora, non facciamo nulla se non è una cartella.
     return [];
   }
 
-
-  while (pending.length > 0) {
-    // Usa shift() per processare la coda in ordine (BFS)
-    const currentFolderId = pending.shift()!;
+  // Coda per l'esplorazione Breadth-First Search (BFS) delle cartelle.
+  while (pending.length) {
+    const current = pending.pop()!;
     let pageToken: string | undefined;
 
     do {
-      try {
-        const res = await drive.files.list({
-          q: `'${currentFolderId}' in parents and trashed = false`,
-          fields: "nextPageToken, files(id, name, mimeType, webViewLink)",
-          pageSize: 1000, // Massimo consentito
-          pageToken,
-          spaces: "drive",
-          includeItemsFromAllDrives: true,
-          supportsAllDrives: true,
-        });
+      const res = await drive.files.list({
+        q: `'${current}' in parents and trashed = false`,
+        fields: "nextPageToken, files(id, name, mimeType, webViewLink)",
+        pageSize: 1000,
+        pageToken,
+        spaces: "drive",
+        includeItemsFromAllDrives: true, // Includi file da Drive condivisi.
+        supportsAllDrives: true,
+      });
 
-        if (res.data.files) {
-            for (const f of res.data.files) {
-                if (f.mimeType === "application/vnd.google-apps.folder") {
-                    // Aggiungi la sottocartella alla coda per l'esplorazione.
-                    if (f.id) pending.push(f.id);
-                } else {
-                    // Aggiungi solo i file, non le cartelle, alla lista dei risultati.
-                    files.push(f);
-                }
-            }
+      for (const f of res.data.files ?? []) {
+        if (f.mimeType === "application/vnd.google-apps.folder") {
+          // Aggiungi la sottocartella alla coda per l'esplorazione.
+          pending.push(f.id!);
+        } else {
+          // Aggiungi solo i file, non le cartelle, alla lista dei risultati.
+          files.push(f);
         }
-
-        pageToken = res.data.nextPageToken ?? undefined;
-      } catch (listError) {
-          console.error(`Impossibile elencare i file nella cartella ${currentFolderId}:`, listError);
-          // Interrompi il loop per questa cartella se c'è un errore, ma continua con le altre.
-          pageToken = undefined; 
       }
+
+      pageToken = res.data.nextPageToken ?? undefined;
     } while (pageToken);
   }
 
