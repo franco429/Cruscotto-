@@ -3,6 +3,7 @@ import {
   UserDocument,
   DocumentDocument,
   LogDocument,
+  BackupDocument,
 } from "../shared-types/schema";
 import { ClientDocument } from "../shared-types/client";
 import { CompanyCodeDocument } from "../shared-types/companycode";
@@ -79,7 +80,12 @@ const clientSchema = new Schema<ClientDocument & MongooseDocument>({
 const companyCodeSchema = new Schema<CompanyCodeDocument & MongooseDocument>({
   legacyId: { type: Number, required: true, unique: true, index: true },
   code: { type: String, required: true, unique: true, index: true },
-  role: { type: String, required: true, enum: ["admin", "viewer"], default: "admin" },
+  role: {
+    type: String,
+    required: true,
+    enum: ["admin", "viewer"],
+    default: "admin",
+  },
   usageLimit: { type: Number, default: 1 },
   usageCount: { type: Number, default: 0 },
   expiresAt: { type: Date, default: null },
@@ -87,6 +93,41 @@ const companyCodeSchema = new Schema<CompanyCodeDocument & MongooseDocument>({
   createdBy: { type: Number, required: true },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
+});
+
+// Backup Schema
+const backupSchema = new Schema<BackupDocument & MongooseDocument>({
+  legacyId: { type: Number, required: true, unique: true, index: true },
+  filename: { type: String, required: true, unique: true, index: true },
+  filePath: { type: String, required: true },
+  fileSize: { type: Number, required: true },
+  backupType: {
+    type: String,
+    required: true,
+    enum: ["complete", "client_specific"],
+    index: true,
+  },
+  createdBy: {
+    userId: { type: Number, required: true, index: true },
+    userEmail: { type: String, required: true },
+    userRole: {
+      type: String,
+      required: true,
+      enum: ["superadmin", "admin", "viewer"],
+    },
+  },
+  clientId: { type: Number, default: null, index: true },
+  metadata: {
+    totalUsers: { type: Number, required: true },
+    totalDocuments: { type: Number, required: true },
+    totalLogs: { type: Number, required: true },
+    totalClients: { type: Number, required: true },
+    totalCompanyCodes: { type: Number, required: true },
+  },
+  createdAt: { type: Date, default: Date.now, index: true },
+  updatedAt: { type: Date, default: Date.now },
+  isActive: { type: Boolean, default: true, index: true },
+  lastVerified: { type: Date, default: Date.now },
 });
 
 // Counter Schema for auto-incrementing IDs
@@ -98,7 +139,10 @@ const counterSchema = new Schema<CounterDocument>({
   _id: { type: String, required: true },
   seq: { type: Number, default: 0 },
 });
-export const Counter = mongoose.model<CounterDocument>("Counter", counterSchema);
+export const Counter = mongoose.model<CounterDocument>(
+  "Counter",
+  counterSchema
+);
 
 // Function to get the next sequence value
 export async function getNextSequence(name: string): Promise<number> {
@@ -111,8 +155,25 @@ export async function getNextSequence(name: string): Promise<number> {
 }
 
 // Create and export models
-export const UserModel = mongoose.model<UserDocument & MongooseDocument>("User", userSchema);
-export const DocumentModel = mongoose.model<DocumentDocument & MongooseDocument>("Document", documentSchema);
-export const LogModel = mongoose.model<LogDocument & MongooseDocument>("Log", logSchema);
-export const ClientModel = mongoose.model<ClientDocument & MongooseDocument>("Client", clientSchema);
-export const CompanyCodeModel = mongoose.model<CompanyCodeDocument & MongooseDocument>("CompanyCode", companyCodeSchema);
+export const UserModel = mongoose.model<UserDocument & MongooseDocument>(
+  "User",
+  userSchema
+);
+export const DocumentModel = mongoose.model<
+  DocumentDocument & MongooseDocument
+>("Document", documentSchema);
+export const LogModel = mongoose.model<LogDocument & MongooseDocument>(
+  "Log",
+  logSchema
+);
+export const ClientModel = mongoose.model<ClientDocument & MongooseDocument>(
+  "Client",
+  clientSchema
+);
+export const CompanyCodeModel = mongoose.model<
+  CompanyCodeDocument & MongooseDocument
+>("CompanyCode", companyCodeSchema);
+export const BackupModel = mongoose.model<BackupDocument & MongooseDocument>(
+  "Backup",
+  backupSchema
+);

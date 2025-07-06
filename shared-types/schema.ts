@@ -35,7 +35,7 @@ export interface InsertDocumento {
   driveUrl: string;
   fileType: string;
   alertStatus?: string;
-  expiryDate?: Date | null; 
+  expiryDate?: Date | null;
   parentId?: number | null;
   isObsolete?: boolean;
   fileHash?: string | null;
@@ -63,3 +63,28 @@ export interface LogDocument {
 
 export type InsertLog = Omit<LogDocument, "legacyId" | "timestamp">;
 export type InsertUser = Omit<UserDocument, "legacyId" | "createdAt">;
+
+export interface BackupDocument {
+  legacyId: number;
+  filename: string;
+  filePath: string;
+  fileSize: number;
+  backupType: "complete" | "client_specific";
+  createdBy: {
+    userId: number;
+    userEmail: string;
+    userRole: string;
+  };
+  clientId: number | null;
+  metadata: {
+    totalUsers: number;
+    totalDocuments: number;
+    totalLogs: number;
+    totalClients: number;
+    totalCompanyCodes: number;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+  isActive: boolean; // Indica se il file esiste ancora sul filesystem
+  lastVerified: Date; // Ultima verifica dell'esistenza del file
+}

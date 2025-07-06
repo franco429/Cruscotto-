@@ -1,7 +1,8 @@
-import type { Express, Request, Response } from "express";
-import { mongoStorage as storage } from "./mongo-storage";
-import * as path from "path";
-import * as fs from "fs";
+import express, { Request, Response } from "express";
+import path from "path";
+import fs from "fs";
+import { storage } from "./mongo-storage";
+import { BackupModel, getNextSequence } from "./models/mongoose-models";
 
 // Middleware per verificare se l'utente è admin
 const isAdmin = (req: Request, res: Response, next: Function) => {
@@ -10,11 +11,9 @@ const isAdmin = (req: Request, res: Response, next: Function) => {
     !req.user ||
     (req.user.role !== "admin" && req.user.role !== "superadmin")
   ) {
-    return res
-      .status(403)
-      .json({
-        message: "Accesso negato - Richiesti permessi di amministratore",
-      });
+    return res.status(403).json({
+      message: "Accesso negato - Richiesti permessi di amministratore",
+    });
   }
   next();
 };
@@ -39,7 +38,89 @@ async function getBackupMetadata(backupPath: string) {
   }
 }
 
-export function registerBackupRoutes(app: Express): void {
+// Funzione per sincronizzare i backup esistenti nel filesystem con il database
+async function syncBackupsWithDatabase() {
+  try {
+    const backupDir = path.join(process.cwd(), "backups");
+
+    if (!fs.existsSync(backupDir)) {
+      console.log("Cartella backup non trovata, creazione...");
+      await fs.promises.mkdir(backupDir, { recursive: true });
+      return { success: true, message: "Cartella backup creata" };
+    }
+
+    const files = await fs.promises.readdir(backupDir);
+    const backupFiles = files.filter((file) => file.endsWith(".json"));
+
+    let syncedCount = 0;
+    let errorCount = 0;
+
+    for (const filename of backupFiles) {
+      try {
+        const filePath = path.join(backupDir, filename);
+        const stats = fs.statSync(filePath);
+
+        // Verifica se il backup esiste già nel database
+        const existingBackup = await BackupModel.findOne({ filename }).exec();
+
+        if (!existingBackup) {
+          // Leggi i metadati dal file
+          const backupData = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+
+          // Crea un nuovo record nel database
+          const backupLegacyId = await getNextSequence("backupId");
+          const backupRecord = new BackupModel({
+            legacyId: backupLegacyId,
+            filename: filename,
+            filePath: filePath,
+            fileSize: stats.size,
+            backupType: backupData.backupType || "unknown",
+            createdBy: backupData.createdBy || {
+              userId: 0,
+              userEmail: "system",
+              userRole: "system",
+            },
+            clientId: backupData.clientId || null,
+            metadata: backupData.metadata || {
+              totalUsers: 0,
+              totalDocuments: 0,
+              totalLogs: 0,
+              totalClients: 0,
+              totalCompanyCodes: 0,
+            },
+            isActive: true,
+            lastVerified: new Date(),
+          });
+
+          await backupRecord.save();
+          syncedCount++;
+          console.log(`Backup sincronizzato: ${filename}`);
+        }
+      } catch (error) {
+        console.error(
+          `Errore nella sincronizzazione del backup ${filename}:`,
+          error
+        );
+        errorCount++;
+      }
+    }
+
+    return {
+      success: true,
+      syncedCount,
+      errorCount,
+      message: `Sincronizzazione completata: ${syncedCount} backup sincronizzati, ${errorCount} errori`,
+    };
+  } catch (error) {
+    console.error("Errore durante la sincronizzazione dei backup:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+export function registerBackupRoutes(app: express.Express): void {
   // Route per creare un backup
   app.post("/api/admin/backup", isAdmin, async (req, res) => {
     try {
@@ -241,53 +322,99 @@ export function registerBackupRoutes(app: Express): void {
   // Route per listare i backup disponibili
   app.get("/api/admin/backups", isAdmin, async (req, res) => {
     try {
-      const backupDir = path.join(process.cwd(), "backups");
-
-      if (!fs.existsSync(backupDir)) {
-        return res.json([]);
-      }
-
-      const files = await fs.promises.readdir(backupDir);
-      const backupFilesPromises = files
-        .filter((file) => file.endsWith(".json"))
-        .map(async (file) => {
-          const filePath = path.join(backupDir, file);
-          const stats = fs.statSync(filePath);
-          const metadata = await getBackupMetadata(filePath);
-
-          return {
-            filename: file,
-            path: filePath,
-            size: stats.size,
-            createdAt: stats.birthtime,
-            modifiedAt: stats.mtime,
-            metadata: metadata,
-          };
-        });
-
-      const backupFiles = await Promise.all(backupFilesPromises);
+      // Prima prova a leggere dal database (persistente)
+      let backupRecords = await BackupModel.find({ isActive: true })
+        .sort({ createdAt: -1 })
+        .lean()
+        .exec();
 
       // Filtra i backup in base al ruolo dell'utente
-      let filteredBackups = backupFiles;
+      let filteredBackups = backupRecords;
 
       if (req.user!.role === "admin") {
         // Admin vede solo i backup del proprio client o quelli che ha creato
-        filteredBackups = backupFiles.filter((backup) => {
-          if (!backup.metadata) return false;
+        filteredBackups = backupRecords.filter((backup) => {
           return (
-            backup.metadata.clientId === req.user!.clientId ||
-            backup.metadata.createdBy?.userId === req.user!.legacyId
+            backup.clientId === req.user!.clientId ||
+            backup.createdBy?.userId === req.user!.legacyId
           );
         });
       }
       // Superadmin vede tutti i backup (nessun filtro)
 
-      // Ordina per data di modifica (più recenti prima)
-      filteredBackups.sort(
-        (a, b) => b.modifiedAt.getTime() - a.modifiedAt.getTime()
+      // Verifica l'esistenza dei file e aggiorna lo stato
+      const backupDir = path.join(process.cwd(), "backups");
+      const verifiedBackups = await Promise.all(
+        filteredBackups.map(async (backup) => {
+          const fileExists = fs.existsSync(backup.filePath);
+
+          // Aggiorna lo stato nel database se necessario
+          if (!fileExists && backup.isActive) {
+            await BackupModel.updateOne(
+              { legacyId: backup.legacyId },
+              {
+                isActive: false,
+                lastVerified: new Date(),
+              }
+            );
+          } else if (fileExists && !backup.isActive) {
+            await BackupModel.updateOne(
+              { legacyId: backup.legacyId },
+              {
+                isActive: true,
+                lastVerified: new Date(),
+              }
+            );
+          }
+
+          // Se il file esiste, ottieni le statistiche aggiornate
+          if (fileExists) {
+            try {
+              const stats = fs.statSync(backup.filePath);
+              return {
+                filename: backup.filename,
+                path: backup.filePath,
+                size: stats.size,
+                createdAt: backup.createdAt,
+                modifiedAt: stats.mtime,
+                metadata: {
+                  createdBy: backup.createdBy,
+                  clientId: backup.clientId,
+                  backupType: backup.backupType,
+                  metadata: backup.metadata,
+                },
+                isActive: true,
+              };
+            } catch (error) {
+              console.error(
+                `Errore nel leggere le statistiche del file ${backup.filename}:`,
+                error
+              );
+            }
+          }
+
+          // Se il file non esiste, restituisci i dati dal database
+          return {
+            filename: backup.filename,
+            path: backup.filePath,
+            size: backup.fileSize,
+            createdAt: backup.createdAt,
+            modifiedAt: backup.updatedAt,
+            metadata: {
+              createdBy: backup.createdBy,
+              clientId: backup.clientId,
+              backupType: backup.backupType,
+              metadata: backup.metadata,
+            },
+            isActive: false,
+          };
+        })
       );
 
-      res.json(filteredBackups);
+      // Filtra solo i backup attivi (file esistenti) per la risposta
+      const activeBackups = verifiedBackups.filter((backup) => backup.isActive);
+
+      res.json(activeBackups);
     } catch (error) {
       console.error("Errore durante il recupero della lista backup:", error);
       res.status(500).json({
@@ -345,6 +472,97 @@ export function registerBackupRoutes(app: Express): void {
       res.status(500).json({
         success: false,
         message: "Errore durante il download del backup",
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  });
+
+  // Route per eliminare un backup (solo superadmin)
+  app.delete("/api/admin/backup/:filename", isAdmin, async (req, res) => {
+    try {
+      if (req.user!.role !== "superadmin") {
+        return res.status(403).json({
+          success: false,
+          message: "Solo i superadmin possono eliminare i backup",
+        });
+      }
+
+      const { filename } = req.params;
+
+      // Trova il backup nel database
+      const backupRecord = await BackupModel.findOne({ filename }).exec();
+
+      if (!backupRecord) {
+        return res.status(404).json({
+          success: false,
+          message: "Backup non trovato nel database",
+        });
+      }
+
+      // Elimina il file fisico se esiste
+      const backupPath = path.join(process.cwd(), "backups", filename);
+      if (fs.existsSync(backupPath)) {
+        fs.unlinkSync(backupPath);
+      }
+
+      // Elimina il record dal database
+      await BackupModel.deleteOne({ legacyId: backupRecord.legacyId });
+
+      await storage.createLog({
+        userId: req.user!.legacyId,
+        action: "backup_deleted",
+        details: {
+          message: "Backup eliminato con successo",
+          filename: filename,
+          backupMetadata: backupRecord,
+        },
+      });
+
+      res.json({
+        success: true,
+        message: "Backup eliminato con successo",
+      });
+    } catch (error) {
+      console.error("Errore durante l'eliminazione del backup:", error);
+      res.status(500).json({
+        success: false,
+        message: "Errore durante l'eliminazione del backup",
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  });
+
+  // Route per sincronizzare i backup esistenti (solo superadmin)
+  app.post("/api/admin/backups/sync", isAdmin, async (req, res) => {
+    try {
+      if (req.user!.role !== "superadmin") {
+        return res.status(403).json({
+          success: false,
+          message: "Solo i superadmin possono sincronizzare i backup",
+        });
+      }
+
+      const result = await syncBackupsWithDatabase();
+
+      if (result.success) {
+        res.json({
+          success: true,
+          message: result.message,
+          syncedCount: result.syncedCount,
+          errorCount: result.errorCount,
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: "Errore durante la sincronizzazione",
+          error: result.error,
+        });
+      }
+    } catch (error) {
+      console.error("Errore durante la sincronizzazione:", error);
+      res.status(500).json({
+        success: false,
+        message: "Errore interno del server durante la sincronizzazione",
         error: error instanceof Error ? error.message : String(error),
       });
     }

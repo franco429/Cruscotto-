@@ -9,6 +9,8 @@ import {
   ClientModel,
   CompanyCodeModel,
   Counter,
+  getNextSequence,
+  BackupModel,
 } from "./models/mongoose-models";
 import * as dotenv from "dotenv";
 
@@ -106,10 +108,8 @@ async function createBackup(backupOptions?: {
     const clientSuffix = backupOptions?.clientId
       ? `_client_${backupOptions.clientId}`
       : "_complete";
-    const backupPath = path.join(
-      backupDir,
-      `backup${clientSuffix}_${timestamp}.json`
-    );
+    const filename = `backup${clientSuffix}_${timestamp}.json`;
+    const backupPath = path.join(backupDir, filename);
 
     // Determina il tipo di backup e le query da eseguire
     let users, documents, logs, clients, companyCodes, counters;
@@ -210,11 +210,43 @@ async function createBackup(backupOptions?: {
       },
     };
 
+    // Scrivi il file di backup
     await fs.promises.writeFile(
       backupPath,
       JSON.stringify(data, null, 2),
       "utf8"
     );
+
+    // Ottieni le informazioni del file
+    const fileStats = fs.statSync(backupPath);
+
+    // Salva i metadati nel database per persistenza
+    const backupLegacyId = await getNextSequence("backupId");
+    const backupRecord = new BackupModel({
+      legacyId: backupLegacyId,
+      filename: filename,
+      filePath: backupPath,
+      fileSize: fileStats.size,
+      backupType: isCompleteBackup ? "complete" : "client_specific",
+      createdBy: backupOptions?.createdBy || {
+        userId: 0,
+        userEmail: "system",
+        userRole: "system",
+      },
+      clientId: backupOptions?.clientId || null,
+      metadata: {
+        totalUsers: users.length,
+        totalDocuments: documents.length,
+        totalLogs: logs.length,
+        totalClients: clients.length,
+        totalCompanyCodes: companyCodes.length,
+      },
+      isActive: true,
+      lastVerified: new Date(),
+    });
+
+    await backupRecord.save();
+
     return { success: true, backupPath };
   } catch (error) {
     // Logga l'errore dettagliato nella console del server per il debug
