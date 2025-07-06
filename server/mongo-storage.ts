@@ -207,8 +207,14 @@ export class MongoStorage implements IStorage {
     insertUser: InsertUser,
     session?: ClientSession
   ): Promise<User> {
-    if (insertUser.role === "superadmin" && insertUser.clientId !== null && insertUser.clientId !== undefined) {
-      throw new Error("Un superadmin non può essere associato a nessun clientId.");
+    if (
+      insertUser.role === "superadmin" &&
+      insertUser.clientId !== null &&
+      insertUser.clientId !== undefined
+    ) {
+      throw new Error(
+        "Un superadmin non può essere associato a nessun clientId."
+      );
     }
     const legacyId = await getNextSequence("userId");
     const user = new UserModel({
@@ -274,14 +280,20 @@ export class MongoStorage implements IStorage {
   ): Promise<User | undefined> {
     const user = await UserModel.findOne({ legacyId: id }).lean().exec();
     if (!user) return undefined;
-    if (user.role === "superadmin" && clientId !== null && clientId !== undefined) {
+    if (
+      user.role === "superadmin" &&
+      clientId !== null &&
+      clientId !== undefined
+    ) {
       throw new Error("Non puoi assegnare un clientId a un superadmin.");
     }
     const updatedUser = await UserModel.findOneAndUpdate(
       { legacyId: id },
       { clientId },
       { new: true }
-    ).lean().exec();
+    )
+      .lean()
+      .exec();
     return updatedUser ? (updatedUser as User) : undefined;
   }
 
@@ -408,7 +420,7 @@ export class MongoStorage implements IStorage {
   async getPaginatedCompanyCodes(options: { page: number; limit: number }) {
     const { page, limit } = options;
     const skip = (page - 1) * limit;
-  
+
     const [total, data] = await Promise.all([
       CompanyCodeModel.countDocuments(),
       CompanyCodeModel.find()
@@ -417,7 +429,7 @@ export class MongoStorage implements IStorage {
         .limit(limit)
         .lean(),
     ]);
-  
+
     return { data, total };
   }
 
@@ -443,7 +455,9 @@ export class MongoStorage implements IStorage {
     codes: (InsertCompanyCode & { legacyId: number })[] // Accetta codici con legacyId
   ): Promise<CompanyCode[]> {
     // L'opzione { ordered: false } tenta di inserire tutti i documenti anche se uno fallisce.
-    const createdDocuments = await CompanyCodeModel.insertMany(codes, { ordered: false });
+    const createdDocuments = await CompanyCodeModel.insertMany(codes, {
+      ordered: false,
+    });
     return createdDocuments.map((doc) => doc.toObject());
   }
 
@@ -489,7 +503,7 @@ export class MongoStorage implements IStorage {
     const document = new DocumentModel({
       ...insertDocument,
       legacyId,
-      alertStatus: insertDocument.alertStatus || 'none',
+      alertStatus: insertDocument.alertStatus || "none",
       googleFileId: insertDocument.googleFileId || undefined,
     });
     await document.save({ session });
@@ -521,7 +535,9 @@ export class MongoStorage implements IStorage {
     return doc ? (doc as Document) : undefined;
   }
 
-  async getDocumentByGoogleFileId(googleFileId: string): Promise<Document | undefined> {
+  async getDocumentByGoogleFileId(
+    googleFileId: string
+  ): Promise<Document | undefined> {
     const doc = await DocumentModel.findOne({ googleFileId }).lean().exec();
     return doc ? (doc as Document) : undefined;
   }
@@ -535,14 +551,15 @@ export class MongoStorage implements IStorage {
     const newCode = new CompanyCodeModel({
       ...companyCode,
       legacyId,
-      
+
       usageCount: 0,
     });
     await newCode.save({ session });
     return newCode.toObject();
   }
 
-  async getCompanyCode(id: number): Promise<CompanyCode | undefined> { // MODIFICA: id è number
+  async getCompanyCode(id: number): Promise<CompanyCode | undefined> {
+    // MODIFICA: id è number
     const code = await CompanyCodeModel.findOne({ legacyId: id }).lean().exec(); // Query su legacyId
     return code ? (code as CompanyCode) : undefined;
   }
@@ -573,7 +590,8 @@ export class MongoStorage implements IStorage {
     return code ? (code as CompanyCode) : undefined;
   }
 
-  async deleteCompanyCode(id: number): Promise<boolean> { // MODIFICA: id è number
+  async deleteCompanyCode(id: number): Promise<boolean> {
+    // MODIFICA: id è number
     const result = await CompanyCodeModel.deleteOne({ legacyId: id }); // Query su legacyId
     return result.deletedCount > 0;
   }
@@ -610,10 +628,7 @@ export class MongoStorage implements IStorage {
   }
 
   // --- LOG METHODS ---
-  async createLog(
-    log: InsertLog,
-    session?: ClientSession
-  ): Promise<Log> {
+  async createLog(log: InsertLog, session?: ClientSession): Promise<Log> {
     const legacyId = await getNextSequence("logId");
     const newLog = new LogModel({
       ...log,
@@ -658,7 +673,7 @@ export class MongoStorage implements IStorage {
   }> {
     if (!this.connected)
       return { success: false, error: "Database non connesso" };
-    
+
     try {
       // Usa il BackupService per eseguire l'operazione in un worker thread
       return await this.backupService.createBackup();
@@ -667,29 +682,36 @@ export class MongoStorage implements IStorage {
       // (es. il worker non parte).
       console.error("Errore nel servizio di backup (mongo-storage):", error);
       // L'errore potrebbe essere l'oggetto { success: false, error: '...' }
-      const errorMessage = error?.error || (error instanceof Error ? error.message : String(error));
+      const errorMessage =
+        error?.error ||
+        (error instanceof Error ? error.message : String(error));
       return {
         success: false,
         error: `Errore durante l'avvio del processo di backup: ${errorMessage}`,
       };
     }
   }
-//
+  //
   async restoreFromBackup(
     backupPath: string
   ): Promise<{ success: boolean; error?: string }> {
     if (!this.connected)
       return { success: false, error: "Database non connesso" };
-    
+
     try {
       // Usa il BackupService per eseguire l'operazione in un worker thread
       return await this.backupService.restoreFromBackup(backupPath);
     } catch (error: any) {
-      console.error("Errore nel servizio di ripristino (mongo-storage):", error);
-      const errorMessage = error?.error || (error instanceof Error ? error.message : String(error));
-      return { 
-        success: false, 
-        error: `Errore durante l'avvio del processo di ripristino: ${errorMessage}` 
+      console.error(
+        "Errore nel servizio di ripristino (mongo-storage):",
+        error
+      );
+      const errorMessage =
+        error?.error ||
+        (error instanceof Error ? error.message : String(error));
+      return {
+        success: false,
+        error: `Errore durante l'avvio del processo di ripristino: ${errorMessage}`,
       };
     }
   }
@@ -728,11 +750,12 @@ export class MongoStorage implements IStorage {
 
   public async getDocumentsByPathAndTitle(
     path: string,
-    title: string
+    title: string,
+    clientId: number
   ): Promise<Document[]> {
-    return DocumentModel.find({ path, title }).lean().exec() as Promise<
-      Document[]
-    >;
+    return DocumentModel.find({ path, title, clientId })
+      .lean()
+      .exec() as Promise<Document[]>;
   }
 
   public async getObsoleteDocuments(): Promise<Document[]> {
@@ -754,7 +777,10 @@ export class MongoStorage implements IStorage {
       );
       const fileHash = await hashFile(filePath);
       await encryptFile(filePath, encryptedPath);
-      return await this.updateDocument(id, { fileHash, encryptedCachePath: encryptedPath });
+      return await this.updateDocument(id, {
+        fileHash,
+        encryptedCachePath: encryptedPath,
+      });
     } catch (error) {
       return this.getDocument(id);
     }
