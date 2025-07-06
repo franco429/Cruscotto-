@@ -480,6 +480,10 @@ export class MongoStorage implements IStorage {
     });
   }
 
+  async getAllDocumentsRaw(): Promise<Document[]> {
+    return DocumentModel.find({}).lean().exec() as Promise<Document[]>;
+  }
+
   async getDocument(id: number): Promise<Document | undefined> {
     const doc = await DocumentModel.findOne({ legacyId: id }).lean().exec();
     return doc ? (doc as Document) : undefined;
