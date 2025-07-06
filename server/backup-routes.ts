@@ -1,7 +1,7 @@
 import express, { Request, Response } from "express";
 import path from "path";
 import fs from "fs";
-import { storage } from "./mongo-storage";
+import { mongoStorage as storage } from "./mongo-storage";
 import { BackupModel, getNextSequence } from "./models/mongoose-models";
 
 // Middleware per verificare se l'utente è admin
@@ -160,6 +160,7 @@ export function registerBackupRoutes(app: express.Express): void {
         await storage.createLog({
           userId: req.user!.legacyId,
           action: "backup_created",
+          documentId: null,
           details: {
             message: "Backup del database creato con successo",
             backupPath: result.backupPath,
@@ -178,6 +179,7 @@ export function registerBackupRoutes(app: express.Express): void {
         await storage.createLog({
           userId: req.user!.legacyId,
           action: "backup_failed",
+          documentId: null,
           details: {
             message: "Errore durante la creazione del backup",
             error: result.error,
@@ -197,6 +199,7 @@ export function registerBackupRoutes(app: express.Express): void {
       await storage.createLog({
         userId: req.user!.legacyId,
         action: "backup_error",
+        documentId: null,
         details: {
           message: "Errore critico durante l'operazione di backup",
           error: error instanceof Error ? error.message : String(error),
@@ -270,6 +273,7 @@ export function registerBackupRoutes(app: express.Express): void {
         await storage.createLog({
           userId: req.user!.legacyId,
           action: "backup_restored",
+          documentId: null,
           details: {
             message: "Database ripristinato con successo",
             backupPath: backupPath,
@@ -286,6 +290,7 @@ export function registerBackupRoutes(app: express.Express): void {
         await storage.createLog({
           userId: req.user!.legacyId,
           action: "backup_restore_failed",
+          documentId: null,
           details: {
             message: "Errore durante il ripristino del backup",
             error: result.error,
@@ -305,6 +310,7 @@ export function registerBackupRoutes(app: express.Express): void {
       await storage.createLog({
         userId: req.user!.legacyId,
         action: "backup_restore_error",
+        documentId: null,
         details: {
           message: "Errore critico durante l'operazione di ripristino",
           error: error instanceof Error ? error.message : String(error),
@@ -459,6 +465,7 @@ export function registerBackupRoutes(app: express.Express): void {
       await storage.createLog({
         userId: req.user!.legacyId,
         action: "backup_downloaded",
+        documentId: null,
         details: {
           message: "Download del file di backup",
           filename: filename,
@@ -511,6 +518,7 @@ export function registerBackupRoutes(app: express.Express): void {
       await storage.createLog({
         userId: req.user!.legacyId,
         action: "backup_deleted",
+        documentId: null,
         details: {
           message: "Backup eliminato con successo",
           filename: filename,
