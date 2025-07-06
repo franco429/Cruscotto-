@@ -84,7 +84,9 @@ async function withRetry<T>(
     } catch (error) {
       lastError = createSyncError(
         error instanceof Error ? error.message : String(error),
-        error instanceof Error && 'code' in error ? String(error.code) : undefined,
+        error instanceof Error && "code" in error
+          ? String(error.code)
+          : undefined,
         attempt < maxRetries,
         { context, attempt, maxRetries }
       );
@@ -95,15 +97,20 @@ async function withRetry<T>(
       }
 
       // Log del retry
-      logger.warn(`Retry attempt ${attempt + 1}/${maxRetries + 1} for ${context}`, {
-        error: lastError.message,
-        code: lastError.code,
-        delay: exponentialBackoff(attempt),
-        context: lastError.context
-      });
+      logger.warn(
+        `Retry attempt ${attempt + 1}/${maxRetries + 1} for ${context}`,
+        {
+          error: lastError.message,
+          code: lastError.code,
+          delay: exponentialBackoff(attempt),
+          context: lastError.context,
+        }
+      );
 
       // Attendi prima del prossimo tentativo
-      await new Promise(resolve => setTimeout(resolve, exponentialBackoff(attempt)));
+      await new Promise((resolve) =>
+        setTimeout(resolve, exponentialBackoff(attempt))
+      );
     }
   }
 
@@ -116,11 +123,11 @@ export async function validateDriveConnection(drive: any): Promise<boolean> {
     // Test semplice: prova a ottenere informazioni sulla cartella root
     await drive.files.list({
       pageSize: 1,
-      fields: 'files(id, name)',
+      fields: "files(id, name)",
     });
     return true;
   } catch (error) {
-    logger.error('Google Drive connection validation failed', {
+    logger.error("Google Drive connection validation failed", {
       error: error instanceof Error ? error.message : String(error),
     });
     return false;
@@ -191,7 +198,7 @@ function parseValueToUTCDate(value: any): Date | null {
     parsed = value;
   }
   // Caso 2: È un numero (formato seriale di Excel)
-  else if (typeof value === 'number') {
+  else if (typeof value === "number") {
     // 25569 è il numero di giorni di offset tra l'epoca di Excel (1900) e l'epoca Unix (1970)
     if (value > 25569) {
       const milliseconds = (value - 25569) * 86400 * 1000;
@@ -199,9 +206,9 @@ function parseValueToUTCDate(value: any): Date | null {
     }
   }
   // Caso 3: È una stringa
-  else if (typeof value === 'string') {
+  else if (typeof value === "string") {
     // Tentativo #1: formato DD/MM/YYYY (comune in Italia)
-    let tempDate = parse(value, 'dd/MM/yyyy', new Date());
+    let tempDate = parse(value, "dd/MM/yyyy", new Date());
     if (!isNaN(tempDate.getTime())) {
       parsed = tempDate;
     } else {
@@ -216,7 +223,13 @@ function parseValueToUTCDate(value: any): Date | null {
   // Se il parsing ha funzionato, normalizza la data a mezzanotte UTC
   // per eliminare l'ora e il fuso orario.
   if (parsed && !isNaN(parsed.getTime())) {
-    return new Date(Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate()));
+    return new Date(
+      Date.UTC(
+        parsed.getUTCFullYear(),
+        parsed.getUTCMonth(),
+        parsed.getUTCDate()
+      )
+    );
   }
 
   return null;
@@ -234,25 +247,29 @@ interface FormulaResult {
  */
 class FormulaEvaluator {
   private today: Date;
-  
+
   constructor() {
     this.today = new Date();
     this.today.setHours(0, 0, 0, 0);
   }
 
   evaluate(formula: string): FormulaResult {
-    if (!formula || typeof formula !== 'string') {
-      return { value: null, evaluated: false, error: 'Invalid formula' };
+    if (!formula || typeof formula !== "string") {
+      return { value: null, evaluated: false, error: "Invalid formula" };
     }
 
-    const cleanFormula = formula.trim().replace(/^=/, '').toUpperCase();
-    
+    const cleanFormula = formula.trim().replace(/^=/, "").toUpperCase();
+
     try {
       // TODAY/OGGI + offset
-      const todayMatch = cleanFormula.match(/^(TODAY|OGGI)\(\)(?:\s*([+\-])\s*(\d+))?$/);
+      const todayMatch = cleanFormula.match(
+        /^(TODAY|OGGI)\(\)(?:\s*([+\-])\s*(\d+))?$/
+      );
       if (todayMatch) {
-        const offset = todayMatch[2] && todayMatch[3] ? 
-          (todayMatch[2] === '+' ? 1 : -1) * parseInt(todayMatch[3]) : 0;
+        const offset =
+          todayMatch[2] && todayMatch[3]
+            ? (todayMatch[2] === "+" ? 1 : -1) * parseInt(todayMatch[3])
+            : 0;
         const result = new Date(this.today);
         result.setDate(result.getDate() + offset);
         return { value: result, evaluated: true };
@@ -261,15 +278,19 @@ class FormulaEvaluator {
       // NOW + offset
       const nowMatch = cleanFormula.match(/^NOW\(\)(?:\s*([+\-])\s*(\d+))?$/);
       if (nowMatch) {
-        const offset = nowMatch[2] && nowMatch[3] ? 
-          (nowMatch[2] === '+' ? 1 : -1) * parseInt(nowMatch[3]) : 0;
+        const offset =
+          nowMatch[2] && nowMatch[3]
+            ? (nowMatch[2] === "+" ? 1 : -1) * parseInt(nowMatch[3])
+            : 0;
         const result = new Date(this.today);
         result.setDate(result.getDate() + offset);
         return { value: result, evaluated: true };
       }
 
       // DATE(year, month, day)
-      const dateMatch = cleanFormula.match(/^DATE\((\d{4}),\s*(\d{1,2}),\s*(\d{1,2})\)$/);
+      const dateMatch = cleanFormula.match(
+        /^DATE\((\d{4}),\s*(\d{1,2}),\s*(\d{1,2})\)$/
+      );
       if (dateMatch) {
         const year = parseInt(dateMatch[1]);
         const month = parseInt(dateMatch[2]) - 1; // JS months are 0-indexed
@@ -278,68 +299,85 @@ class FormulaEvaluator {
         return { value: result, evaluated: true };
       }
 
-      return { value: null, evaluated: false, error: 'Unsupported formula pattern' };
-
+      return {
+        value: null,
+        evaluated: false,
+        error: "Unsupported formula pattern",
+      };
     } catch (error) {
-      return { value: null, evaluated: false, error: error instanceof Error ? error.message : 'Evaluation error' };
+      return {
+        value: null,
+        evaluated: false,
+        error: error instanceof Error ? error.message : "Evaluation error",
+      };
     }
   }
 }
 
 // ===== EXCEL ANALYZER (UPDATED) =====
-export async function analyzeExcelContent(filePath: string): Promise<ExcelAnalysis> {
+export async function analyzeExcelContent(
+  filePath: string
+): Promise<ExcelAnalysis> {
   const evaluator = new FormulaEvaluator();
-  
+
   try {
-    logger.info('Starting Excel analysis', { filePath });
-    
+    logger.info("Starting Excel analysis", { filePath });
+
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.readFile(filePath);
-    
+
     const worksheet = workbook.getWorksheet(1);
     if (!worksheet) {
       return { alertStatus: "none", expiryDate: null };
     }
-    
-    const cellA1 = worksheet.getCell('A1');
+
+    const cellA1 = worksheet.getCell("A1");
     let expiryDate: Date | null = null;
-    
+
     // Priority 1: Evaluate formula if present
     if (cellA1.formula) {
       logger.info(`Found formula: ${cellA1.formula}`, { filePath });
       const result = evaluator.evaluate(cellA1.formula);
-      
+
       if (result.evaluated && result.value) {
         expiryDate = result.value;
-        logger.info(`Formula evaluated: ${expiryDate.toISOString()}`, { filePath });
+        logger.info(`Formula evaluated: ${expiryDate.toISOString()}`, {
+          filePath,
+        });
       } else {
         logger.warn(`Formula evaluation failed: ${result.error}`, { filePath });
       }
     }
-    
+
     // Priority 2: Fallback to cached result
     if (!expiryDate) {
       let cellValue = cellA1.value;
-      if (typeof cellValue === 'object' && cellValue && 'result' in cellValue) {
+      if (typeof cellValue === "object" && cellValue && "result" in cellValue) {
         cellValue = (cellValue as ExcelJS.CellFormulaValue).result;
       }
       expiryDate = parseValueToUTCDate(cellValue);
-      logger.info('Using fallback cached value', { cellValue, expiryDate, filePath });
+      logger.info("Using fallback cached value", {
+        cellValue,
+        expiryDate,
+        filePath,
+      });
     }
-    
+
     if (!expiryDate) {
-      logger.warn('No valid date found in A1', { cellA1: cellA1.value, filePath });
+      logger.warn("No valid date found in A1", {
+        cellA1: cellA1.value,
+        filePath,
+      });
       return { alertStatus: "none", expiryDate: null };
     }
-    
+
     // Calculate alert status
     const alertStatus = calculateAlertStatus(expiryDate);
-    
-    logger.info('Analysis complete', { expiryDate, alertStatus, filePath });
+
+    logger.info("Analysis complete", { expiryDate, alertStatus, filePath });
     return { alertStatus, expiryDate };
-    
   } catch (error) {
-    logger.error('Excel analysis failed', { filePath, error });
+    logger.error("Excel analysis failed", { filePath, error });
     return { alertStatus: "none", expiryDate: null };
   }
 }
@@ -348,10 +386,10 @@ export async function analyzeExcelContent(filePath: string): Promise<ExcelAnalys
 function calculateAlertStatus(expiryDate: Date): Alert {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   const thirtyDaysFromNow = new Date(today);
   thirtyDaysFromNow.setDate(today.getDate() + 30);
-  
+
   if (expiryDate < today) {
     return "expired";
   } else if (expiryDate <= thirtyDaysFromNow) {
@@ -367,27 +405,29 @@ export async function analyzeExcelContentOptimized(
 ): Promise<ExcelAnalysis> {
   let tempFilePath: string | null = null;
   let metadata: any = null;
-  
+
   try {
     // Prova a ottenere i metadati del file
     metadata = await drive.files.get({
       fileId,
-      fields: 'name,mimeType,modifiedTime,createdTime'
+      fields: "name,mimeType,modifiedTime,createdTime",
     });
 
     const fileName = metadata.data.name;
     const mimeType = metadata.data.mimeType;
-    
+
     // Controlla se è un file Excel o Google Sheets
-    const isExcelFile = fileName?.toLowerCase().endsWith('.xlsx') || 
-                       fileName?.toLowerCase().endsWith('.xls');
-    const isGoogleSheet = mimeType === 'application/vnd.google-apps.spreadsheet';
-    
+    const isExcelFile =
+      fileName?.toLowerCase().endsWith(".xlsx") ||
+      fileName?.toLowerCase().endsWith(".xls");
+    const isGoogleSheet =
+      mimeType === "application/vnd.google-apps.spreadsheet";
+
     if (!isExcelFile && !isGoogleSheet) {
-      logger.debug('File is not Excel or Google Sheets, skipping analysis', {
+      logger.debug("File is not Excel or Google Sheets, skipping analysis", {
         fileId,
         fileName,
-        mimeType
+        mimeType,
       });
       return { alertStatus: "none", expiryDate: null };
     }
@@ -395,40 +435,44 @@ export async function analyzeExcelContentOptimized(
     // Crea un percorso temporaneo per il file
     const tempDir = os.tmpdir();
     const uniqueId = uuidv4();
-    const fileExtension = isGoogleSheet ? '.xlsx' : path.extname(fileName || '');
-    tempFilePath = path.join(tempDir, `excel_analysis_${uniqueId}${fileExtension}`);
-    
-    logger.info('Downloading file for analysis', {
+    const fileExtension = isGoogleSheet
+      ? ".xlsx"
+      : path.extname(fileName || "");
+    tempFilePath = path.join(
+      tempDir,
+      `excel_analysis_${uniqueId}${fileExtension}`
+    );
+
+    logger.info("Downloading file for analysis", {
       fileId,
       fileName,
       mimeType,
       isGoogleSheet,
-      tempFilePath
+      tempFilePath,
     });
-    
+
     // Scarica il file (Excel nativo o Google Sheets esportato)
     await googleDriveDownloadFile(drive, fileId, tempFilePath);
-    
+
     // Analizza il contenuto del file
     const analysis = await analyzeExcelContent(tempFilePath);
-    
-    logger.info('File analysis completed successfully', {
+
+    logger.info("File analysis completed successfully", {
       fileId,
       fileName,
       mimeType,
       isGoogleSheet,
       alertStatus: analysis.alertStatus,
-      expiryDate: analysis.expiryDate?.toISOString()
+      expiryDate: analysis.expiryDate?.toISOString(),
     });
-    
+
     return analysis;
-    
   } catch (error) {
-    logger.warn('Failed to analyze file content', {
+    logger.warn("Failed to analyze file content", {
       fileId,
       fileName: metadata?.data?.name,
       mimeType: metadata?.data?.mimeType,
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     });
     return { alertStatus: "none", expiryDate: null };
   } finally {
@@ -436,11 +480,14 @@ export async function analyzeExcelContentOptimized(
     if (tempFilePath && fs.existsSync(tempFilePath)) {
       try {
         fs.unlinkSync(tempFilePath);
-        logger.debug('Temporary file cleaned up', { tempFilePath });
+        logger.debug("Temporary file cleaned up", { tempFilePath });
       } catch (cleanupError) {
-        logger.warn('Failed to cleanup temporary file', {
+        logger.warn("Failed to cleanup temporary file", {
           tempFilePath,
-          error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError)
+          error:
+            cleanupError instanceof Error
+              ? cleanupError.message
+              : String(cleanupError),
         });
       }
     }
@@ -470,10 +517,13 @@ export async function processDocumentFile(
     let alertStatus: Alert = "none";
     let expiryDate: Date | null = null;
 
-    if (localFilePath && (fileType === "xlsx" || fileType === "xls" || fileType === "gsheet")) {
+    if (
+      localFilePath &&
+      (fileType === "xlsx" || fileType === "xls" || fileType === "gsheet")
+    ) {
       const excelAnalysis = await analyzeExcelContent(localFilePath);
       alertStatus = excelAnalysis.alertStatus; // Valori calcolati
-      expiryDate = excelAnalysis.expiryDate;   // Valori calcolati
+      expiryDate = excelAnalysis.expiryDate; // Valori calcolati
     }
 
     // L'oggetto `document` ora include i campi corretti.
@@ -484,7 +534,7 @@ export async function processDocumentFile(
       driveUrl,
       fileType,
       isObsolete: false,
-      alertStatus: alertStatus as 'none' | 'warning' | 'expired',
+      alertStatus: alertStatus as "none" | "warning" | "expired",
       expiryDate,
       parentId: null,
       fileHash: null,
@@ -504,14 +554,19 @@ export async function processDocumentFile(
 export async function findObsoleteRevisions(
   documentPath: string,
   documentTitle: string,
-  currentRevision: string
+  currentRevision: string,
+  clientId: number
 ): Promise<Document[]> {
   const currentRevNum = parseInt(currentRevision.replace("Rev.", ""), 10);
   const documents = await mongoStorage.getDocumentsByPathAndTitle(
     documentPath,
-    documentTitle
+    documentTitle,
+    clientId
   );
+
+  // Filtra solo i documenti non obsoleti e con revisione inferiore
   return documents.filter((doc) => {
+    if (doc.isObsolete) return false;
     const docRevNum = parseInt(doc.revision.replace("Rev.", ""), 10);
     return docRevNum < currentRevNum;
   });
@@ -551,7 +606,7 @@ async function processFileWithErrorHandlingOptimized(
       logger.debug(`Skipping invalid document: ${file.name}`, {
         fileName: file.name,
         userId,
-        clientId
+        clientId,
       });
       return { success: true };
     }
@@ -568,13 +623,18 @@ async function processFileWithErrorHandlingOptimized(
       logger.debug(`Document already exists: ${file.name}`, {
         fileName: file.name,
         userId,
-        clientId
+        clientId,
       });
       return { success: true };
     }
 
     // Se è un file Excel/Google Sheets e l'analisi è abilitata, analizzalo
-    if ((doc.fileType === 'xlsx' || doc.fileType === 'xls' || doc.fileType === 'gsheet') && !SYNC_CONFIG.skipExcelAnalysis) {
+    if (
+      (doc.fileType === "xlsx" ||
+        doc.fileType === "xls" ||
+        doc.fileType === "gsheet") &&
+      !SYNC_CONFIG.skipExcelAnalysis
+    ) {
       const excelAnalysis = await analyzeExcelContentOptimized(drive, file.id!);
       doc.alertStatus = excelAnalysis.alertStatus;
       doc.expiryDate = excelAnalysis.expiryDate;
@@ -591,7 +651,8 @@ async function processFileWithErrorHandlingOptimized(
     const obsolete = await findObsoleteRevisions(
       doc.path,
       doc.title,
-      doc.revision
+      doc.revision,
+      clientId
     );
 
     if (obsolete.length > 0) {
@@ -603,32 +664,33 @@ async function processFileWithErrorHandlingOptimized(
       userId,
       clientId,
       documentPath: doc.path,
-      revision: doc.revision
+      revision: doc.revision,
     });
 
     return { success: true, document: createdDoc };
-
   } catch (error) {
     const syncError = createSyncError(
       `Failed to process file ${file.name}`,
-      error instanceof Error && 'code' in error ? String(error.code) : 'UNKNOWN',
+      error instanceof Error && "code" in error
+        ? String(error.code)
+        : "UNKNOWN",
       true,
       {
         fileName: file.name,
         userId,
         clientId,
         fileId: file.id,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       }
     );
 
-    logger.error('File processing failed', {
+    logger.error("File processing failed", {
       fileName: file.name,
       userId,
       clientId,
       error: syncError.message,
       code: syncError.code,
-      context: syncError.context
+      context: syncError.context,
     });
 
     return { success: false, error: syncError };
@@ -642,12 +704,17 @@ async function processBatchOptimized(
   userId: number,
   clientId: number,
   onProgress?: (processed: number, total: number) => void
-): Promise<{ processed: number; failed: number; errors: SyncError[]; documents: any[] }> {
+): Promise<{
+  processed: number;
+  failed: number;
+  errors: SyncError[];
+  documents: any[];
+}> {
   const results = {
     processed: 0,
     failed: 0,
     errors: [] as SyncError[],
-    documents: [] as any[]
+    documents: [] as any[],
   };
 
   // Processa file in parallelo con limitazione
@@ -657,7 +724,7 @@ async function processBatchOptimized(
   }
 
   for (const [chunkIndex, chunk] of chunks.entries()) {
-    const chunkPromises = chunk.map(file => 
+    const chunkPromises = chunk.map((file) =>
       processFileWithErrorHandlingOptimized(drive, file, userId, clientId)
     );
 
@@ -665,7 +732,7 @@ async function processBatchOptimized(
 
     // Analizza risultati del chunk
     for (const chunkResult of chunkResults) {
-      if (chunkResult.status === 'fulfilled') {
+      if (chunkResult.status === "fulfilled") {
         if (chunkResult.value.success) {
           results.processed++;
           if (chunkResult.value.document) {
@@ -680,8 +747,8 @@ async function processBatchOptimized(
       } else {
         results.failed++;
         const error = createSyncError(
-          'Chunk processing failed',
-          'CHUNK_FAILED',
+          "Chunk processing failed",
+          "CHUNK_FAILED",
           true,
           { reason: chunkResult.reason }
         );
@@ -697,7 +764,7 @@ async function processBatchOptimized(
 
     // Pausa minima tra i chunk per evitare rate limiting
     if (chunkIndex < chunks.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
   }
 
@@ -711,7 +778,12 @@ async function processBatchOptimized(
 export async function syncWithGoogleDrive(
   syncFolder: string,
   userId: number,
-  onProgress?: (processed: number, total: number, currentBatch: number, totalBatches: number) => void
+  onProgress?: (
+    processed: number,
+    total: number,
+    currentBatch: number,
+    totalBatches: number
+  ) => void
 ): Promise<SyncResult> {
   const startTime = Date.now();
   const result: SyncResult = {
@@ -719,120 +791,124 @@ export async function syncWithGoogleDrive(
     processed: 0,
     failed: 0,
     errors: [],
-    duration: 0
+    duration: 0,
   };
 
-  let clientName = 'Unknown';
+  let clientName = "Unknown";
   let clientId: number | undefined;
 
   try {
-    logger.info('Starting optimized Google Drive sync', { 
-      userId, 
+    logger.info("Starting optimized Google Drive sync", {
+      userId,
       syncFolder,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     // 1. Recupero dati utente e client
-    logger.info('Retrieving user data', { userId });
+    logger.info("Retrieving user data", { userId });
     const user = await withRetry(
       () => mongoStorage.getUser(userId),
-      'getUser',
+      "getUser",
       2
     );
 
     if (!user) {
-      const error = createSyncError(
-        'User not found',
-        'USER_NOT_FOUND',
-        false,
-        { userId }
-      );
+      const error = createSyncError("User not found", "USER_NOT_FOUND", false, {
+        userId,
+      });
       result.errors.push(error);
-      logger.error('User not found during sync', { userId });
+      logger.error("User not found during sync", { userId });
       throw error;
     }
 
     clientId = user?.clientId || undefined;
-    logger.info('User data retrieved', { 
-      userId, 
-      clientId, 
+    logger.info("User data retrieved", {
+      userId,
+      clientId,
       userEmail: user.email,
-      userRole: user.role
+      userRole: user.role,
     });
 
     if (!clientId) {
       const error = createSyncError(
-        'User not found or has no client ID',
-        'USER_NOT_FOUND',
+        "User not found or has no client ID",
+        "USER_NOT_FOUND",
         false,
         { userId }
       );
       result.errors.push(error);
-      logger.error('User has no client ID', { userId });
+      logger.error("User has no client ID", { userId });
       throw error;
     }
 
     // Recupera il nome del client per le notifiche
     try {
       const client = await mongoStorage.getClient(clientId);
-      clientName = client?.name || 'Unknown';
-      logger.info('Client data retrieved', { 
-        clientId, 
+      clientName = client?.name || "Unknown";
+      logger.info("Client data retrieved", {
+        clientId,
         clientName,
         hasGoogleTokens: !!client?.google?.refreshToken,
-        driveFolderId: client?.driveFolderId
+        driveFolderId: client?.driveFolderId,
       });
     } catch (clientError) {
-      logger.warn('Failed to get client name for notifications', { 
-        clientId, 
-        error: clientError instanceof Error ? clientError.message : String(clientError)
+      logger.warn("Failed to get client name for notifications", {
+        clientId,
+        error:
+          clientError instanceof Error
+            ? clientError.message
+            : String(clientError),
       });
     }
 
-    const folderId = await withRetry(
-      () => mongoStorage.getFolderIdForUser(userId),
-      'getFolderId',
-      2
-    ) || syncFolder;
+    const folderId =
+      (await withRetry(
+        () => mongoStorage.getFolderIdForUser(userId),
+        "getFolderId",
+        2
+      )) || syncFolder;
 
-    logger.info('Folder ID determined', { 
-      userId, 
-      clientId, 
-      folderId, 
-      syncFolder 
+    logger.info("Folder ID determined", {
+      userId,
+      clientId,
+      folderId,
+      syncFolder,
     });
 
     // 2. Inizializzazione del client di Google Drive
-    logger.info('Initializing Google Drive client', { clientId });
+    logger.info("Initializing Google Drive client", { clientId });
     const drive = await withRetry(
       () => getDriveClientForClient(clientId!),
-      'getDriveClient',
+      "getDriveClient",
       3
     );
 
-    logger.info('Google Drive client initialized successfully', { clientId });
+    logger.info("Google Drive client initialized successfully", { clientId });
 
     // 3. Validazione connessione
-    logger.info('Validating Google Drive connection', { clientId });
+    logger.info("Validating Google Drive connection", { clientId });
     const isConnected = await validateDriveConnection(drive);
     if (!isConnected) {
       const error = createSyncError(
-        'Google Drive connection failed',
-        'DRIVE_CONNECTION_FAILED',
+        "Google Drive connection failed",
+        "DRIVE_CONNECTION_FAILED",
         true,
         { clientId, folderId }
       );
       result.errors.push(error);
-      logger.error('Google Drive connection validation failed', { clientId, folderId });
+      logger.error("Google Drive connection validation failed", {
+        clientId,
+        folderId,
+      });
       throw error;
     }
 
-    logger.info('Google Drive connection validated successfully', { clientId });
+    logger.info("Google Drive connection validated successfully", { clientId });
 
     // 4. Elenco ricorsivo dei file
     const files = await withRetry(
       () => googleDriveListFiles(drive, folderId),
-      'listFiles',
+      "listFiles",
       3
     );
 
@@ -840,7 +916,7 @@ export async function syncWithGoogleDrive(
       userId,
       clientId,
       folderId,
-      fileCount: files.length
+      fileCount: files.length,
     });
 
     // 5. Processamento in batch ottimizzato con analisi contenuti
@@ -853,7 +929,7 @@ export async function syncWithGoogleDrive(
       logger.debug(`Processing batch ${batchIndex + 1}/${batches.length}`, {
         batchSize: batch.length,
         userId,
-        clientId
+        clientId,
       });
 
       const batchResults = await processBatchWithAnalysis(
@@ -865,7 +941,12 @@ export async function syncWithGoogleDrive(
           if (onProgress) {
             const totalProcessed = result.processed + processed;
             const totalFiles = files.length;
-            onProgress(totalProcessed, totalFiles, batchIndex + 1, batches.length);
+            onProgress(
+              totalProcessed,
+              totalFiles,
+              batchIndex + 1,
+              batches.length
+            );
           }
         }
       );
@@ -877,14 +958,14 @@ export async function syncWithGoogleDrive(
 
       // Pausa ridotta tra i batch
       if (batchIndex < batches.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise((resolve) => setTimeout(resolve, 200));
       }
     }
 
     result.success = result.failed === 0;
     result.duration = Date.now() - startTime;
 
-    logger.info('Optimized Google Drive sync completed', {
+    logger.info("Optimized Google Drive sync completed", {
       userId,
       clientId,
       success: result.success,
@@ -892,19 +973,19 @@ export async function syncWithGoogleDrive(
       failed: result.failed,
       duration: result.duration,
       errorCount: result.errors.length,
-      avgTimePerFile: result.duration / (result.processed + result.failed)
+      avgTimePerFile: result.duration / (result.processed + result.failed),
     });
 
     // Log dettagliato degli errori se ce ne sono
     if (result.errors.length > 0) {
-      logger.warn('Sync completed with errors', {
+      logger.warn("Sync completed with errors", {
         userId,
         clientId,
-        errors: result.errors.map(e => ({
+        errors: result.errors.map((e) => ({
           message: e.message,
           code: e.code,
-          retryable: e.retryable
-        }))
+          retryable: e.retryable,
+        })),
       });
     }
 
@@ -918,42 +999,46 @@ export async function syncWithGoogleDrive(
           syncFolder,
           processed: result.processed,
           failed: result.failed,
-          duration: result.duration
+          duration: result.duration,
         });
       } catch (notificationError) {
-        logger.error('Failed to send sync error notifications', {
-          error: notificationError instanceof Error ? notificationError.message : String(notificationError),
+        logger.error("Failed to send sync error notifications", {
+          error:
+            notificationError instanceof Error
+              ? notificationError.message
+              : String(notificationError),
           userId,
-          clientId
+          clientId,
         });
       }
     }
-
   } catch (error) {
     result.duration = Date.now() - startTime;
     result.success = false;
 
     const syncError = createSyncError(
-      'Sync operation failed',
-      error instanceof Error && 'code' in error ? String(error.code) : 'SYNC_FAILED',
+      "Sync operation failed",
+      error instanceof Error && "code" in error
+        ? String(error.code)
+        : "SYNC_FAILED",
       true,
       {
         userId,
         syncFolder,
         duration: result.duration,
-        originalError: error instanceof Error ? error.message : String(error)
+        originalError: error instanceof Error ? error.message : String(error),
       }
     );
 
     result.errors.push(syncError);
 
-    logger.error('Google Drive sync failed', {
+    logger.error("Google Drive sync failed", {
       userId,
       syncFolder,
       error: syncError.message,
       code: syncError.code,
       duration: result.duration,
-      context: syncError.context
+      context: syncError.context,
     });
 
     // Invia notifiche anche per errori fatali
@@ -966,14 +1051,20 @@ export async function syncWithGoogleDrive(
           syncFolder,
           processed: result.processed,
           failed: result.failed,
-          duration: result.duration
+          duration: result.duration,
         });
       } catch (notificationError) {
-        logger.error('Failed to send sync error notifications for fatal error', {
-          error: notificationError instanceof Error ? notificationError.message : String(notificationError),
-          userId,
-          clientId
-        });
+        logger.error(
+          "Failed to send sync error notifications for fatal error",
+          {
+            error:
+              notificationError instanceof Error
+                ? notificationError.message
+                : String(notificationError),
+            userId,
+            clientId,
+          }
+        );
       }
     }
   }
@@ -992,19 +1083,20 @@ async function processBatchWithAnalysis(
   const result: BatchResult = {
     processed: 0,
     failed: 0,
-    errors: []
+    errors: [],
   };
 
   const promises = files.map(async (file, index) => {
     try {
       // Analisi del contenuto del file
       let analysis: ExcelAnalysis = { alertStatus: "none", expiryDate: null };
-      
-      if (file.mimeType === 'application/vnd.google-apps.spreadsheet') {
+
+      if (file.mimeType === "application/vnd.google-apps.spreadsheet") {
         // Google Sheets - API diretta con drive esistente
-        logger.debug(`Analyzing Google Sheet: ${file.name}`, { fileId: file.id });
+        logger.debug(`Analyzing Google Sheet: ${file.name}`, {
+          fileId: file.id,
+        });
         analysis = await analyzeGoogleSheet(drive, file.id);
-        
       } else if (isExcelFile(file.mimeType)) {
         // Excel - download e analisi
         logger.debug(`Analyzing Excel file: ${file.name}`, { fileId: file.id });
@@ -1018,11 +1110,18 @@ async function processBatchWithAnalysis(
           }
         }
       } else {
-        logger.debug(`Skipping analysis for unsupported file type: ${file.mimeType}`, { fileName: file.name });
+        logger.debug(
+          `Skipping analysis for unsupported file type: ${file.mimeType}`,
+          { fileName: file.name }
+        );
       }
 
       // Crea/aggiorna documento nel DB con logica completa
-      const docInfo = await processDocumentFile(file.name!, file.webViewLink!, undefined);
+      const docInfo = await processDocumentFile(
+        file.name!,
+        file.webViewLink!,
+        undefined
+      );
 
       if (!docInfo) {
         logger.debug(`Skipping file with invalid name format: ${file.name}`);
@@ -1031,51 +1130,50 @@ async function processBatchWithAnalysis(
 
       const documentData = {
         ...docInfo,
-        alertStatus: (analysis.alertStatus as 'none' | 'warning' | 'expired'),
+        alertStatus: analysis.alertStatus as "none" | "warning" | "expired",
         expiryDate: analysis.expiryDate,
         clientId,
         ownerId: userId,
         googleFileId: file.id,
         mimeType: file.mimeType,
-        lastSynced: new Date()
+        lastSynced: new Date(),
       };
-      
+
       const existingDoc = await mongoStorage.getDocumentByGoogleFileId(file.id);
-      
+
       if (existingDoc) {
         await mongoStorage.updateDocument(existingDoc.legacyId, documentData);
-        logger.debug(`Updated document: ${file.name}`, { 
-          alertStatus: analysis.alertStatus, 
-          expiryDate: analysis.expiryDate 
+        logger.debug(`Updated document: ${file.name}`, {
+          alertStatus: analysis.alertStatus,
+          expiryDate: analysis.expiryDate,
         });
       } else {
         await mongoStorage.createDocument(documentData);
-        logger.debug(`Created document: ${file.name}`, { 
-          alertStatus: analysis.alertStatus, 
-          expiryDate: analysis.expiryDate 
+        logger.debug(`Created document: ${file.name}`, {
+          alertStatus: analysis.alertStatus,
+          expiryDate: analysis.expiryDate,
         });
       }
 
       result.processed++;
-      
+
       if (onProgress) {
         onProgress(result.processed, files.length);
       }
-
     } catch (error) {
       result.failed++;
       const syncError = createSyncError(
         `Failed to process file: ${file.name}`,
-        'FILE_PROCESSING_FAILED',
+        "FILE_PROCESSING_FAILED",
         true,
         { fileId: file.id, fileName: file.name }
       );
       result.errors.push(syncError);
-      
-      logger.error('Failed to process file in batch', {
+
+      logger.error("Failed to process file in batch", {
         fileName: file.name,
         fileId: file.id,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
     }
   });
@@ -1087,71 +1185,82 @@ async function processBatchWithAnalysis(
 // Helper functions per l'analisi
 function isExcelFile(mimeType: string | null | undefined): boolean {
   if (!mimeType) return false;
-  
+
   const excelTypes = [
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-    'application/vnd.ms-excel', // .xls
-    'application/vnd.ms-excel.sheet.macroEnabled.12' // .xlsm
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
+    "application/vnd.ms-excel", // .xls
+    "application/vnd.ms-excel.sheet.macroEnabled.12", // .xlsm
   ];
-  
+
   return excelTypes.includes(mimeType);
 }
 
-async function downloadToTemp(drive: any, file: { id: string; name: string }): Promise<string> {
+async function downloadToTemp(
+  drive: any,
+  file: { id: string; name: string }
+): Promise<string> {
   const tempDir = os.tmpdir();
-  const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+  const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
   const tempPath = path.join(tempDir, `sync_${Date.now()}_${sanitizedName}`);
-  
+
   await googleDriveDownloadFile(drive, file.id, tempPath);
   return tempPath;
 }
 
-async function analyzeGoogleSheet(drive: any, spreadsheetId: string): Promise<ExcelAnalysis> {
+async function analyzeGoogleSheet(
+  drive: any,
+  spreadsheetId: string
+): Promise<ExcelAnalysis> {
   const evaluator = new FormulaEvaluator();
-  
+
   try {
-    const sheets = google.sheets({ version: 'v4', auth: drive });
-    
+    const sheets = google.sheets({ version: "v4", auth: drive });
+
     // Prima prova a leggere la formula
     const formulaResponse = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Sheet1!A1',
-      valueRenderOption: 'FORMULA'
+      range: "Sheet1!A1",
+      valueRenderOption: "FORMULA",
     });
-    
+
     const formula = formulaResponse.data.values?.[0]?.[0];
-    
-    if (formula && typeof formula === 'string' && formula.startsWith('=')) {
+
+    if (formula && typeof formula === "string" && formula.startsWith("=")) {
       const result = evaluator.evaluate(formula);
       if (result.evaluated && result.value) {
         const alertStatus = calculateAlertStatus(result.value);
-        logger.debug(`Google Sheet formula evaluated`, { formula, result: result.value });
+        logger.debug(`Google Sheet formula evaluated`, {
+          formula,
+          result: result.value,
+        });
         return { alertStatus, expiryDate: result.value };
       }
     }
-    
+
     // Fallback: leggi il valore calcolato
     const valueResponse = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Sheet1!A1',
-      valueRenderOption: 'UNFORMATTED_VALUE'
+      range: "Sheet1!A1",
+      valueRenderOption: "UNFORMATTED_VALUE",
     });
-    
+
     const calculatedValue = valueResponse.data.values?.[0]?.[0];
     if (calculatedValue) {
       const date = parseValueToUTCDate(calculatedValue);
       if (date) {
         const alertStatus = calculateAlertStatus(date);
-        logger.debug(`Google Sheet fallback value used`, { calculatedValue, date });
+        logger.debug(`Google Sheet fallback value used`, {
+          calculatedValue,
+          date,
+        });
         return { alertStatus, expiryDate: date };
       }
     }
-    
+
     logger.debug(`No valid date found in Google Sheet A1`, { spreadsheetId });
     return { alertStatus: "none", expiryDate: null };
-    
   } catch (error) {
-    logger.error('Google Sheet analysis failed', { spreadsheetId, error });
+    logger.error("Google Sheet analysis failed", { spreadsheetId, error });
     return { alertStatus: "none", expiryDate: null };
   }
 }
@@ -1165,19 +1274,19 @@ interface BatchResult {
 
 export function startAutomaticSync(syncFolder: string, userId: number): void {
   stopAutomaticSync(userId);
-  
+
   const intervalId = setInterval(async () => {
     try {
       const result = await syncWithGoogleDrive(syncFolder, userId);
-      
+
       // Se ci sono troppi errori consecutivi, aumenta l'intervallo
       if (!result.success && result.failed > result.processed) {
-        logger.warn('High failure rate detected, increasing sync interval', {
+        logger.warn("High failure rate detected, increasing sync interval", {
           userId,
           processed: result.processed,
-          failed: result.failed
+          failed: result.failed,
         });
-        
+
         // Aumenta l'intervallo temporaneamente
         clearInterval(intervalId);
         setTimeout(() => {
@@ -1185,22 +1294,22 @@ export function startAutomaticSync(syncFolder: string, userId: number): void {
         }, 5 * 60 * 1000); // 5 minuti invece di 30 secondi
       }
     } catch (error) {
-      logger.error('Automatic sync failed', {
+      logger.error("Automatic sync failed", {
         userId,
         syncFolder,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
     }
   }, 30 * 1000);
-  
+
   syncIntervals[userId] = intervalId;
-  
+
   // Esegui la prima sincronizzazione immediatamente
-  syncWithGoogleDrive(syncFolder, userId).catch(error => {
-    logger.error('Initial sync failed', {
+  syncWithGoogleDrive(syncFolder, userId).catch((error) => {
+    logger.error("Initial sync failed", {
       userId,
       syncFolder,
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     });
   });
 }
@@ -1217,29 +1326,29 @@ export function stopAutomaticSync(userId: number): void {
 let isGlobalSyncRunning = false;
 
 export function startAutomaticSyncForAllClients(): void {
-  logger.info('Starting automatic sync for all clients (every 15 minutes)');
-  
+  logger.info("Starting automatic sync for all clients (every 15 minutes)");
+
   // Esegui la prima sync immediatamente
   syncAllClientsOnce();
-  
+
   // Sync ogni 15 minuti per bilanciare reattività e carico server
   setInterval(() => {
     if (isGlobalSyncRunning) {
-      logger.info('Skipping scheduled sync - previous sync still running');
+      logger.info("Skipping scheduled sync - previous sync still running");
       return;
     }
-    
-    logger.info('Running scheduled automatic sync for all clients');
+
+    logger.info("Running scheduled automatic sync for all clients");
     syncAllClientsOnce();
   }, 15 * 60 * 1000); // 15 minuti
 }
 
 async function syncAllClientsOnce(): Promise<void> {
   if (isGlobalSyncRunning) {
-    logger.info('Global sync already running, skipping');
+    logger.info("Global sync already running, skipping");
     return;
   }
-  
+
   isGlobalSyncRunning = true;
   const startTime = Date.now();
   let totalProcessed = 0;
@@ -1247,23 +1356,23 @@ async function syncAllClientsOnce(): Promise<void> {
   const allErrors: SyncError[] = [];
 
   try {
-    logger.info('Starting global sync for all clients');
-    
+    logger.info("Starting global sync for all clients");
+
     const clients = await withRetry(
       () => mongoStorage.getAllClients(),
-      'getAllClients',
+      "getAllClients",
       2
     );
-    
+
     const users = await withRetry(
       () => mongoStorage.getAllUsers(),
-      'getAllUsers',
+      "getAllUsers",
       2
     );
 
     logger.info(`Starting sync for ${clients.length} clients`, {
       clientCount: clients.length,
-      userCount: users.length
+      userCount: users.length,
     });
 
     for (const client of clients) {
@@ -1272,9 +1381,9 @@ async function syncAllClientsOnce(): Promise<void> {
       );
 
       if (!admin) {
-        logger.warn('No admin user found for client', {
+        logger.warn("No admin user found for client", {
           clientId: client.legacyId,
-          clientName: client.name
+          clientName: client.name,
         });
         continue;
       }
@@ -1289,14 +1398,17 @@ async function syncAllClientsOnce(): Promise<void> {
       } catch (syncError) {
         totalFailed++;
         const error = createSyncError(
-          'Client sync failed',
-          'CLIENT_SYNC_FAILED',
+          "Client sync failed",
+          "CLIENT_SYNC_FAILED",
           true,
           {
             clientId: client.legacyId,
             clientName: client.name,
             userId,
-            originalError: syncError instanceof Error ? syncError.message : String(syncError)
+            originalError:
+              syncError instanceof Error
+                ? syncError.message
+                : String(syncError),
           }
         );
         allErrors.push(error);
@@ -1304,23 +1416,23 @@ async function syncAllClientsOnce(): Promise<void> {
     }
 
     const duration = Date.now() - startTime;
-    
-    logger.info('Global sync completed', {
+
+    logger.info("Global sync completed", {
       totalProcessed,
       totalFailed,
       duration,
       errorCount: allErrors.length,
-      successRate: totalProcessed / (totalProcessed + totalFailed)
+      successRate: totalProcessed / (totalProcessed + totalFailed),
     });
 
     if (allErrors.length > 0) {
-      logger.warn('Global sync completed with errors', {
+      logger.warn("Global sync completed with errors", {
         totalErrors: allErrors.length,
-        errors: allErrors.map(e => ({
+        errors: allErrors.map((e) => ({
           message: e.message,
           code: e.code,
-          retryable: e.retryable
-        }))
+          retryable: e.retryable,
+        })),
       });
 
       // Invia notifiche per errori critici globali
@@ -1328,32 +1440,34 @@ async function syncAllClientsOnce(): Promise<void> {
         await sendSyncErrorNotifications(allErrors, {
           processed: totalProcessed,
           failed: totalFailed,
-          duration
+          duration,
         });
       } catch (notificationError) {
-        logger.error('Failed to send global sync error notifications', {
-          error: notificationError instanceof Error ? notificationError.message : String(notificationError)
+        logger.error("Failed to send global sync error notifications", {
+          error:
+            notificationError instanceof Error
+              ? notificationError.message
+              : String(notificationError),
         });
       }
     }
-
   } catch (err) {
     const duration = Date.now() - startTime;
-    logger.error('Global sync failed', {
+    logger.error("Global sync failed", {
       error: err instanceof Error ? err.message : String(err),
-      duration
+      duration,
     });
   } finally {
     // MODIFICA CHIAVE: Emetti l'evento per segnalare la fine della prima sync.
     // Il 'finally' assicura che venga emesso anche in caso di errore.
-    appEvents.emit('initialSyncComplete', {
+    appEvents.emit("initialSyncComplete", {
       totalProcessed,
       totalFailed,
       duration: Date.now() - startTime,
       errorCount: allErrors.length,
-      successRate: totalProcessed / (totalProcessed + totalFailed)
+      successRate: totalProcessed / (totalProcessed + totalFailed),
     });
-    
+
     isGlobalSyncRunning = false;
   }
 }
@@ -1364,123 +1478,134 @@ export async function updateExcelExpiryDates(
   userId: number
 ): Promise<{ updated: number; failed: number; errors: string[] }> {
   const result = { updated: 0, failed: 0, errors: [] as string[] };
-  
+
   try {
-    logger.info('Starting Excel/Google Sheets expiry dates update', { userId });
-    
+    logger.info("Starting Excel/Google Sheets expiry dates update", { userId });
+
     // Ottieni tutti i documenti Excel e Google Sheets dal database
     const allDocuments = await mongoStorage.getAllDocuments();
-    const excelDocuments = allDocuments.filter(doc => 
-      (doc.fileType === 'xlsx' || doc.fileType === 'xls' || doc.fileType === 'gsheet') && !doc.isObsolete
+    const excelDocuments = allDocuments.filter(
+      (doc) =>
+        (doc.fileType === "xlsx" ||
+          doc.fileType === "xls" ||
+          doc.fileType === "gsheet") &&
+        !doc.isObsolete
     );
-    
-    logger.info('Found Excel/Google Sheets documents to update', { 
-      total: excelDocuments.length 
+
+    logger.info("Found Excel/Google Sheets documents to update", {
+      total: excelDocuments.length,
     });
-    
+
     for (const doc of excelDocuments) {
       try {
         // Estrai l'ID del file da Google Drive URL
         const driveUrl = doc.driveUrl;
         const fileIdMatch = driveUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
-        
+
         if (!fileIdMatch) {
-          logger.warn('Could not extract file ID from Drive URL', {
+          logger.warn("Could not extract file ID from Drive URL", {
             documentId: doc.legacyId,
-            driveUrl
+            driveUrl,
           });
           result.failed++;
           result.errors.push(`Invalid Drive URL for document ${doc.legacyId}`);
           continue;
         }
-        
+
         const fileId = fileIdMatch[1];
-        
+
         // Analizza il file Excel o Google Sheets
         const excelAnalysis = await analyzeExcelContentOptimized(drive, fileId);
-        
+
         // Aggiorna il documento nel database
         await mongoStorage.updateDocument(doc.legacyId, {
           alertStatus: excelAnalysis.alertStatus,
-          expiryDate: excelAnalysis.expiryDate
+          expiryDate: excelAnalysis.expiryDate,
         });
-        
+
         // Crea un log dell'aggiornamento
         await mongoStorage.createLog({
           userId,
           action: "update_expiry",
           documentId: doc.legacyId,
           details: {
-            message: `Aggiornata data di scadenza ${doc.fileType === 'gsheet' ? 'Google Sheets' : 'Excel'}`,
+            message: `Aggiornata data di scadenza ${
+              doc.fileType === "gsheet" ? "Google Sheets" : "Excel"
+            }`,
             oldExpiryDate: doc.expiryDate,
             newExpiryDate: excelAnalysis.expiryDate,
             oldAlertStatus: doc.alertStatus,
             newAlertStatus: excelAnalysis.alertStatus,
-            fileType: doc.fileType
+            fileType: doc.fileType,
           },
         });
-        
+
         result.updated++;
-        
-        logger.info('Updated document expiry date', {
+
+        logger.info("Updated document expiry date", {
           documentId: doc.legacyId,
           title: doc.title,
           fileType: doc.fileType,
           oldExpiryDate: doc.expiryDate,
           newExpiryDate: excelAnalysis.expiryDate,
           oldAlertStatus: doc.alertStatus,
-          newAlertStatus: excelAnalysis.alertStatus
+          newAlertStatus: excelAnalysis.alertStatus,
         });
-        
       } catch (error) {
         result.failed++;
-        const errorMessage = `Failed to update document ${doc.legacyId}: ${error instanceof Error ? error.message : String(error)}`;
+        const errorMessage = `Failed to update document ${doc.legacyId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`;
         result.errors.push(errorMessage);
-        
-        logger.error('Failed to update document expiry date', {
+
+        logger.error("Failed to update document expiry date", {
           documentId: doc.legacyId,
           title: doc.title,
           fileType: doc.fileType,
-          error: error instanceof Error ? error.message : String(error)
+          error: error instanceof Error ? error.message : String(error),
         });
       }
     }
-    
-    logger.info('Excel/Google Sheets expiry dates update completed', {
+
+    logger.info("Excel/Google Sheets expiry dates update completed", {
       userId,
       updated: result.updated,
       failed: result.failed,
-      totalProcessed: excelDocuments.length
+      totalProcessed: excelDocuments.length,
     });
-    
+
     return result;
-    
   } catch (error) {
-    logger.error('Failed to update Excel/Google Sheets expiry dates', {
+    logger.error("Failed to update Excel/Google Sheets expiry dates", {
       userId,
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     });
-    result.errors.push(`General error: ${error instanceof Error ? error.message : String(error)}`);
+    result.errors.push(
+      `General error: ${error instanceof Error ? error.message : String(error)}`
+    );
     return result;
   }
 }
 
 // Funzione per calcolare dinamicamente l'alertStatus basandosi sulla data corrente
-export function calculateDynamicAlertStatus(expiryDate: Date | null, warningDays: number = 30): Alert {
+export function calculateDynamicAlertStatus(
+  expiryDate: Date | null,
+  warningDays: number = 30
+): Alert {
   if (!expiryDate) {
     return "none";
   }
 
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Normalizza a mezzanotte
-  
+
   const warningLimit = new Date(today);
   warningLimit.setDate(today.getDate() + warningDays);
-  
+
   // Normalizza la data di scadenza per il confronto
   const normalizedExpiryDate = new Date(expiryDate);
   normalizedExpiryDate.setHours(0, 0, 0, 0);
-  
+
   if (normalizedExpiryDate < today) {
     return "expired";
   } else if (normalizedExpiryDate <= warningLimit) {

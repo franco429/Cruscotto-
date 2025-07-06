@@ -101,16 +101,32 @@ export interface IStorage {
   clearClientTokens(clientId: number): Promise<void>;
 
   // Company Code methods
-  createCompanyCode(code: InsertCompanyCode, session?: any): Promise<CompanyCode>;
+  createCompanyCode(
+    code: InsertCompanyCode,
+    session?: any
+  ): Promise<CompanyCode>;
   getCompanyCode(id: number): Promise<CompanyCode | undefined>;
   getCompanyCodeByCode(code: string): Promise<CompanyCode | undefined>;
   getAllCompanyCodes(): Promise<CompanyCode[]>;
-  getPaginatedCompanyCodes(options: { page: number, limit: number }): Promise<{ data: CompanyCode[], total: number }>;
-  updateCompanyCode(id: number, code: Partial<InsertCompanyCode>): Promise<CompanyCode | undefined>; // MODIFICA: id è number
+  getPaginatedCompanyCodes(options: {
+    page: number;
+    limit: number;
+  }): Promise<{ data: CompanyCode[]; total: number }>;
+  updateCompanyCode(
+    id: number,
+    code: Partial<InsertCompanyCode>
+  ): Promise<CompanyCode | undefined>; // MODIFICA: id è number
   deleteCompanyCode(id: number): Promise<boolean>; // MODIFICA: id è number
-  verifyCompanyCode(code: string): Promise<{ valid: boolean; role?: string; codeId?: number }>;
-  incrementCompanyCodeUsage(id: number, session?: any): Promise<CompanyCode | undefined>;
-  createManyCompanyCodes(codes: (InsertCompanyCode & { legacyId: number })[]): Promise<CompanyCode[]>; // MODIFICA
+  verifyCompanyCode(
+    code: string
+  ): Promise<{ valid: boolean; role?: string; codeId?: number }>;
+  incrementCompanyCodeUsage(
+    id: number,
+    session?: any
+  ): Promise<CompanyCode | undefined>;
+  createManyCompanyCodes(
+    codes: (InsertCompanyCode & { legacyId: number })[]
+  ): Promise<CompanyCode[]>; // MODIFICA
 
   // Log methods
   createLog(log: InsertLog, session?: any): Promise<Log>;
@@ -237,7 +253,10 @@ export class MemStorage implements IStorage {
       }
 
       // 3. "Consuma" il codice incrementandone l'utilizzo.
-      if (typeof companyCodeDoc.legacyId !== "number" || companyCodeDoc.legacyId === null) {
+      if (
+        typeof companyCodeDoc.legacyId !== "number" ||
+        companyCodeDoc.legacyId === null
+      ) {
         throw new Error("legacyId mancante su companyCodeDoc");
       }
       await this.incrementCompanyCodeUsage(companyCodeDoc.legacyId);
@@ -282,8 +301,14 @@ export class MemStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    if (insertUser.role === "superadmin" && insertUser.clientId !== null && insertUser.clientId !== undefined) {
-      throw new Error("Un superadmin non può essere associato a nessun clientId.");
+    if (
+      insertUser.role === "superadmin" &&
+      insertUser.clientId !== null &&
+      insertUser.clientId !== undefined
+    ) {
+      throw new Error(
+        "Un superadmin non può essere associato a nessun clientId."
+      );
     }
     const id = this.userIdCounter++;
     const createdAt = new Date();
@@ -348,7 +373,11 @@ export class MemStorage implements IStorage {
   ): Promise<User | undefined> {
     const user = this.users.get(id);
     if (!user) return undefined;
-    if (user.role === "superadmin" && clientId !== null && clientId !== undefined) {
+    if (
+      user.role === "superadmin" &&
+      clientId !== null &&
+      clientId !== undefined
+    ) {
       throw new Error("Non puoi assegnare un clientId a un superadmin.");
     }
     const updatedUser = { ...user, clientId };
@@ -475,7 +504,8 @@ export class MemStorage implements IStorage {
     clientId: number
   ): Promise<Document[]> {
     return Array.from(this.documents.values()).filter(
-      (doc) => doc.path === path && doc.title === title && doc.clientId === clientId
+      (doc) =>
+        doc.path === path && doc.title === title && doc.clientId === clientId
     );
   }
 
@@ -568,10 +598,7 @@ export class MemStorage implements IStorage {
 
   // --- LOG METHODS (WITH legacyId BUG FIX) ---
 
-  async createLog(
-    log: InsertLog,
-    session?: any
-  ): Promise<Log> {
+  async createLog(log: InsertLog, session?: any): Promise<Log> {
     const legacyId = this.logIdCounter++;
     const timestamp = new Date();
     const logObj: Log = {
@@ -676,7 +703,10 @@ export class MemStorage implements IStorage {
     return Array.from(this.companyCodes.values());
   }
 
-  async getPaginatedCompanyCodes(options: { page: number, limit: number }): Promise<{ data: CompanyCode[], total: number }> {
+  async getPaginatedCompanyCodes(options: {
+    page: number;
+    limit: number;
+  }): Promise<{ data: CompanyCode[]; total: number }> {
     const total = this.companyCodes.size;
     const data = Array.from(this.companyCodes.values())
       .sort((a, b) => a.code.localeCompare(b.code))
@@ -684,7 +714,10 @@ export class MemStorage implements IStorage {
     return { data, total };
   }
 
-  async updateCompanyCode(id: number, code: Partial<InsertCompanyCode>): Promise<CompanyCode | undefined> {
+  async updateCompanyCode(
+    id: number,
+    code: Partial<InsertCompanyCode>
+  ): Promise<CompanyCode | undefined> {
     const codeDoc = this.companyCodes.get(id);
     if (!codeDoc) return undefined;
     const updatedCode = { ...codeDoc, ...code, updatedAt: new Date() };
@@ -741,19 +774,23 @@ export class MemStorage implements IStorage {
     return updatedCode;
   }
 
-  async createManyCompanyCodes(codes: (InsertCompanyCode & { legacyId: number })[]): Promise<CompanyCode[]> {
-    return Promise.all(codes.map((code) => {
-      const { legacyId, ...codeData } = code;
-      const newCode: CompanyCode = {
-        ...codeData,
-        legacyId,
-        usageCount: 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      this.companyCodes.set(legacyId, newCode);
-      return newCode;
-    }));
+  async createManyCompanyCodes(
+    codes: (InsertCompanyCode & { legacyId: number })[]
+  ): Promise<CompanyCode[]> {
+    return Promise.all(
+      codes.map((code) => {
+        const { legacyId, ...codeData } = code;
+        const newCode: CompanyCode = {
+          ...codeData,
+          legacyId,
+          usageCount: 0,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        this.companyCodes.set(legacyId, newCode);
+        return newCode;
+      })
+    );
   }
 
   // --- BACKUP METHODS ---

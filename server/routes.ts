@@ -357,6 +357,52 @@ export async function registerRoutes(app: Express): Promise<Express> {
     }
   });
 
+  // Ripristina documento obsoleto
+  app.post("/api/documents/:legacyId/restore", isAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.legacyId, 10);
+
+      const existingDoc = await storage.getDocument(id);
+      if (!existingDoc) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      if (existingDoc.clientId !== req.user?.clientId) {
+        return res.status(403).json({
+          message:
+            "Accesso negato: non puoi ripristinare documenti di altri client",
+        });
+      }
+
+      if (!existingDoc.isObsolete) {
+        return res.status(400).json({ 
+          message: "Il documento non è obsoleto e non può essere ripristinato" 
+        });
+      }
+
+      // Ripristina il documento
+      const restoredDoc = await storage.updateDocument(id, { isObsolete: false });
+
+      if (req.user) {
+        await storage.createLog({
+          userId: req.user.legacyId,
+          action: "restore",
+          documentId: id,
+          details: {
+            message: `Document restored: ${existingDoc.title}`,
+          },
+        });
+      }
+
+      res.json({ 
+        message: "Document restored successfully",
+        document: restoredDoc 
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Error restoring document" });
+    }
+  });
+
   // Users API (admin only)
   app.get("/api/users", isAdmin, async (req, res) => {
     try {

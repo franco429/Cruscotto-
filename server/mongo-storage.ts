@@ -467,10 +467,40 @@ export class MongoStorage implements IStorage {
     if (clientId) {
       query.clientId = clientId;
     }
+    // Ottieni tutti i documenti non obsoleti
     const documents = (await DocumentModel.find(query)
       .lean()
       .exec()) as Document[];
-    return documents.sort((a, b) => {
+
+    // Raggruppa per path+title
+    const documentGroups = new Map<string, Document[]>();
+    documents.forEach((doc) => {
+      const key = `${doc.path}__${doc.title}`;
+      if (!documentGroups.has(key)) documentGroups.set(key, []);
+      documentGroups.get(key)!.push(doc);
+    });
+
+    const latestDocuments: Document[] = [];
+    for (const group of documentGroups.values()) {
+      if (group.length === 1) {
+        latestDocuments.push(group[0]);
+      } else {
+        // Ordina per numero revisione decrescente
+        const sorted = group.sort((a, b) => {
+          const aRev = parseInt(a.revision.replace(/[^0-9]/g, ""), 10);
+          const bRev = parseInt(b.revision.replace(/[^0-9]/g, ""), 10);
+          return bRev - aRev;
+        });
+        latestDocuments.push(sorted[0]);
+        // Marca obsolete le altre
+        for (let i = 1; i < sorted.length; i++) {
+          if (!sorted[i].isObsolete)
+            await this.markDocumentObsolete(sorted[i].legacyId);
+        }
+      }
+    }
+    // Ordina per path
+    return latestDocuments.sort((a, b) => {
       const aParts = a.path.split(".").map(Number);
       const bParts = b.path.split(".").map(Number);
       for (let i = 0; i < Math.min(aParts.length, bParts.length); i++) {
