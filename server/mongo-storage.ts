@@ -670,7 +670,14 @@ export class MongoStorage implements IStorage {
   }
 
   // --- BACKUP & RESTORE METHODS ---
-  async createBackup(): Promise<{
+  async createBackup(backupOptions?: {
+    createdBy: {
+      userId: number;
+      userEmail: string;
+      userRole: string;
+    };
+    clientId?: number;
+  }): Promise<{
     success: boolean;
     backupPath?: string;
     error?: string;
@@ -680,7 +687,7 @@ export class MongoStorage implements IStorage {
 
     try {
       // Usa il BackupService per eseguire l'operazione in un worker thread
-      return await this.backupService.createBackup();
+      return await this.backupService.createBackup(backupOptions);
     } catch (error: any) {
       // Questo blocco viene eseguito se la promise del backupService viene RIFIUTATA
       // (es. il worker non parte).

@@ -14,7 +14,9 @@ import {
   FileText,
   AlertTriangle,
   CheckCircle,
-  XCircle
+  XCircle,
+  User,
+  Building
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../hooks/use-auth";
@@ -22,12 +24,31 @@ import { apiRequest } from "../lib/queryClient";
 import HeaderBar from "@/components/header-bar";
 import Footer from "@/components/footer";
 
+interface BackupMetadata {
+  createdBy: {
+    userId: number;
+    userEmail: string;
+    userRole: string;
+  };
+  clientId: number | null;
+  backupType: 'complete' | 'client_specific' | 'unknown';
+  metadata: {
+    totalUsers: number;
+    totalDocuments: number;
+    totalLogs: number;
+    totalClients: number;
+    totalCompanyCodes: number;
+  };
+  timestamp: string;
+}
+
 interface BackupFile {
   filename: string;
   path: string;
   size: number;
   createdAt: Date;
   modifiedAt: Date;
+  metadata: BackupMetadata | null;
 }
 
 export default function BackupPage() {
@@ -40,6 +61,7 @@ export default function BackupPage() {
 
   // Verifica se l'utente ha i permessi
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+  const isSuperAdmin = user?.role === "superadmin";
 
   useEffect(() => {
     if (isAdmin) {
@@ -67,6 +89,7 @@ export default function BackupPage() {
   const createBackup = async () => {
     setIsCreatingBackup(true);
     try {
+      // Per admin, il clientId viene automaticamente impostato dal server
       const response = await apiRequest("POST", "/api/admin/backup");
 
       const result = await response.json();
@@ -151,6 +174,17 @@ export default function BackupPage() {
     }).format(new Date(date));
   };
 
+  const getBackupTypeLabel = (backupType: string) => {
+    switch (backupType) {
+      case 'complete':
+        return { label: 'Completo', color: 'bg-blue-100 text-blue-800' };
+      case 'client_specific':
+        return { label: 'Specifico Client', color: 'bg-green-100 text-green-800' };
+      default:
+        return { label: 'Sconosciuto', color: 'bg-gray-100 text-gray-800' };
+    }
+  };
+
   if (!isAdmin) {
     return (
       <div className="container mx-auto p-6">
@@ -173,7 +207,10 @@ export default function BackupPage() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold">Gestione Backup</h1>
           <p className="text-muted-foreground text-sm sm:text-base">
-            Crea, gestisci e ripristina i backup del database
+            {isSuperAdmin 
+              ? "Crea, gestisci e ripristina i backup del database (completi o specifici per client)"
+              : "Crea, gestisci e ripristina i backup del tuo client"
+            }
           </p>
         </div>
         <Button
@@ -198,14 +235,17 @@ export default function BackupPage() {
       <Separator />
 
       {/* Statistiche */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Backup Totali</CardTitle>
-            <Database className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Totale Backup</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{backups.length}</div>
+            <p className="text-xs text-muted-foreground">
+              {isSuperAdmin ? "Tutti i backup" : "Backup del tuo client"}
+            </p>
           </CardContent>
         </Card>
 
@@ -215,150 +255,209 @@ export default function BackupPage() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-sm text-muted-foreground">
-              {backups.length > 0 
-                ? formatDate(backups[0].modifiedAt)
-                : "Nessun backup"
-              }
+            <div className="text-2xl font-bold">
+              {backups.length > 0 ? formatDate(backups[0].modifiedAt) : "Nessuno"}
             </div>
+            <p className="text-xs text-muted-foreground">
+              {backups.length > 0 && backups[0].metadata?.backupType === 'complete' 
+                ? "Backup completo" 
+                : "Backup client"
+              }
+            </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Spazio Totale</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Dimensione Totale</CardTitle>
+            <Database className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-2xl font-bold">
               {formatFileSize(backups.reduce((acc, backup) => acc + backup.size, 0))}
             </div>
+            <p className="text-xs text-muted-foreground">
+              Spazio occupato
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Stato</CardTitle>
+            {backups.length > 0 ? (
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            ) : (
+              <XCircle className="h-4 w-4 text-red-600" />
+            )}
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {backups.length > 0 ? "Attivo" : "Nessun backup"}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Sistema backup
+            </p>
           </CardContent>
         </Card>
       </div>
 
+      <Separator />
+
       {/* Lista Backup */}
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <CardTitle>Backup Disponibili</CardTitle>
-              <CardDescription>
-                Lista di tutti i backup disponibili per il download e ripristino
-              </CardDescription>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={loadBackups}
-              disabled={isLoading}
-              className="w-full sm:w-auto"
-            >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </Button>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Backup Disponibili</h2>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadBackups}
+            disabled={isLoading}
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <span className="ml-2">Aggiorna</span>
+          </Button>
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <RefreshCw className="h-6 w-6 animate-spin" />
+            <span className="ml-2">Caricamento backup...</span>
           </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <RefreshCw className="h-6 w-6 animate-spin" />
-              <span className="ml-2">Caricamento backup...</span>
-            </div>
-          ) : backups.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Database className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Nessun backup disponibile</p>
-              <p className="text-sm">Crea il tuo primo backup per iniziare</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {backups.map((backup, index) => (
-                <div
-                  key={backup.filename}
-                  className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors gap-2"
-                >
-                  <div className="flex items-center space-x-4 w-full">
-                    <div className="flex-shrink-0">
-                      <Database className="h-8 w-8 text-blue-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium break-all">{backup.filename}</div>
-                      <div className="text-sm text-muted-foreground space-x-4 flex flex-col sm:flex-row">
-                        <span>Dimensione: {formatFileSize(backup.size)}</span>
-                        <span>Creato: {formatDate(backup.createdAt)}</span>
-                        <span>Modificato: {formatDate(backup.modifiedAt)}</span>
+        ) : backups.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-8">
+              <Database className="h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground text-center">
+                Nessun backup disponibile.
+                <br />
+                Crea il tuo primo backup per iniziare.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4">
+            {backups.map((backup) => {
+              const backupType = getBackupTypeLabel(backup.metadata?.backupType || 'unknown');
+              const isOwnBackup = backup.metadata?.createdBy?.userId === user?.legacyId;
+              
+              return (
+                <Card key={backup.filename} className="hover:shadow-md transition-shadow">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <CardTitle className="text-lg">{backup.filename}</CardTitle>
+                          <Badge className={backupType.color}>
+                            {backupType.label}
+                          </Badge>
+                          {isOwnBackup && (
+                            <Badge className="bg-purple-100 text-purple-800">
+                              Mio Backup
+                            </Badge>
+                          )}
+                        </div>
+                        <CardDescription className="flex items-center gap-4 text-sm">
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {formatDate(backup.modifiedAt)}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Database className="h-3 w-3" />
+                            {formatFileSize(backup.size)}
+                          </span>
+                        </CardDescription>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex flex-row flex-wrap items-center gap-2 w-full md:w-auto justify-end">
-                    <Badge variant="outline">
-                      {index === 0 ? "Più recente" : "Archiviato"}
-                    </Badge>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => downloadBackup(backup.filename)}
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedBackup(backup.path)}
-                      disabled={isRestoring}
-                    >
-                      <Upload className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Modal di conferma ripristino */}
-      {selectedBackup && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-2">
-          <div className="bg-background p-4 sm:p-6 rounded-lg max-w-md w-full mx-4">
-            <div className="flex items-center space-x-2 mb-4">
-              <AlertTriangle className="h-5 w-5 text-orange-500" />
-              <h3 className="font-semibold">Conferma Ripristino</h3>
-            </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              Sei sicuro di voler ripristinare il database da questo backup? 
-              Questa operazione sovrascriverà tutti i dati attuali e non può essere annullata.
-            </p>
-            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-              <Button
-                variant="outline"
-                onClick={() => setSelectedBackup(null)}
-                disabled={isRestoring}
-                className="w-full sm:w-auto"
-              >
-                Annulla
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => restoreBackup(selectedBackup)}
-                disabled={isRestoring}
-                className="w-full sm:w-auto"
-              >
-                {isRestoring ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-                    Ripristino in corso...
-                  </>
-                ) : (
-                  "Conferma Ripristino"
-                )}
-              </Button>
-            </div>
+                  </CardHeader>
+                  
+                  {backup.metadata && (
+                    <CardContent>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-sm">
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium">Creato da:</span>
+                            <span>{backup.metadata.createdBy.userEmail}</span>
+                            <Badge variant="outline" className="text-xs">
+                              {backup.metadata.createdBy.userRole}
+                            </Badge>
+                          </div>
+                          
+                          {backup.metadata.clientId && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Building className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-medium">Client ID:</span>
+                              <span>{backup.metadata.clientId}</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between">
+                            <span>Utenti:</span>
+                            <span className="font-medium">{backup.metadata.metadata.totalUsers}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Documenti:</span>
+                            <span className="font-medium">{backup.metadata.metadata.totalDocuments}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Log:</span>
+                            <span className="font-medium">{backup.metadata.metadata.totalLogs}</span>
+                          </div>
+                          {backup.metadata.backupType === 'complete' && (
+                            <>
+                              <div className="flex justify-between">
+                                <span>Client:</span>
+                                <span className="font-medium">{backup.metadata.metadata.totalClients}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Codici Aziendali:</span>
+                                <span className="font-medium">{backup.metadata.metadata.totalCompanyCodes}</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => downloadBackup(backup.filename)}
+                          className="flex items-center gap-2"
+                        >
+                          <Download className="h-4 w-4" />
+                          Scarica
+                        </Button>
+                        
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => restoreBackup(backup.filename)}
+                          disabled={isRestoring}
+                          className="flex items-center gap-2"
+                        >
+                          {isRestoring ? (
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Upload className="h-4 w-4" />
+                          )}
+                          {isRestoring ? "Ripristino..." : "Ripristina"}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  )}
+                </Card>
+              );
+            })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
+    
     <Footer />
-  </div>
+    </div>
   );
 } 

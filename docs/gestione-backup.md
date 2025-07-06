@@ -2,47 +2,69 @@
 
 ## 📋 Panoramica
 
-Il sistema DocumentiIso include una funzionalità completa di backup e ripristino del database, accessibile agli utenti con ruolo **admin** e **superadmin**, con diverse funzionalità in base al ruolo.
+Il sistema DocumentiIso include una funzionalità completa di backup e ripristino del database con **isolamento per client** e **controllo degli accessi basato sui ruoli**. Gli utenti con ruolo **admin** e **superadmin** hanno accesso a diverse funzionalità in base al loro livello di autorizzazione.
+
+## 🔐 Sistema di Isolamento e Permessi
+
+### **Admin (Amministratori Client)**
+
+- **Backup**: Possono creare backup **solo del proprio client**
+- **Visualizzazione**: Vedono solo i backup del proprio client o quelli che hanno creato personalmente
+- **Ripristino**: Possono ripristinare solo i backup del proprio client
+- **Download**: Possono scaricare solo i backup del proprio client o quelli che hanno creato
+
+### **SuperAdmin (Amministratori Sistema)**
+
+- **Backup**: Possono creare backup **completi** (tutto il sistema) o **specifici per client**
+- **Visualizzazione**: Vedono **tutti i backup** del sistema
+- **Ripristino**: Possono ripristinare qualsiasi backup
+- **Download**: Possono scaricare qualsiasi backup
 
 ## 🎯 Funzionalità Disponibili
 
 ### 1. **Backup Rapido**
+
 - **Posizione**: Dashboard principale (pulsante "Backup")
 - **Accesso**: Admin e SuperAdmin
-- **Funzione**: Crea un backup completo con un clic
-- **Ambito**: 
-  - **Admin**: Backup della propria azienda
+- **Funzione**: Crea un backup con un clic
+- **Ambito**:
+  - **Admin**: Backup automatico del proprio client
   - **SuperAdmin**: Backup completo del sistema
 
 ### 2. **Gestione Backup Completa**
+
 - **Posizione**: Menu laterale → "Gestione Backup"
 - **Accesso**: Admin e SuperAdmin
 - **Funzioni**:
-  - Visualizza tutti i backup disponibili
+  - Visualizza backup disponibili (filtrati per ruolo)
   - Crea nuovi backup
   - Scarica backup esistenti
   - Ripristina da backup
   - Monitora stato e dimensioni
+  - Visualizza metadati dettagliati (chi ha creato, quando, per quale client)
 
-### 3. **Gestione Backup Globale** (Solo SuperAdmin)
-- **Posizione**: Menu laterale → "Gestione Backup Globale"
-- **Accesso**: Solo SuperAdmin
-- **Funzioni**:
-  - Backup di tutte le aziende
-  - Backup selettivo per aziende specifiche
-  - Backup configurazioni sistema
-  - Scheduling backup automatici
+### 3. **Metadati dei Backup**
+
+Ogni backup include informazioni dettagliate:
+
+- **Creato da**: Email e ruolo dell'utente che ha creato il backup
+- **Tipo**: Completo o specifico per client
+- **Client ID**: Per i backup specifici per client
+- **Statistiche**: Numero di utenti, documenti, log, client, codici aziendali
+- **Timestamp**: Data e ora di creazione
 
 ### 4. **Monitoraggio Stato**
+
 - **Posizione**: Dashboard principale (card "Stato Backup")
 - **Accesso**: Admin e SuperAdmin
 - **Funzioni**:
   - Visualizza ultimo backup
   - Controlla età del backup
   - Avvisi per backup obsoleti
-  - Statistiche backup
+  - Statistiche backup (filtrate per ruolo)
 
 ### 5. **Sistema di Notifiche Automatiche**
+
 - **Posizione**: Configurazione sistema/impostazioni
 - **Accesso**: Admin e SuperAdmin
 - **Funzioni**:
@@ -56,241 +78,148 @@ Il sistema DocumentiIso include una funzionalità completa di backup e ripristin
 ### **Creare un Backup**
 
 #### Metodo 1: Backup Rapido
+
 1. Accedi come admin/superadmin
 2. Nella dashboard principale, clicca il pulsante **"Backup"**
-3. Il sistema creerà automaticamente un backup completo
-4. Riceverai una notifica di conferma
+3. Il sistema creerà automaticamente:
+   - **Admin**: Backup del proprio client
+   - **SuperAdmin**: Backup completo del sistema
 
-#### Metodo 2: Gestione Completa (Admin)
-1. Accedi come admin
-2. Nel menu laterale, clicca **"Gestione Backup"**
-3. Clicca **"Crea Backup"**
-4. Seleziona il tipo di backup:
-   - **Backup Completo Azienda**: Tutti i dati dell'azienda
-   - **Backup Documenti**: Solo documenti e metadati
-   - **Backup Utenti**: Solo utenti e configurazioni
-5. Configura nome e descrizione
-6. Attendi il completamento dell'operazione
+#### Metodo 2: Gestione Backup Completa
 
-#### Metodo 3: Gestione Globale (SuperAdmin)
-1. Accedi come superadmin
-2. Nel menu laterale, clicca **"Gestione Backup Globale"**
-3. Seleziona l'ambito del backup:
-   - **Backup Sistema Completo**: Tutto il database
-   - **Backup Multi-Azienda**: Seleziona aziende specifiche
-   - **Backup Configurazioni**: Solo impostazioni sistema
-4. Configura opzioni avanzate (compressione, crittografia)
-5. Attendi il completamento dell'operazione
+1. Accedi come admin/superadmin
+2. Vai su Menu laterale → "Gestione Backup"
+3. Clicca "Crea Backup"
+4. Il sistema creerà il backup appropriato in base al tuo ruolo
+
+### **Visualizzare i Backup**
+
+#### Per Admin:
+
+- Vedrai solo i backup del tuo client o quelli che hai creato personalmente
+- Ogni backup mostra:
+  - Nome file e dimensione
+  - Data di creazione
+  - Tipo di backup (Specifico Client)
+  - Chi ha creato il backup
+  - Client ID associato
+  - Statistiche dei dati inclusi
+
+#### Per SuperAdmin:
+
+- Vedrai tutti i backup del sistema
+- Ogni backup mostra:
+  - Nome file e dimensione
+  - Data di creazione
+  - Tipo di backup (Completo o Specifico Client)
+  - Chi ha creato il backup
+  - Client ID (se applicabile)
+  - Statistiche complete dei dati
 
 ### **Scaricare un Backup**
-1. Vai alla pagina **"Gestione Backup"** (o **"Gestione Backup Globale"** per SuperAdmin)
-2. Trova il backup desiderato nella lista
-3. Clicca l'icona **"Download"** (📥)
-4. Il file verrà scaricato automaticamente
+
+1. Nella lista dei backup, clicca "Scarica" accanto al backup desiderato
+2. Il file verrà scaricato automaticamente
+3. **Nota**: Puoi scaricare solo i backup per cui hai i permessi
 
 ### **Ripristinare da Backup**
-⚠️ **ATTENZIONE**: Il ripristino sovrascriverà tutti i dati attuali!
 
-1. Vai alla pagina **"Gestione Backup"**
-2. Trova il backup da ripristinare
-3. Clicca l'icona **"Ripristina"** (📤)
-4. Conferma l'operazione nel popup
-5. Inserisci la password per confermare
-6. Attendi il completamento del ripristino
+1. Nella lista dei backup, clicca "Ripristina" accanto al backup desiderato
+2. Conferma l'operazione (⚠️ **ATTENZIONE**: Sovrascrive i dati attuali)
+3. Il sistema ripristinerà i dati appropriati:
+   - **Backup completo**: Ripristina tutto il database
+   - **Backup specifico per client**: Ripristina solo i dati del client specifico
 
-## 📊 Monitoraggio e Statistiche
+## 📊 Tipi di Backup
 
-### **Stato Backup nella Dashboard**
-La card "Stato Backup" mostra:
-- **Ultimo backup**: Data e ora dell'ultimo backup
-- **Backup totali**: Numero di backup disponibili
-- **Dimensione totale**: Spazio occupato dai backup
-- **Stato**: Indicatore visivo dello stato
+### **Backup Completo**
 
-### **Indicatori di Stato**
-- 🟢 **Verde**: Backup recente (≤ 1 giorno)
-- 🟡 **Giallo**: Backup da aggiornare (≤ 7 giorni)
-- 🔴 **Rosso**: Backup obsoleto (> 7 giorni)
-- ⚠️ **Rosso**: Nessun backup disponibile
+- **Creato da**: Solo SuperAdmin
+- **Contenuto**: Tutti i dati del sistema (utenti, documenti, log, client, codici aziendali)
+- **Utilizzo**: Ripristino completo del sistema
+- **File**: `backup_complete_YYYY-MM-DDTHH-MM-SS.json`
 
-## 🔔 Sistema di Notifiche
+### **Backup Specifico per Client**
 
-### **Configurazione Notifiche**
+- **Creato da**: Admin (proprio client) o SuperAdmin (qualsiasi client)
+- **Contenuto**: Solo i dati del client specifico
+- **Utilizzo**: Ripristino selettivo per client
+- **File**: `backup_client_X_YYYY-MM-DDTHH-MM-SS.json`
 
-#### Impostazioni Globali (SuperAdmin)
-1. **Accesso**: Menu → "Configurazione Sistema" → "Notifiche"
-2. **Configurazione Email**:
-   - **SMTP Server**: Configurazione server email
-   - **Template Email**: Personalizzazione messaggi
-   - **Frequenza Invio**: Giornaliera, settimanale, personalizzata
-   - **Orari Invio**: Evita orari notturni
+## 🔒 Sicurezza e Controllo Accessi
 
-3. **Soglie di Avviso**:
-   - **Avviso Anticipato**: 30 giorni prima della scadenza
-   - **Avviso Imminente**: 7 giorni prima della scadenza
-   - **Avviso Urgente**: 1 giorno prima della scadenza
-   - **Avviso Scaduto**: Documenti già scaduti
+### **Verifiche di Sicurezza**
 
-4. **Destinatari**:
-   - **Admin Aziendali**: Tutti gli admin delle aziende
-   - **SuperAdmin**: Notifiche globali
-   - **Utenti Specifici**: Seleziona utenti per notifiche speciali
-
-#### Impostazioni Aziendali (Admin)
-1. **Accesso**: Menu → "Impostazioni" → "Notifiche"
-2. **Configurazione Locale**:
-   - **Abilita/Disabilita**: Attiva notifiche per l'azienda
-   - **Frequenza**: Personalizza frequenza per l'azienda
-   - **Destinatari**: Seleziona admin che ricevono notifiche
-   - **Esclusioni**: Documenti da escludere dalle notifiche
-
-### **Tipi di Notifiche**
-
-#### Notifiche Scadenze Documenti
-- **Scansione Automatica**: Sistema controlla scadenze ogni giorno
-- **Email Personalizzate**: Template con documenti in scadenza
-- **Azioni Richieste**: Link diretti per gestire documenti
-- **Escalation**: Promemoria per documenti non gestiti
-
-#### Notifiche Backup
-- **Backup Completato**: Conferma backup riuscito
-- **Backup Fallito**: Alert per errori di backup
-- **Backup Obsoleto**: Avvisi per backup vecchi
-- **Spazio Disco**: Alert quando spazio insufficiente
-
-### **Template Email Esempio**
-```
-Oggetto: [DocumentiIso] Avviso Scadenza Documenti - {Azienda}
-
-Gentile {Nome Admin},
-
-Il sistema ha rilevato i seguenti documenti in scadenza:
-
-📋 DOCUMENTI IN SCADENZA:
-{Lista documenti con scadenze}
-
-📅 PROSSIME SCADENZE:
-{Lista documenti con scadenze future}
-
-🔗 AZIONE RICHIESTA:
-- Verifica i documenti in scadenza
-- Aggiorna le date se necessario
-- Archivia i documenti scaduti
-
-Per accedere al sistema: {Link Accesso}
-
-Cordiali saluti,
-Sistema DocumentiIso
-```
-
-## 🛡️ Sicurezza e Permessi
+- **Path Traversal**: Protezione contro tentativi di accesso a file esterni
+- **Permessi**: Verifica dei ruoli prima di ogni operazione
+- **Isolamento**: Admin non possono accedere ai dati di altri client
+- **Logging**: Tutte le operazioni vengono registrate per audit
 
 ### **Controllo Accessi**
-- Solo utenti con ruolo `admin` o `superadmin`
-- Autenticazione richiesta per tutte le operazioni
-- Log di audit per tutte le azioni
-- Conferma password per operazioni critiche
 
-### **Protezione Dati**
-- Backup crittografati (opzionale)
-- Transazioni atomiche per il ripristino
-- Verifica integrità dei file di backup
-- Backup automatico prima del ripristino
+- **Admin**: Accesso limitato ai propri dati
+- **SuperAdmin**: Accesso completo a tutto il sistema
+- **Verifiche**: Controlli automatici sui permessi per ogni operazione
 
-### **Differenze di Permessi**
+## 🚨 Avvertenze Importanti
 
-| Funzionalità | Admin | SuperAdmin |
-|--------------|-------|------------|
-| Backup aziendale | ✅ | ✅ |
-| Backup globale | ❌ | ✅ |
-| Backup configurazioni | ❌ | ✅ |
-| Notifiche aziendali | ✅ | ✅ |
-| Notifiche globali | ❌ | ✅ |
-| Scheduling backup | ❌ | ✅ |
+### **Ripristino**
 
-## 📁 Struttura Backup
+- ⚠️ Il ripristino **sovrascrive** i dati attuali
+- ⚠️ L'operazione **non può essere annullata**
+- ⚠️ Assicurati di avere un backup recente prima del ripristino
 
-### **Dati Inclusi**
-Il backup include tutti i dati del sistema:
-- **Utenti**: Profili, ruoli, sessioni
-- **Documenti**: Metadati, stati, scadenze
-- **Clienti**: Informazioni aziendali
-- **Codici Aziendali**: Codici di registrazione
-- **Log**: Registro attività completo
-- **Contatori**: ID sequenziali
+### **Permessi**
 
-### **Formato File**
-- **Estensione**: `.json`
-- **Nome**: `backup_all_YYYY-MM-DDTHH-MM-SS-sssZ.json`
-- **Posizione**: `server/backups/`
-- **Compressione**: Opzionale per ridurre dimensione
+- 🔒 Gli admin possono accedere solo ai propri dati
+- 🔒 I backup sono isolati per client
+- 🔒 Tutte le operazioni vengono tracciate nei log
 
-## 🔄 Operazioni Automatiche
+### **Performance**
 
-### **Backup Automatici** (Solo SuperAdmin)
-- Backup giornalieri automatici
-- Retention policy configurabile
-- Notifiche per backup falliti
-- Compressione automatica backup vecchi
+- 📈 I backup vengono creati in background per non bloccare l'applicazione
+- 📈 I backup specifici per client sono più veloci e occupano meno spazio
+- 📈 Il ripristino viene eseguito in transazioni per garantire la consistenza
 
-### **Pulizia Automatica** (Solo SuperAdmin)
-- Rimozione backup obsoleti
-- Compressione backup vecchi
-- Ottimizzazione spazio disco
-- Archiviazione su storage esterno
-
-### **Notifiche Automatiche**
-- Scansione giornaliera scadenze
-- Invio email personalizzate
-- Log di tutte le operazioni
-- Gestione errori di invio
-
-## 🚨 Risoluzione Problemi
+## 🛠️ Risoluzione Problemi
 
 ### **Backup Fallito**
-1. Verifica i permessi di scrittura nella cartella `backups`
-2. Controlla lo spazio disco disponibile
+
+1. Verifica i permessi dell'utente
+2. Controlla lo spazio disponibile su disco
 3. Verifica la connessione al database
-4. Controlla i log del server
+4. Controlla i log per errori specifici
 
 ### **Ripristino Fallito**
-1. Verifica l'integrità del file di backup
-2. Controlla i permessi di lettura
-3. Verifica la connessione al database
-4. Controlla i log del server
+
+1. Verifica che il file di backup sia valido
+2. Controlla i permessi per il ripristino
+3. Assicurati che il database sia accessibile
+4. Verifica la compatibilità della versione del backup
 
 ### **Accesso Negato**
-1. Verifica di essere loggato come admin/superadmin
-2. Controlla la validità della sessione
-3. Effettua nuovamente l'accesso se necessario
 
-### **Notifiche Non Inviate**
-1. Verifica configurazione SMTP
-2. Controlla credenziali email
-3. Verifica firewall e porte SMTP
-4. Controlla log errori email
+1. Verifica il ruolo dell'utente
+2. Controlla che l'admin appartenga al client corretto
+3. Verifica che il backup sia del client appropriato
+4. Controlla i log per dettagli sull'errore
 
-## 📞 Supporto
+## 📝 Note Tecniche
 
-Per problemi con i backup:
-1. Controlla i log del server
-2. Verifica i permessi utente
-3. Contatta l'amministratore di sistema
-4. Consulta la documentazione tecnica
+### **Formato File**
 
-## 🔮 Roadmap
+- I backup sono salvati in formato JSON
+- Includono metadati completi per tracciabilità
+- Versioning per compatibilità futura
 
-### **Funzionalità Future**
-- [x] Backup manuali per admin e superadmin
-- [x] Notifiche automatiche scadenze
-- [x] Template email personalizzabili
-- [ ] Backup incrementali
-- [ ] Backup su cloud esterno
-- [ ] Dashboard analytics backup
-- [ ] Test automatici integrità backup
-- [ ] Notifiche SMS per urgenze
-- [ ] Integrazione Slack/Discord
+### **Storage**
 
----
+- I backup sono salvati nella cartella `backups/`
+- Naming convention: `backup_[tipo]_[timestamp].json`
+- Compressione automatica per risparmiare spazio
 
-**Nota**: Le funzionalità di backup sono critiche per la sicurezza dei dati. Assicurati di testare regolarmente i backup e mantenere copie in luoghi sicuri. Le notifiche automatiche aiutano a mantenere aggiornati sui documenti in scadenza e sullo stato del sistema. 
+### **Logging**
+
+- Tutte le operazioni vengono registrate
+- Include dettagli su chi, quando, cosa
+- Disponibile per audit e troubleshooting
