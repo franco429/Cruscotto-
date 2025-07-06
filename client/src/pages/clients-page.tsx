@@ -186,20 +186,24 @@ export default function ClientsPage() {
       driveFolderId: extractedId,
     };
 
-    updateMutation.mutate({ legacyId: editingClient.legacyId, data: dataToSubmit });
+    updateMutation.mutate({
+      legacyId: editingClient.legacyId,
+      data: dataToSubmit,
+    });
   };
 
   const connectGoogleDrive = async (clientId: number) => {
     setIsConnecting(true);
     try {
-     
       const res = await fetch(`/api/google/auth-url/${clientId}`, {
         credentials: "include",
       });
 
       if (!res.ok) {
         // Gestiamo il caso in cui la richiesta al backend fallisca
-        throw new Error("Impossibile ottenere l'URL di autenticazione dal server.");
+        throw new Error(
+          "Impossibile ottenere l'URL di autenticazione dal server."
+        );
       }
 
       const data = await res.json();
@@ -207,7 +211,10 @@ export default function ClientsPage() {
     } catch (error) {
       toast({
         title: "Errore",
-        description: error instanceof Error ? error.message : "Impossibile connettersi a Google Drive",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Impossibile connettersi a Google Drive",
         variant: "destructive",
       });
     } finally {
@@ -221,9 +228,10 @@ export default function ClientsPage() {
         // Mostra messaggio di sincronizzazione in corso
         toast({
           title: "Connessione completata",
-          description: "Connessione Google Drive completata! Sincronizzazione in corso...",
+          description:
+            "Connessione Google Drive completata! Sincronizzazione in corso...",
         });
-        
+
         startSyncPolling();
       }
     };
@@ -232,69 +240,66 @@ export default function ClientsPage() {
     return () => window.removeEventListener("message", handleMessage);
   }, []);
 
- 
   const startSyncPolling = () => {
     let attempts = 0;
-    const maxAttempts = 60; 
-    
+    const maxAttempts = 60;
+
     const checkSyncStatus = async () => {
       try {
         // Verifica lo stato della sincronizzazione
         const response = await apiRequest("GET", "/api/sync/status");
-        
+
         if (response.ok) {
           const syncStatus = await response.json();
-          
-        
+
           if (syncStatus.hasDocuments && syncStatus.documentCount > 0) {
             toast({
               title: "Sincronizzazione completata",
               description: `${syncStatus.documentCount} documenti sincronizzati con successo!`,
             });
-            
+
             // Reindirizza alla home page con parametro per indicare la provenienza
             setTimeout(() => {
-              window.location.href = "/?fromDrive=true";
-            }, 1000);
+              window.location.href = "/home-page";
+            }, 5000); // Aumentato il tempo di attesa a 5 secondi
             return;
           }
         }
-        
-  
+
         attempts++;
         if (attempts < maxAttempts) {
-          
           toast({
             title: "Sincronizzazione in corso",
             description: `Attendere... Tentativo ${attempts}/${maxAttempts}`,
           });
-          
-         
+
           setTimeout(checkSyncStatus, 5000);
         } else {
-          
           toast({
             title: "Sincronizzazione in corso",
-            description: "Reindirizzamento alla home page. I documenti appariranno presto.",
+            description:
+              "Reindirizzamento alla home page. I documenti appariranno presto.",
           });
-          
+
           setTimeout(() => {
-            window.location.href = "/?fromDrive=true";
-          }, 1000);
+            window.location.href = "/home-page";
+          }, 5000); // Aumentato il tempo di attesa a 5 secondi
         }
       } catch (error) {
-        console.error("Errore durante il polling della sincronizzazione:", error);
-        
+        console.error(
+          "Errore durante il polling della sincronizzazione:",
+          error
+        );
+
         setTimeout(() => {
-          window.location.href = "/?fromDrive=true";
-        }, 2000);
+          window.location.href = "/home-page";
+        }, 5000); // Aumentato il tempo di attesa a 5 secondi
       }
     };
-    
+
     setTimeout(checkSyncStatus, 2000);
   };
 
-  
   const formatDate = (dateString: string | Date) => {
     return format(new Date(dateString), "dd/MM/yyyy HH:mm");
   };
@@ -404,9 +409,7 @@ export default function ClientsPage() {
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>
-                Modifica Cartella Google Drive
-              </DialogTitle>
+              <DialogTitle>Modifica Cartella Google Drive</DialogTitle>
               <DialogDescription>
                 Modifica i dettagli della tua cartella Google Drive associata.
               </DialogDescription>
@@ -422,9 +425,7 @@ export default function ClientsPage() {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>
-                        Nome della Cartella Google Drive
-                      </FormLabel>
+                      <FormLabel>Nome della Cartella Google Drive</FormLabel>
                       <FormControl>
                         <Input
                           placeholder="Inserisci il nome della tua cartella Google Drive"
@@ -441,7 +442,9 @@ export default function ClientsPage() {
                   name="driveFolderId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>ID o URL della Cartella Google Drive</FormLabel>
+                      <FormLabel>
+                        ID o URL della Cartella Google Drive
+                      </FormLabel>
                       <FormControl>
                         <Input
                           placeholder="Incolla l'URL o l'ID della cartella di Google Drive"
@@ -468,10 +471,7 @@ export default function ClientsPage() {
                   >
                     Annulla
                   </Button>
-                  <Button
-                    type="submit"
-                    disabled={updateMutation.isPending}
-                  >
+                  <Button type="submit" disabled={updateMutation.isPending}>
                     {updateMutation.isPending ? "Salvataggio..." : "Aggiorna"}
                   </Button>
                 </DialogFooter>
