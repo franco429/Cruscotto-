@@ -19,6 +19,8 @@ import AboutPage from "../src/pages/about-page";
 import ResetPasswordPage from "../src/pages/reset-password-page";
 import ClientsPage from "../src/pages/clients-page";
 import BackupPage from "../src/pages/backup-page";
+import PrivacyPage from "./pages/privacy-page";
+import TermsPage from "./pages/terms-page";
 import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
@@ -53,6 +55,8 @@ function Router() {
       <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/assistenza" component={SupportPage} />
       <Route path="/chi-siamo" component={AboutPage} />
+      <Route path="/privacy" component={PrivacyPage} />
+      <Route path="/terms" component={TermsPage} />
 
       {/* Fallback to 404 */}
       <Route component={NotFound} />
