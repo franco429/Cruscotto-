@@ -79,7 +79,7 @@ describe('Security Module Tests', () => {
           .expect(200);
       }
 
-      // La 501° richiesta dovrebbe essere bloccata
+     
       const response = await request(app)
         .get('/api/test');
 
@@ -216,7 +216,7 @@ describe('Security Module Tests', () => {
 
       expect(process.exit).toHaveBeenCalledWith(1);
 
-      // Ripristina
+    
       process.env.NODE_ENV = originalEnv;
       process.exit = originalExit;
     });
@@ -226,14 +226,14 @@ describe('Security Module Tests', () => {
       const originalExit = process.exit;
       
       process.env.NODE_ENV = 'production';
-      process.env.ENCRYPTION_KEY = 'short'; // Troppo corta
+      process.env.ENCRYPTION_KEY = 'short'; 
       process.exit = vi.fn() as any;
 
       setupSecurity(app);
 
       expect(process.exit).toHaveBeenCalledWith(1);
 
-      // Ripristina
+    
       process.env.NODE_ENV = originalEnv;
       process.exit = originalExit;
     });

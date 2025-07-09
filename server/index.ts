@@ -21,7 +21,7 @@ logger.info("Avvio server...");
 
 const app = express();
 
-// ✅ CORS config
+//  CORS config
 const allowedOrigins = [
   "https://cruscotto-frontend.onrender.com",
   ...(process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(",") : ["http://localhost:5173"])
@@ -42,19 +42,19 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// ✅ Sicurezza: Helmet va applicato presto
+//  Sicurezza: Helmet va applicato presto
 const { setupSecurity } = await import("./security");
 setupSecurity(app);
 
-// ✅ Sessioni prima di auth e csrf
+//  Sessioni prima di auth e csrf
 const { setupAuth } = await import("./auth");
 setupAuth(app);
 
-// ✅ Protezione CSRF dopo le sessioni
+//  Protezione CSRF dopo le sessioni
 const { setupCSRF } = await import("./security");
 setupCSRF(app);
 
-// ✅ Logging API strutturato
+//  Logging API strutturato
 app.use((req, res, next) => {
   const start = Date.now();
   res.on("finish", () => {
@@ -75,13 +75,13 @@ app.use((req, res, next) => {
 
     logger.info("Importo e registro le routes...");
     const { registerRoutes } = await import("./routes");
-    registerRoutes(app); // ✅ MODIFICA: non serve più `server`
+    registerRoutes(app); 
 
     logger.info("Registro le route di backup...");
     const { registerBackupRoutes } = await import("./backup-routes");
     registerBackupRoutes(app);
 
-    // --- INIZIO AGGIUNTA SPA FALLBACK ---
+    
     // Serve i file statici della build Vite
     const viteDistPath = path.join(__dirname, "..", "client", "dist");
     app.use(express.static(viteDistPath));
@@ -90,9 +90,9 @@ app.use((req, res, next) => {
     app.get(/^\/(?!api).*/, (req, res) => {
       res.sendFile(path.join(viteDistPath, "index.html"));
     });
-    // --- FINE AGGIUNTA SPA FALLBACK ---
+   
 
-    // ✅ Middleware per gestione errori centralizzata (alla fine di tutto)
+    //  Middleware per gestione errori centralizzata (alla fine di tutto)
     app.use((err: any, req: Request, res: Response, next: NextFunction) => {
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";

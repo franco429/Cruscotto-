@@ -55,7 +55,7 @@ interface BackupFile {
   createdAt: Date;
   modifiedAt: Date;
   metadata: BackupMetadata | null;
-  isActive: boolean; // Added isActive property
+  isActive: boolean; 
 }
 
 export default function BackupPage() {
@@ -105,7 +105,7 @@ export default function BackupPage() {
 
       if (result.success) {
         toast.success("Backup creato con successo!");
-        await loadBackups(); // Ricarica la lista
+        await loadBackups(); 
       } else {
         toast.error(`Errore: ${result.message || result.error}`);
       }
@@ -189,7 +189,7 @@ export default function BackupPage() {
 
       if (result.success) {
         toast.success("Backup eliminato con successo!");
-        await loadBackups(); // Ricarica la lista
+        await loadBackups(); 
       } else {
         toast.error(`Errore: ${result.message || result.error}`);
       }
@@ -211,7 +211,7 @@ export default function BackupPage() {
         toast.success(
           `Sincronizzazione completata: ${result.syncedCount} backup sincronizzati`
         );
-        await loadBackups(); // Ricarica la lista
+        await loadBackups(); 
       } else {
         toast.error(`Errore: ${result.message || result.error}`);
       }

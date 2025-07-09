@@ -85,6 +85,6 @@ export interface BackupDocument {
   };
   createdAt: Date;
   updatedAt: Date;
-  isActive: boolean; // Indica se il file esiste ancora sul filesystem
-  lastVerified: Date; // Ultima verifica dell'esistenza del file
+  isActive: boolean; 
+  lastVerified: Date; 
 }

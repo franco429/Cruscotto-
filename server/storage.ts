@@ -115,8 +115,8 @@ export interface IStorage {
   updateCompanyCode(
     id: number,
     code: Partial<InsertCompanyCode>
-  ): Promise<CompanyCode | undefined>; // MODIFICA: id è number
-  deleteCompanyCode(id: number): Promise<boolean>; // MODIFICA: id è number
+  ): Promise<CompanyCode | undefined>;
+  deleteCompanyCode(id: number): Promise<boolean>;
   verifyCompanyCode(
     code: string
   ): Promise<{ valid: boolean; role?: string; codeId?: number }>;
@@ -126,7 +126,7 @@ export interface IStorage {
   ): Promise<CompanyCode | undefined>;
   createManyCompanyCodes(
     codes: (InsertCompanyCode & { legacyId: number })[]
-  ): Promise<CompanyCode[]>; // MODIFICA
+  ): Promise<CompanyCode[]>;
 
   // Log methods
   createLog(log: InsertLog, session?: any): Promise<Log>;
@@ -175,13 +175,12 @@ export class MemStorage implements IStorage {
     this.clientIdCounter = 1;
     this.companyCodeIdCounter = 1;
     this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000, // prune expired entries every 24h
+      checkPeriod: 86400000,
     });
 
-    // Create initial system admin user (no client affiliation)
     this.createUser({
       email: "admin@example.com",
-      password: "$2b$10$EpRnTzVlqHNP0.fUbXUwSOyuiXe/QLSUG6xNekdHgTGmrpHEfIoxm", // 'password'
+      password: "$2b$10$EpRnTzVlqHNP0.fUbXUwSOyuiXe/QLSUG6xNekdHgTGmrpHEfIoxm",
       role: "admin",
       clientId: null,
       lastLogin: null,
@@ -200,9 +199,9 @@ export class MemStorage implements IStorage {
         usageLimit: 5,
         expiresAt: null,
         isActive: true,
-        createdBy: 1, // ID of the first admin
+        createdBy: 1,
       });
-      // ✅ Added a single-use code for testing the new registration flow
+
       this.createCompanyCode({
         id: this.companyCodeIdCounter++,
         legacyId: this.companyCodeIdCounter,
@@ -216,7 +215,6 @@ export class MemStorage implements IStorage {
     }
   }
 
-  // ✅ NEW ATOMIC REGISTRATION METHOD
   async registerNewAdminAndClient(registrationData: {
     email: string;
     passwordHash: string;
@@ -244,7 +242,6 @@ export class MemStorage implements IStorage {
       throw new Error("Un utente con questa email è già registrato.");
     }
 
-    // N.B.: Questa è una pseudo-transazione per MemStorage.
     // L'implementazione in mongo-storage.ts deve usare una transazione di database.
     try {
       const companyCodeDoc = await this.getCompanyCode(codeVerification.codeId);
@@ -287,9 +284,6 @@ export class MemStorage implements IStorage {
       );
     }
   }
-
-  // --- USER METHODS (WITH legacyId BUG FIX) ---
-
   async getUser(id: number): Promise<User | undefined> {
     return this.users.get(id);
   }
@@ -401,8 +395,6 @@ export class MemStorage implements IStorage {
     }
   }
 
-  // --- CLIENT METHODS (WITH legacyId BUG FIX) ---
-
   async getClient(id: number): Promise<Client | undefined> {
     return this.clients.get(id);
   }
@@ -422,7 +414,7 @@ export class MemStorage implements IStorage {
       legacyId,
       createdAt,
       updatedAt,
-      google: {}, // Sempre presente, anche se vuoto
+      google: {},
     };
     this.clients.set(legacyId, newClient);
     return newClient;
@@ -442,7 +434,7 @@ export class MemStorage implements IStorage {
       ...client,
       ...clientUpdate,
       updatedAt: new Date(),
-      google: client.google || {}, // Garantisco sempre l'oggetto
+      google: client.google || {},
     };
     this.clients.set(id, updatedClient);
     return updatedClient;
@@ -476,8 +468,6 @@ export class MemStorage implements IStorage {
       this.clients.set(clientId, client);
     }
   }
-
-  // --- DOCUMENT METHODS (WITH legacyId BUG FIX) ---
 
   async getAllDocuments(): Promise<Document[]> {
     return Array.from(this.documents.values())
@@ -529,7 +519,6 @@ export class MemStorage implements IStorage {
       clientId:
         insertDocument.clientId === undefined ? null : insertDocument.clientId,
       ownerId: insertDocument.ownerId ?? null,
-      // alertStatus ed expiryDate sono gestiti solo se previsti dal tipo DocumentDocument
       alertStatus: (insertDocument as any).alertStatus || "none",
       expiryDate: (insertDocument as any).expiryDate ?? null,
     };
@@ -580,7 +569,6 @@ export class MemStorage implements IStorage {
 
       return await this.updateDocument(id, { fileHash, encryptedCachePath });
     } catch (error) {
-      // In un'app reale, questo errore verrebbe loggato
       return undefined;
     }
   }
@@ -591,12 +579,9 @@ export class MemStorage implements IStorage {
       if (!doc || !doc.fileHash || !doc.encryptedCachePath) return false;
       return await verifyFileIntegrity(doc.encryptedCachePath, doc.fileHash);
     } catch (error) {
-      // In un'app reale, questo errore verrebbe loggato
       return false;
     }
   }
-
-  // --- LOG METHODS (WITH legacyId BUG FIX) ---
 
   async createLog(log: InsertLog, session?: any): Promise<Log> {
     const legacyId = this.logIdCounter++;
@@ -619,9 +604,6 @@ export class MemStorage implements IStorage {
     });
   }
 
-  // (Il resto del file da qui in poi è rimasto uguale, ma lo includo per completezza)
-
-  // --- FILE VALIDATION ---
   async validateFileUpload(
     filePath: string,
     fileSize: number,
@@ -666,8 +648,6 @@ export class MemStorage implements IStorage {
       errors: errors.length > 0 ? errors : undefined,
     };
   }
-
-  // --- COMPANY CODE METHODS (WITH legacyId BUG FIX) ---
 
   async createCompanyCode(code: InsertCompanyCode): Promise<CompanyCode> {
     const legacyId = this.companyCodeIdCounter++;
@@ -793,8 +773,6 @@ export class MemStorage implements IStorage {
     );
   }
 
-  // --- BACKUP METHODS ---
-
   async createBackup(): Promise<{
     success: boolean;
     backupPath?: string;
@@ -889,10 +867,9 @@ export class MemStorage implements IStorage {
   }
 
   private getEncryptedCachePath(doc: Document): string {
-    // ... existing code ...
+    // implementazione vuota
   }
 
-  // Fix: funzione che deve restituire un valore
   public cleanup(): void {
     // implementazione vuota
   }

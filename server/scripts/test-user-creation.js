@@ -241,7 +241,6 @@ function testUserCreation() {
           console.error("Errore durante il test:", error_1);
           return [3 /*break*/, 8];
         case 7:
-          // Chiudiamo la connessione al database
           process.exit(0);
           return [7 /*endfinally*/];
         case 8:
@@ -250,5 +249,5 @@ function testUserCreation() {
     });
   });
 }
-// Eseguiamo il test
+
 testUserCreation();

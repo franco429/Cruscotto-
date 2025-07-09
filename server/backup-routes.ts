@@ -418,9 +418,10 @@ export function registerBackupRoutes(app: express.Express): void {
       );
 
       // Filtra solo i backup attivi (file esistenti) per la risposta
-      const activeBackups = verifiedBackups.filter((backup) => backup.isActive);
+      // const activeBackups = verifiedBackups.filter((backup) => backup.isActive);
 
-      res.json(activeBackups);
+      // Restituisci tutti i backup, anche quelli senza file su disco
+      res.json(verifiedBackups);
     } catch (error) {
       console.error("Errore durante il recupero della lista backup:", error);
       res.status(500).json({
@@ -506,7 +507,7 @@ export function registerBackupRoutes(app: express.Express): void {
         });
       }
 
-      // Elimina il file fisico se esiste
+      
       const backupPath = path.join(process.cwd(), "backups", filename);
       if (fs.existsSync(backupPath)) {
         fs.unlinkSync(backupPath);

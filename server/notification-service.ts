@@ -12,7 +12,7 @@ import { appEvents } from "./app-events";
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.example.com",
   port: parseInt(process.env.SMTP_PORT || "587"),
-  secure: process.env.SMTP_SECURE === "true", // true per 465, false per altri
+  secure: process.env.SMTP_SECURE === "true",
   auth: {
     user: process.env.SMTP_USER || "user@example.com",
     pass: process.env.SMTP_PASSWORD || "password",
@@ -296,7 +296,7 @@ export function startExpirationChecks(
   // Assicurati che non ci siano altri intervalli attivi
   stopExpirationChecks();
 
-  // MODIFICA CHIAVE: Ascolta l'evento UNA SOLA VOLTA per il controllo iniziale.
+  //  Ascolta l'evento UNA SOLA VOLTA per il controllo iniziale.
   appEvents.once('initialSyncComplete', (syncData) => {
     logger.info("Segnale 'initialSyncComplete' ricevuto. Esecuzione controllo iniziale scadenze.", {
       syncData
@@ -358,7 +358,7 @@ export async function sendSyncErrorNotifications(
     );
 
     if (criticalErrors.length === 0) {
-      return; // Nessun errore critico da notificare
+      return; 
     }
 
     // Ottieni tutti gli utenti amministratori da mongoStorage

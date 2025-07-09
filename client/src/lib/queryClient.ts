@@ -24,7 +24,7 @@ async function getCSRFToken(forceRefresh = false): Promise<string> {
   return csrfToken || '';
 }
 
-// ✅ MODIFICA: Funzione helper per gestire le risposte non-OK
+//  Funzione helper per gestire le risposte non-OK
 async function handleApiError(res: Response): Promise<Error> {
   const contentType = res.headers.get('content-type');
   let errorMessage = `HTTP Error: ${res.status} ${res.statusText}`;
@@ -49,7 +49,7 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  // ✅ MODIFICA: Forza il refresh del token per ogni richiesta modificante
+  //  Forza il refresh del token per ogni richiesta modificante
   const csrfToken = await getCSRFToken(["POST", "PUT", "DELETE", "PATCH"].includes(method));
 
   const headers: Record<string, string> = {
@@ -65,7 +65,7 @@ export async function apiRequest(
   });
 
   if (!res.ok) {
-    // ✅ MODIFICA: Usa la nuova funzione per lanciare un errore significativo
+    //  Usa la nuova funzione per lanciare un errore significativo
     throw await handleApiError(res);
   }
   
@@ -94,7 +94,7 @@ export const getQueryFn: <T>(options: {
         throw await handleApiError(res);
       }
       
-      // ✅ MODIFICA: Gestisce il caso di risposta OK ma corpo vuoto (es. 204 No Content)
+      //  Gestisce il caso di risposta OK ma corpo vuoto (es. 204 No Content)
       const text = await res.text();
       return text ? JSON.parse(text) : null;
 

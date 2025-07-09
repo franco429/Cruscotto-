@@ -181,7 +181,7 @@ async function createBackup(backupOptions?: {
           })
             .lean()
             .exec(),
-          Counter.find().lean().exec(), // I counter sono globali
+          Counter.find().lean().exec(), 
         ]);
     }
 

@@ -12,7 +12,7 @@ const fs = require("fs");
 const path = require("path");
 require("dotenv").config();
 
-// Importa i modelli
+
 const {
   UserModel,
   ClientModel,
@@ -221,7 +221,7 @@ async function testBackupFiltering() {
   );
 
   // Test filtro per superadmin (vede tutto)
-  const superadminBackups = allBackups; // Nessun filtro
+  const superadminBackups = allBackups; 
 
   console.log(
     "👑 Superadmin vede backup:",
@@ -336,7 +336,7 @@ async function runTests() {
   }
 }
 
-// Esegui i test se lo script viene chiamato direttamente
+
 if (require.main === module) {
   runTests();
 }

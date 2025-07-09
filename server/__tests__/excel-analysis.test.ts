@@ -237,18 +237,18 @@ describe('Excel Analysis Tests', () => {
 
     // Test 2: Quando la condizione è falsa (oggi >= O1), A1 contiene la data
     const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + 45); // 45 giorni nel futuro
+    futureDate.setDate(futureDate.getDate() + 45); 
     mockCell.value = futureDate;
     
     const resultWithDate = await analyzeExcelContent('/test/path/conditional-formula.xlsx');
     
-    expect(resultWithDate.alertStatus).toBe('none'); // Non scaduto
+    expect(resultWithDate.alertStatus).toBe('none'); 
     expect(resultWithDate.expiryDate).toBeInstanceOf(Date);
     expect(resultWithDate.expiryDate?.getTime()).toBe(futureDate.getTime());
 
     // Test 3: Quando la data è nel passato
     const pastDate = new Date();
-    pastDate.setDate(pastDate.getDate() - 1); // Ieri
+    pastDate.setDate(pastDate.getDate() - 1); 
     mockCell.value = pastDate;
     
     const resultPastDate = await analyzeExcelContent('/test/path/conditional-formula.xlsx');
@@ -268,7 +268,7 @@ describe('Excel Analysis Tests', () => {
       { 
         description: 'Date when condition false',
         value: '2025-12-31',
-        expectedStatus: 'none', // Non scaduto
+        expectedStatus: 'none', 
         expectedDate: new Date('2025-12-31')
       },
       { 
@@ -279,7 +279,7 @@ describe('Excel Analysis Tests', () => {
       },
       { 
         description: 'Warning date when condition false',
-        value: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // 15 giorni
+        value: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), 
         expectedStatus: 'warning',
         expectedDate: expect.any(Date)
       }

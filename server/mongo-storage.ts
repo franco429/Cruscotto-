@@ -20,7 +20,7 @@ import {
   ClientModel,
   CompanyCodeModel,
   getNextSequence,
-  Counter, // Importato per la gestione dei backup/restore
+  Counter,
 } from "./models/mongoose-models";
 import {
   hashFile,
@@ -433,26 +433,8 @@ export class MongoStorage implements IStorage {
     return { data, total };
   }
 
-  // RIMUOVI O COMMENTA QUESTA FUNZIONE ERRATA
-  /*
-  async getNextCompanyCodeId(): Promise<number> {
-    const lastCode = await CompanyCodeModel.findOne({
-      id: { $exists: true, $ne: null },
-    })
-      .sort({ id: -1 })
-      .lean();
-
-    if (lastCode && typeof lastCode.id === "number") {
-      return lastCode.id + 1;
-    }
-
-    return 1;
-  }
-  */
-  // La funzione corretta da usare è getNextSequence, che è già presente.
-
   async createManyCompanyCodes(
-    codes: (InsertCompanyCode & { legacyId: number })[] // Accetta codici con legacyId
+    codes: (InsertCompanyCode & { legacyId: number })[] 
   ): Promise<CompanyCode[]> {
     // L'opzione { ordered: false } tenta di inserire tutti i documenti anche se uno fallisce.
     const createdDocuments = await CompanyCodeModel.insertMany(codes, {
@@ -593,7 +575,6 @@ export class MongoStorage implements IStorage {
   }
 
   async getCompanyCode(id: number): Promise<CompanyCode | undefined> {
-    // MODIFICA: id è number
     const code = await CompanyCodeModel.findOne({ legacyId: id }).lean().exec(); // Query su legacyId
     return code ? (code as CompanyCode) : undefined;
   }
@@ -611,11 +592,11 @@ export class MongoStorage implements IStorage {
   }
 
   async updateCompanyCode(
-    id: number, // MODIFICA: id è number
+    id: number,
     update: Partial<InsertCompanyCode>
   ): Promise<CompanyCode | undefined> {
     const code = await CompanyCodeModel.findOneAndUpdate(
-      { legacyId: id }, // MODIFICA: Query su legacyId invece di _id
+      { legacyId: id },
       { $set: { ...update, updatedAt: new Date() } }, // Usa $set per sicurezza
       { new: true }
     )
@@ -625,8 +606,7 @@ export class MongoStorage implements IStorage {
   }
 
   async deleteCompanyCode(id: number): Promise<boolean> {
-    // MODIFICA: id è number
-    const result = await CompanyCodeModel.deleteOne({ legacyId: id }); // Query su legacyId
+    const result = await CompanyCodeModel.deleteOne({ legacyId: id });
     return result.deletedCount > 0;
   }
 
@@ -732,7 +712,7 @@ export class MongoStorage implements IStorage {
       };
     }
   }
-  //
+
   async restoreFromBackup(
     backupPath: string
   ): Promise<{ success: boolean; error?: string }> {
@@ -776,7 +756,6 @@ export class MongoStorage implements IStorage {
     }
   }
 
-  // --- ALTRI METODI E METODI NON IN IStorage ---
   public async getDocumentByPathAndTitleAndRevision(
     path: string,
     title: string,

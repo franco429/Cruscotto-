@@ -107,8 +107,8 @@ describe('Google Drive Error Handling', () => {
       // Mock file download to fail for one file
       const { googleDriveDownloadFile } = await import('../google-drive');
       vi.mocked(googleDriveDownloadFile)
-        .mockResolvedValueOnce(undefined) // First file succeeds
-        .mockRejectedValueOnce(new Error('Download failed')); // Second file fails
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new Error('Download failed')); 
 
       const result = await syncWithGoogleDrive('test-folder', 1);
 
@@ -205,7 +205,7 @@ describe('Google Drive Error Handling', () => {
       vi.mocked(syncWithGoogleDrive).mockResolvedValue({
         success: false,
         processed: 1,
-        failed: 10, // More failures than successes
+        failed: 10, 
         errors: [],
         duration: 1000
       });

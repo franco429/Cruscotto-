@@ -129,7 +129,7 @@ export function verifySecureLink(
   
   if (!isValid) {
     console.warn('verifySecureLink: Firma HMAC non valida');
-    return null; // Firma non valida
+    return null; 
   }
   
   try {

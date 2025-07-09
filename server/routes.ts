@@ -1,9 +1,9 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import * as os from "os"; // Aggiunto import mancante
-import * as fs from "fs"; // Aggiunto import mancante
-import * as path from "path"; // Aggiunto import mancante
-import { v4 as uuidv4 } from "uuid"; // Aggiunto import mancante
+import * as os from "os"; 
+import * as fs from "fs"; 
+import * as path from "path"; 
+import { v4 as uuidv4 } from "uuid"; 
 
 import { mongoStorage as storage } from "./mongo-storage";
 import { getNextSequence } from "./models/mongoose-models";
@@ -41,7 +41,6 @@ import {
 } from "./google-oauth";
 import { InsertCompanyCode } from "./shared-types/companycode";
 import type { CompanyCodeDocument } from "./shared-types/companycode";
-// ✅ MODIFICA: Importa i nuovi validatori Zod
 import { 
   insertClientSchema, 
   registerAdminSchema,
@@ -76,7 +75,7 @@ const handleSessionTimeout = (req: Request, res: Response, next: NextFunction): 
 const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
   // Controlla prima se la sessione è scaduta
   if (handleSessionTimeout(req, res, next)) {
-    return; // Interrompe l'esecuzione
+    return; 
   }
   
   // Se la sessione è valida, controlla l'autenticazione
@@ -100,7 +99,7 @@ const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
 const isAdmin = (req: Request, res: Response, next: NextFunction) => {
   // Controlla prima se la sessione è scaduta
   if (handleSessionTimeout(req, res, next)) {
-    return; // Interrompe l'esecuzione
+    return; 
   }
   
   // Se la sessione è valida, controlla l'autenticazione
@@ -141,7 +140,7 @@ const isAdmin = (req: Request, res: Response, next: NextFunction) => {
 const isSuperAdmin = (req: Request, res: Response, next: NextFunction) => {
   // Controlla prima se la sessione è scaduta
   if (handleSessionTimeout(req, res, next)) {
-    return; // Interrompe l'esecuzione
+    return; 
   }
   
   // Se la sessione è valida, controlla l'autenticazione e i permessi
@@ -152,7 +151,6 @@ const isSuperAdmin = (req: Request, res: Response, next: NextFunction) => {
   next();
 };
 
-// ✅ MODIFICA: Usa il nuovo schema di validazione
 const adminRegistrationSchema = z.object({
   email: z.string().email("Inserisci un indirizzo email valido"),
   password: z
@@ -168,7 +166,7 @@ const adminRegistrationSchema = z.object({
 });
 
 export async function registerRoutes(app: Express): Promise<Express> {
-  // ✅ RIMOSSO: setupAuth(app) - viene già chiamato in index.ts
+ 
 
   app.post("/api/register/admin", async (req, res) => {
     try {
@@ -694,7 +692,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
   // Endpoint per cambiare la password dell'utente corrente
   app.post("/api/change-password", isAuthenticated, async (req, res) => {
     try {
-      // ✅ AGGIUNTA: Validazione della nuova password con Zod
+      //  Validazione della nuova password con Zod
       const validation = changePasswordSchema.safeParse(req.body);
       if (!validation.success) {
         return res.status(400).json({
@@ -725,7 +723,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
           .json({ message: "La password attuale non è corretta" });
       }
 
-      // ✅ AGGIUNTA: Controllo che la nuova password sia diversa da quella attuale
+      //  Controllo che la nuova password sia diversa da quella attuale
       const isNewPasswordSame = await comparePasswords(newPassword, user.password);
       if (isNewPasswordSame) {
         return res
@@ -951,7 +949,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
     }
   });
 
-  // ✅ AGGIORNATO: Endpoint di contatto con protezione anti-spam
+  // Endpoint di contatto con protezione anti-spam
   app.post("/api/contact", validateContactRequest, async (req, res) => {
     try {
       const { name, email, message, to, subject } = req.body;
@@ -1048,7 +1046,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
         const newCodeString = `BULK-${year}-${randomPart}`;
         
         codesToCreate.push({
-          legacyId, // Aggiungi il legacyId generato
+          legacyId, 
           code: newCodeString,
           role: "admin",
           usageLimit: 1,

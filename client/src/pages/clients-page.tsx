@@ -261,7 +261,7 @@ export default function ClientsPage() {
             // Reindirizza alla home page con parametro per indicare la provenienza
             setTimeout(() => {
               window.location.href = "/home-page";
-            }, 5000); // Aumentato il tempo di attesa a 5 secondi
+            }, 5000);
             return;
           }
         }
@@ -283,7 +283,7 @@ export default function ClientsPage() {
 
           setTimeout(() => {
             window.location.href = "/home-page";
-          }, 5000); // Aumentato il tempo di attesa a 5 secondi
+          }, 5000);
         }
       } catch (error) {
         console.error(
@@ -293,7 +293,7 @@ export default function ClientsPage() {
 
         setTimeout(() => {
           window.location.href = "/home-page";
-        }, 5000); // Aumentato il tempo di attesa a 5 secondi
+        }, 5000);
       }
     };
 

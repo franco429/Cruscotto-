@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '../hooks/use-auth';
 import { useToast } from '../hooks/use-toast';
 
-// Mock delle dipendenze
+
 vi.mock('../hooks/use-toast', () => ({
   useToast: vi.fn(() => ({
     toast: vi.fn()
@@ -22,7 +22,7 @@ vi.mock('../lib/queryClient', () => ({
   resetCSRFToken: vi.fn()
 }));
 
-// Componente di test per accedere al context
+
 function TestComponent() {
   const auth = useAuth();
   
@@ -313,7 +313,6 @@ describe('Auth Hook Tests', () => {
 
   describe('useAuth Hook', () => {
     it('should throw error when used outside AuthProvider', () => {
-      // Sopprime l'errore console per questo test
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       expect(() => {

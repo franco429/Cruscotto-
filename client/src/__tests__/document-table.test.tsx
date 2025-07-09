@@ -3,7 +3,6 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import DocumentTable from '../components/document-table';
 import { DocumentDocument as Document } from '../../../../shared-types/schema';
 
-// Mock delle dipendenze
 vi.mock('../lib/utils', () => ({
   cn: (...classes: string[]) => classes.filter(Boolean).join(' ')
 }));
@@ -156,7 +155,7 @@ describe('DocumentTable Component Tests', () => {
       );
 
       expect(screen.getByText('Valido')).toBeInTheDocument();
-      expect(screen.getByText('OK')).toBeInTheDocument(); // Mobile version
+      expect(screen.getByText('OK')).toBeInTheDocument(); 
     });
 
     it('should display warning status badge correctly', () => {
@@ -169,8 +168,7 @@ describe('DocumentTable Component Tests', () => {
       );
 
       expect(screen.getByText('In scadenza')).toBeInTheDocument();
-      expect(screen.getByText('Avviso')).toBeInTheDocument(); // Mobile version
-    });
+      expect(screen.getByText('Avviso')).toBeInTheDocument(); 
 
     it('should display expired status badge correctly', () => {
       render(
@@ -182,8 +180,7 @@ describe('DocumentTable Component Tests', () => {
       );
 
       expect(screen.getByText('Scaduto')).toBeInTheDocument();
-      expect(screen.getByText('!')).toBeInTheDocument(); // Mobile version
-    });
+      expect(screen.getByText('!')).toBeInTheDocument(); 
 
     it('should handle missing alertStatus', () => {
       const documentWithoutStatus = {
@@ -213,7 +210,7 @@ describe('DocumentTable Component Tests', () => {
         />
       );
 
-      // Check if the file icon is present (PDF icon)
+    
       const fileIcon = screen.getByTestId('file-icon') || screen.getByRole('img', { hidden: true });
       expect(fileIcon).toBeInTheDocument();
     });
@@ -227,7 +224,7 @@ describe('DocumentTable Component Tests', () => {
         />
       );
 
-      // Check if the file icon is present (DOCX icon)
+      
       const fileIcon = screen.getByTestId('file-icon') || screen.getByRole('img', { hidden: true });
       expect(fileIcon).toBeInTheDocument();
     });
@@ -241,7 +238,7 @@ describe('DocumentTable Component Tests', () => {
         />
       );
 
-      // Check if the file icon is present (XLSX icon)
+    
       const fileIcon = screen.getByTestId('file-icon') || screen.getByRole('img', { hidden: true });
       expect(fileIcon).toBeInTheDocument();
     });
@@ -363,11 +360,11 @@ describe('DocumentTable Component Tests', () => {
         />
       );
 
-      // Initially should show first 5 documents
+      
       expect(screen.getByText('Document 1')).toBeInTheDocument();
       expect(screen.queryByText('Document 6')).not.toBeInTheDocument();
 
-      // Click next page
+      
       const nextButton = screen.getByText('Successivo');
       fireEvent.click(nextButton);
 

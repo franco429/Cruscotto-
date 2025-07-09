@@ -18,7 +18,7 @@ function buildOAuthClient() {
   );
 }
 
-// <-- MODIFICA: La funzione ora accetta un parametro 'nonce'
+
 function successHtml(nonce: string) {
   return `
     <html><body style="font:16px system-ui;-webkit-user-select:none;
@@ -53,7 +53,7 @@ export async function googleAuth(req: Request, res: Response) {
     ...(hasRefresh ? {} : { prompt: "consent" }),
   });
 
-  // MODIFICA: Invece di res.redirect("/"), reindirizziamo all'URL di autenticazione
+  
   res.redirect(authUrl);
 }
 
@@ -69,10 +69,10 @@ export async function googleAuthCallback(req: Request, res: Response) {
     return res.status(400).send("clientId non valido");
 
   try {
-    // <-- MODIFICA: Genera il nonce all'inizio della funzione try
+    
     const nonce = crypto.randomBytes(16).toString('base64');
 
-    // <-- MODIFICA: Imposta l'header CSP per permettere lo script con il nonce
+    
     res.setHeader(
       'Content-Security-Policy',
       `script-src 'self' 'nonce-${nonce}'`
@@ -83,11 +83,11 @@ export async function googleAuthCallback(req: Request, res: Response) {
     if (!tokens.refresh_token) {
       const existing = await mongoStorage.getClient(clientId);
       if (existing?.google?.refreshToken) {
-        // <-- MODIFICA: Invia l'HTML di successo con il nonce
+       
         return res.send(successHtml(nonce));
       }
 
-      // Errore che andrebbe loggato centralmente.
+      
       return res
         .status(400)
         .send(
@@ -141,10 +141,10 @@ export async function googleAuthCallback(req: Request, res: Response) {
       });
     }
 
-    // <-- MODIFICA: Invia l'HTML di successo finale con il nonce
+   
     res.send(successHtml(nonce));
   } catch (err) {
-    // Errore che andrebbe loggato centralmente.
+    
     res
       .status(500)
       .send("Errore durante l'accesso a Google. Chiudi la finestra e riprova.");

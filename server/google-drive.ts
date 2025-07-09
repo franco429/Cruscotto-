@@ -140,7 +140,7 @@ export function extractFolderIdFromUrl(input: string): string | null {
   const patterns = [
     /https:\/\/drive\.google\.com\/drive\/(?:u\/\d+\/)?folders\/([a-zA-Z0-9_-]+)(?:[\?#][^\s]*)?/, // folders
     /https:\/\/drive\.google\.com\/drive\/(?:u\/\d+\/)?my-drive\/([a-zA-Z0-9_-]+)(?:[\?#][^\s]*)?/, // my-drive
-    /https:\/\/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)(?:&[^\s]*)?/, // open?id=
+    /https:\/\/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)(?:&[^\s]*)?/, 
   ];
 
   for (const pattern of patterns) {
@@ -293,7 +293,7 @@ class FormulaEvaluator {
       );
       if (dateMatch) {
         const year = parseInt(dateMatch[1]);
-        const month = parseInt(dateMatch[2]) - 1; // JS months are 0-indexed
+        const month = parseInt(dateMatch[2]) - 1; 
         const day = parseInt(dateMatch[3]);
         const result = new Date(year, month, day);
         return { value: result, evaluated: true };
@@ -522,8 +522,8 @@ export async function processDocumentFile(
       (fileType === "xlsx" || fileType === "xls" || fileType === "gsheet")
     ) {
       const excelAnalysis = await analyzeExcelContent(localFilePath);
-      alertStatus = excelAnalysis.alertStatus; // Valori calcolati
-      expiryDate = excelAnalysis.expiryDate; // Valori calcolati
+      alertStatus = excelAnalysis.alertStatus; 
+      expiryDate = excelAnalysis.expiryDate; 
     }
 
     // L'oggetto `document` ora include i campi corretti.
@@ -599,7 +599,7 @@ async function processFileWithErrorHandlingOptimized(
     const doc = await processDocumentFile(
       file.name!,
       file.webViewLink!,
-      undefined // Non passiamo il file path per evitare download
+      undefined 
     );
 
     if (!doc) {
@@ -1125,7 +1125,7 @@ async function processBatchWithAnalysis(
 
       if (!docInfo) {
         logger.debug(`Skipping file with invalid name format: ${file.name}`);
-        return; // Salta questo file
+        return; 
       }
 
       const documentData = {
@@ -1187,9 +1187,9 @@ function isExcelFile(mimeType: string | null | undefined): boolean {
   if (!mimeType) return false;
 
   const excelTypes = [
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
-    "application/vnd.ms-excel", // .xls
-    "application/vnd.ms-excel.sheet.macroEnabled.12", // .xlsm
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+    "application/vnd.ms-excel", 
+    "application/vnd.ms-excel.sheet.macroEnabled.12", 
   ];
 
   return excelTypes.includes(mimeType);
@@ -1458,7 +1458,7 @@ async function syncAllClientsOnce(): Promise<void> {
       duration,
     });
   } finally {
-    // MODIFICA CHIAVE: Emetti l'evento per segnalare la fine della prima sync.
+    
     // Il 'finally' assicura che venga emesso anche in caso di errore.
     appEvents.emit("initialSyncComplete", {
       totalProcessed,
@@ -1597,7 +1597,7 @@ export function calculateDynamicAlertStatus(
   }
 
   const today = new Date();
-  today.setHours(0, 0, 0, 0); // Normalizza a mezzanotte
+  today.setHours(0, 0, 0, 0); 
 
   const warningLimit = new Date(today);
   warningLimit.setDate(today.getDate() + warningDays);

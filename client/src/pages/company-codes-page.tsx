@@ -1,4 +1,3 @@
-// --- START OF FILE company-codes-page.tsx ---
 
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -23,9 +22,8 @@ import HeaderBar from "@/components/header-bar";
 import Footer from "@/components/footer";
 import { useAuth } from "../hooks/use-auth";
 
-// Tipo di dato che riceviamo dall'API
 type CompanyCode = {
-  legacyId: number; // MODIFICA: da string a number
+  legacyId: number; 
   code: string;
   role: string;
   usageLimit: number;

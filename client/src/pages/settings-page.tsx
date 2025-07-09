@@ -128,14 +128,14 @@ export default function SettingsPage() {
     };
 
     try {
-      // MODIFICA: Usa apiRequest invece di fetch per gestione CSRF automatica
+      
       const response = await apiRequest("POST", "/api/change-password", {
         currentPassword: currentFormData.currentPassword,
         newPassword: currentFormData.newPassword,
       });
 
       if (response.ok) {
-        // Successo - prima resetta il form, poi mostra il toast
+        
         const emptyForm = {
           currentPassword: "",
           newPassword: "",

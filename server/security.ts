@@ -93,14 +93,14 @@ export function setupSecurity(app: Express) {
 
   // Limita le richieste ripetute per prevenire attacchi di forza bruta
   const loginLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minuti
+    windowMs: 15 * 60 * 1000, 
     max: 10,
     message: { error: "Troppi tentativi di accesso. Riprova più tardi." },
   });
 
   // Rate limiter specifico per reset password (più restrittivo)
   const resetPasswordLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minuti
+    windowMs: 15 * 60 * 1000, 
     max: 5, // Solo 5 tentativi ogni 15 minuti
     message: { error: "Troppi tentativi di reset password. Riprova più tardi." },
     standardHeaders: true,
@@ -109,21 +109,21 @@ export function setupSecurity(app: Express) {
 
   // Rate limiter per verifica link (prevenzione brute force)
   const verifyLinkLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minuti
-    max: 10, // 10 tentativi ogni 15 minuti
+    windowMs: 15 * 60 * 1000, 
+    max: 10, 
     message: { error: "Troppi tentativi di verifica link. Riprova più tardi." },
     standardHeaders: true,
     legacyHeaders: false,
   });
 
-  // ✅ NUOVO: Rate limiter specifico per l'endpoint di contatto (anti-spam)
+
   const contactLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000, // 1 ora
-    max: 5, // Solo 5 messaggi per ora per IP
+    windowMs: 60 * 60 * 1000, 
+    max: 5, 
     message: { error: "Troppi messaggi inviati. Riprova tra un'ora." },
     standardHeaders: true,
     legacyHeaders: false,
-    skipSuccessfulRequests: false, // Conta anche le richieste di successo
+    skipSuccessfulRequests: false, 
     keyGenerator: (req) => {
       // Usa IP + User-Agent per identificare meglio i client
       return `${req.ip}-${req.get('User-Agent') || 'unknown'}`;
@@ -136,7 +136,7 @@ export function setupSecurity(app: Express) {
 
   // Limiter generale per tutte le API
   const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minuti
+    windowMs: 15 * 60 * 1000, 
     max: 500,
     standardHeaders: true,
     legacyHeaders: false,
@@ -172,7 +172,6 @@ export function setupSecurity(app: Express) {
   }
 }
 
-// ✅ NUOVO: Middleware CSRF migliorato
 export function setupCSRF(app: Express) {
   // Genera un token CSRF se non esiste nella sessione.
   app.use((req: Request, res: Response, next: NextFunction) => {

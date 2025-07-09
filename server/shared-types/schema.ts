@@ -1,4 +1,4 @@
-// Unica fonte di verità per i tipi di dati condivisi.
+
 
 export interface UserDocument {
   legacyId: number;
@@ -42,7 +42,7 @@ export interface LogDocument {
   timestamp: Date;
 }
 
-// Tipi per l'inserimento (omettendo i campi generati dal DB)
+
 export type InsertUser = Omit<UserDocument, "legacyId" | "createdAt">;
 export type InsertDocument = Omit<DocumentDocument, "legacyId" | "createdAt" | "updatedAt">;
 export type InsertLog = Omit<LogDocument, "legacyId" | "timestamp">;

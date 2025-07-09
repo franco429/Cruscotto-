@@ -3,7 +3,6 @@ import { Request, Response } from "express";
 import { generateSecureLink } from "./secure-links";
 import { mongoStorage as storage } from "./mongo-storage";
 
-// Validazione configurazione SMTP
 const SMTP_HOST = process.env.SMTP_HOST;
 const SMTP_PORT = process.env.SMTP_PORT;
 const SMTP_USER = process.env.SMTP_USER;
@@ -17,9 +16,11 @@ if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASSWORD) {
   console.error("   SMTP_PORT:", SMTP_PORT ? "✅" : "❌");
   console.error("   SMTP_USER:", SMTP_USER ? "✅" : "❌");
   console.error("   SMTP_PASSWORD:", SMTP_PASSWORD ? "✅" : "❌");
-  
+
   if (process.env.NODE_ENV === "production") {
-    throw new Error("Configurazione SMTP richiesta per l'invio email in produzione");
+    throw new Error(
+      "Configurazione SMTP richiesta per l'invio email in produzione"
+    );
   }
 }
 
@@ -27,7 +28,7 @@ if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASSWORD) {
 export const transporter = nodemailer.createTransport({
   host: SMTP_HOST || "smtp.example.com",
   port: parseInt(SMTP_PORT || "587"),
-  secure: SMTP_SECURE, // true per 465, false per altri
+  secure: SMTP_SECURE,
   auth: {
     user: SMTP_USER || "user@example.com",
     pass: SMTP_PASSWORD || "password",
@@ -39,7 +40,8 @@ export const transporter = nodemailer.createTransport({
 });
 
 // Test della connessione SMTP all'avvio
-transporter.verify()
+transporter
+  .verify()
   .then(() => {
     console.log("✅ Connessione SMTP verificata con successo");
   })
@@ -51,8 +53,7 @@ transporter.verify()
   });
 
 // Definizione base URL per i link nell'applicazione
-const APP_URL =
-  "https://cruscotto-frontend.onrender.com";
+const APP_URL = "https://cruscotto-frontend.onrender.com";
 
 /**
  * Invia un'email di recupero password all'utente
@@ -86,13 +87,13 @@ export async function handlePasswordReset(req: Request, res: Response) {
       "reset-password",
       60 * 60 * 1000
     );
-    
+
     // Estrai i parametri dal link API per creare il link del frontend
     const linkMatch = resetLink.match(/\/api\/secure\/(.+)\/(.+)\/(.+)/);
     if (!linkMatch) {
-      throw new Error('Errore nella generazione del link di reset');
+      throw new Error("Errore nella generazione del link di reset");
     }
-    
+
     const [, encodedData, expires, signature] = linkMatch;
     const resetUrl = `${APP_URL}/reset-password?data=${encodedData}&expires=${expires}&signature=${signature}`;
 
@@ -125,16 +126,16 @@ export async function handlePasswordReset(req: Request, res: Response) {
 
       // Invia l'email usando nodemailer
       const info = await transporter.sendMail({
-        from: `"Cruscotto SGI" <${
-          SMTP_USER || "noreply@isodocmanager.it"
-        }>`,
+        from: `"Cruscotto SGI" <${SMTP_USER || "noreply@isodocmanager.it"}>`,
         to: user.email,
         subject: "Recupero password - Cruscotto SGI",
         text: `Hai richiesto il recupero della password. Clicca sul seguente link per reimpostare la tua password: ${resetUrl}\\n\\nQuesto link sarà valido per 1 ora.\\n\\nSe non hai richiesto il recupero della password, ignora questa email.`,
         html: emailHTML,
       });
 
-      console.log(`✅ Email di reset password inviata a ${user.email} (MessageId: ${info.messageId})`);
+      console.log(
+        `✅ Email di reset password inviata a ${user.email} (MessageId: ${info.messageId})`
+      );
 
       // In ambiente di sviluppo, forniamo anche l'URL per facilitare il testing
       if (process.env.NODE_ENV === "development") {
@@ -188,7 +189,6 @@ export async function handlePasswordReset(req: Request, res: Response) {
 export async function handleContactRequest(req: Request, res: Response) {
   const { name, email, message } = req.body;
 
-  // Validazione
   if (!name || !email || !message) {
     return res.status(400).json({ error: "Tutti i campi sono obbligatori" });
   }

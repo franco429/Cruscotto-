@@ -7,7 +7,7 @@ import App from "./App";
 import "./index.css";
 import { SessionActivityMonitor } from "./components/session-activity-monitor";
 
-// Componente avvolgente che gestisce l'autenticazione e la sessione
+
 function AppWithAuth() {
   return (
     <AuthProvider>
