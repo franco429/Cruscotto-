@@ -21,7 +21,6 @@ import ClientsPage from "../src/pages/clients-page";
 import BackupPage from "../src/pages/backup-page";
 import { ProtectedRoute } from "./lib/protected-route";
 
-
 function Router() {
   return (
     <Switch>
@@ -47,12 +46,7 @@ function Router() {
         component={ObsoletePage}
         adminOnly={true}
       />
-      <ProtectedRoute
-        path="/backup"
-        component={BackupPage}
-        adminOnly={true}
-      />
-
+      <ProtectedRoute path="/backup" component={BackupPage} adminOnly={true} />
 
       {/* Public routes */}
       <Route path="/auth" component={AuthPage} />
@@ -65,8 +59,6 @@ function Router() {
     </Switch>
   );
 }
-
-
 
 function App() {
   return (
