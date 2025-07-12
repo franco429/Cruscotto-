@@ -90,7 +90,7 @@ export default function Footer() {
               <li className="flex items-start space-x-2 sm:space-x-3 text-xs sm:text-sm">
                 <MapPin className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0 mt-0.5" />
                 <span className="text-slate-600 dark:text-slate-400">
-                   60044 Fabriano (AN), Italia
+                  60044 Fabriano (AN), Italia
                 </span>
               </li>
               <li className="flex items-center space-x-2 sm:space-x-3 text-xs sm:text-sm">
@@ -112,15 +112,13 @@ export default function Footer() {
         <Separator className="my-4 sm:my-6 md:my-8" />
 
         <div className="flex flex-col xs:flex-row justify-between items-center text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-          <p>
-            © {currentYear} Cruscotto SGI. Tutti i diritti riservati.
-          </p>
+          <p>© {currentYear} Cruscotto SGI. Tutti i diritti riservati.</p>
           <div className="flex space-x-4 sm:space-x-6 mt-3 xs:mt-0">
-            <a href="#" className="hover:text-primary transition-colors">
-              Privacy
+            <a href="/privacy" className="hover:text-primary transition-colors">
+              Privacy Policy
             </a>
-            <a href="#" className="hover:text-primary transition-colors">
-              Termini
+            <a href="/terms" className="hover:text-primary transition-colors">
+              Terms of Service
             </a>
             <a href="#" className="hover:text-primary transition-colors">
               Cookie
