@@ -434,7 +434,7 @@ export class MongoStorage implements IStorage {
   }
 
   async createManyCompanyCodes(
-    codes: (InsertCompanyCode & { legacyId: number })[] 
+    codes: (InsertCompanyCode & { legacyId: number })[]
   ): Promise<CompanyCode[]> {
     // L'opzione { ordered: false } tenta di inserire tutti i documenti anche se uno fallisce.
     const createdDocuments = await CompanyCodeModel.insertMany(codes, {

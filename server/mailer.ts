@@ -53,7 +53,7 @@ transporter
   });
 
 // Definizione base URL per i link nell'applicazione
-const APP_URL = "https://cruscotto-frontend.onrender.com";
+const APP_URL = "https://cruscotto-sgi.com";
 
 /**
  * Invia un'email di recupero password all'utente

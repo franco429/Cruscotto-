@@ -26,7 +26,7 @@ const DEFAULT_WARNING_DAYS = 30; // Preavviso standard di 30 giorni
 let expirationCheckInterval: NodeJS.Timeout | null = null;
 
 // Definizione base URL per i link nell'applicazione
-const APP_URL = "https://cruscotto-frontend.onrender.com";
+const APP_URL = "https://cruscotto-sgi.com";
 
 /**
  * Verifica i documenti con date di scadenza imminenti e invia notifiche
@@ -37,14 +37,14 @@ export async function checkDocumentExpirations(
 ): Promise<void> {
   try {
     logger.info("Avvio controllo scadenze documentali", { warningDays });
-    
+
     // Ottieni tutti i documenti attivi (non obsoleti) da mongoStorage
     const allDocuments = await mongoStorage.getAllDocuments();
     const activeDocuments = allDocuments.filter((doc) => !doc.isObsolete);
 
-    logger.info("Documenti attivi trovati", { 
-      total: allDocuments.length, 
-      active: activeDocuments.length 
+    logger.info("Documenti attivi trovati", {
+      total: allDocuments.length,
+      active: activeDocuments.length,
     });
 
     // Data corrente
@@ -79,24 +79,28 @@ export async function checkDocumentExpirations(
     logger.info("Controllo scadenze completato", {
       expired: expiredDocuments.length,
       warning: warningDocuments.length,
-      warningLimit: warningLimit.toISOString()
+      warningLimit: warningLimit.toISOString(),
     });
 
     // Invia notifiche per documenti scaduti
     if (expiredDocuments.length > 0) {
-      logger.info("Invio notifiche per documenti scaduti", { count: expiredDocuments.length });
+      logger.info("Invio notifiche per documenti scaduti", {
+        count: expiredDocuments.length,
+      });
       await sendExpirationNotifications(expiredDocuments, "expired");
     }
 
     // Invia notifiche per documenti in scadenza
     if (warningDocuments.length > 0) {
-      logger.info("Invio notifiche per documenti in scadenza", { count: warningDocuments.length });
+      logger.info("Invio notifiche per documenti in scadenza", {
+        count: warningDocuments.length,
+      });
       await sendExpirationNotifications(warningDocuments, "warning");
     }
   } catch (error) {
     logger.error("Errore durante il controllo scadenze documentali", {
       error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined
+      stack: error instanceof Error ? error.stack : undefined,
     });
   }
 }
@@ -111,18 +115,18 @@ async function sendExpirationNotifications(
   type: "expired" | "warning"
 ): Promise<void> {
   try {
-    logger.info("Avvio invio notifiche email", { 
-      type, 
-      documentCount: documents.length 
+    logger.info("Avvio invio notifiche email", {
+      type,
+      documentCount: documents.length,
     });
 
     // Ottieni tutti gli utenti amministratori da mongoStorage
     const allUsers = await mongoStorage.getAllUsers();
     const admins = allUsers.filter((user) => user.role === "admin");
 
-    logger.info("Amministratori trovati", { 
-      totalUsers: allUsers.length, 
-      admins: admins.length 
+    logger.info("Amministratori trovati", {
+      totalUsers: allUsers.length,
+      admins: admins.length,
     });
 
     if (admins.length === 0) {
@@ -148,7 +152,7 @@ async function sendExpirationNotifications(
 
     logger.info("Documenti raggruppati per client", {
       clientCount: Object.keys(documentsByClient).length,
-      clients: Object.keys(documentsByClient)
+      clients: Object.keys(documentsByClient),
     });
 
     // Invia email per ogni gruppo di client
@@ -163,14 +167,16 @@ async function sendExpirationNotifications(
       );
 
       if (targetAdmins.length === 0) {
-        logger.warn("Nessun amministratore trovato per il client", { clientId });
+        logger.warn("Nessun amministratore trovato per il client", {
+          clientId,
+        });
         continue;
       }
 
       logger.info("Invio notifiche per client", {
         clientId,
         documentCount: clientDocs.length,
-        adminCount: targetAdmins.length
+        adminCount: targetAdmins.length,
       });
 
       // Crea la lista di documenti in HTML
@@ -256,13 +262,16 @@ async function sendExpirationNotifications(
           logger.info("Email inviata con successo", {
             adminEmail: admin.email,
             messageId: result.messageId,
-            subject
+            subject,
           });
         } catch (emailError) {
           logger.error("Errore nell'invio email", {
             adminEmail: admin.email,
-            error: emailError instanceof Error ? emailError.message : String(emailError),
-            subject
+            error:
+              emailError instanceof Error
+                ? emailError.message
+                : String(emailError),
+            subject,
           });
         }
       }
@@ -273,7 +282,7 @@ async function sendExpirationNotifications(
     logger.error("Errore durante l'invio delle notifiche", {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
-      type
+      type,
     });
   }
 }
@@ -287,20 +296,26 @@ export function startExpirationChecks(
   checkIntervalHours: number = 24,
   warningDays: number = DEFAULT_WARNING_DAYS
 ): void {
-  logger.info("Sistema di controllo scadenze in attesa del segnale di sync completata...", {
-    checkIntervalHours,
-    warningDays,
-    intervalMs: checkIntervalHours * 60 * 60 * 1000
-  });
+  logger.info(
+    "Sistema di controllo scadenze in attesa del segnale di sync completata...",
+    {
+      checkIntervalHours,
+      warningDays,
+      intervalMs: checkIntervalHours * 60 * 60 * 1000,
+    }
+  );
 
   // Assicurati che non ci siano altri intervalli attivi
   stopExpirationChecks();
 
   //  Ascolta l'evento UNA SOLA VOLTA per il controllo iniziale.
-  appEvents.once('initialSyncComplete', (syncData) => {
-    logger.info("Segnale 'initialSyncComplete' ricevuto. Esecuzione controllo iniziale scadenze.", {
-      syncData
-    });
+  appEvents.once("initialSyncComplete", (syncData) => {
+    logger.info(
+      "Segnale 'initialSyncComplete' ricevuto. Esecuzione controllo iniziale scadenze.",
+      {
+        syncData,
+      }
+    );
     checkDocumentExpirations(warningDays);
   });
 
@@ -311,9 +326,12 @@ export function startExpirationChecks(
     checkDocumentExpirations(warningDays);
   }, intervalMs);
 
-  logger.info("Controllo scadenze periodico avviato. Il primo controllo avverrà dopo la sync.", {
-    nextCheck: new Date(Date.now() + intervalMs).toISOString()
-  });
+  logger.info(
+    "Controllo scadenze periodico avviato. Il primo controllo avverrà dopo la sync.",
+    {
+      nextCheck: new Date(Date.now() + intervalMs).toISOString(),
+    }
+  );
 }
 
 /**
@@ -351,14 +369,15 @@ export async function sendSyncErrorNotifications(
   try {
     // Filtra solo errori critici (non retryable o con codice specifico)
     const criticalErrors = syncErrors.filter(
-      error => !error.retryable || 
-      error.code === 'DRIVE_CONNECTION_FAILED' ||
-      error.code === 'USER_NOT_FOUND' ||
-      error.code === 'GLOBAL_SYNC_FAILED'
+      (error) =>
+        !error.retryable ||
+        error.code === "DRIVE_CONNECTION_FAILED" ||
+        error.code === "USER_NOT_FOUND" ||
+        error.code === "GLOBAL_SYNC_FAILED"
     );
 
     if (criticalErrors.length === 0) {
-      return; 
+      return;
     }
 
     // Ottieni tutti gli utenti amministratori da mongoStorage
@@ -370,8 +389,10 @@ export async function sendSyncErrorNotifications(
     }
 
     // Filtra admin per client se specificato
-    const targetAdmins = context.clientId 
-      ? admins.filter(user => user.clientId === context.clientId || !user.clientId)
+    const targetAdmins = context.clientId
+      ? admins.filter(
+          (user) => user.clientId === context.clientId || !user.clientId
+        )
       : admins;
 
     if (targetAdmins.length === 0) {
@@ -381,33 +402,44 @@ export async function sendSyncErrorNotifications(
     // Crea la lista degli errori in HTML
     let errorsListHTML = "";
     criticalErrors.forEach((error, index) => {
-      const errorContext = error.context ? 
-        Object.entries(error.context)
-          .map(([key, value]) => `<strong>${key}:</strong> ${value}`)
-          .join(', ') : 'N/A';
+      const errorContext = error.context
+        ? Object.entries(error.context)
+            .map(([key, value]) => `<strong>${key}:</strong> ${value}`)
+            .join(", ")
+        : "N/A";
 
       errorsListHTML += `
         <tr>
           <td>${index + 1}</td>
           <td>${error.message}</td>
-          <td>${error.code || 'N/A'}</td>
-          <td>${error.retryable ? 'Sì' : 'No'}</td>
+          <td>${error.code || "N/A"}</td>
+          <td>${error.retryable ? "Sì" : "No"}</td>
           <td>${errorContext}</td>
         </tr>
       `;
     });
 
     // Statistiche della sincronizzazione
-    const statsHTML = context.processed !== undefined ? `
+    const statsHTML =
+      context.processed !== undefined
+        ? `
       <div style="margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-radius: 5px;">
         <h3 style="margin-top: 0;">Statistiche Sincronizzazione</h3>
         <p><strong>File processati:</strong> ${context.processed}</p>
         <p><strong>File falliti:</strong> ${context.failed}</p>
-        <p><strong>Durata:</strong> ${context.duration ? `${Math.round(context.duration / 1000)}s` : 'N/A'}</p>
-        <p><strong>Tasso di successo:</strong> ${context.processed && context.failed ? 
-          `${Math.round((context.processed / (context.processed + context.failed)) * 100)}%` : 'N/A'}</p>
+        <p><strong>Durata:</strong> ${
+          context.duration ? `${Math.round(context.duration / 1000)}s` : "N/A"
+        }</p>
+        <p><strong>Tasso di successo:</strong> ${
+          context.processed && context.failed
+            ? `${Math.round(
+                (context.processed / (context.processed + context.failed)) * 100
+              )}%`
+            : "N/A"
+        }</p>
       </div>
-    ` : '';
+    `
+        : "";
 
     // Costruisci l'email HTML
     const emailHTML = `
@@ -416,10 +448,12 @@ export async function sendSyncErrorNotifications(
         
         <div style="margin: 20px 0; padding: 15px; background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px;">
           <h3 style="margin-top: 0; color: #856404;">Dettagli Operazione</h3>
-          <p><strong>Client:</strong> ${context.clientName || 'N/A'}</p>
-          <p><strong>Cartella:</strong> ${context.syncFolder || 'N/A'}</p>
-          <p><strong>Utente:</strong> ${context.userId || 'N/A'}</p>
-          <p><strong>Timestamp:</strong> ${new Date().toLocaleString('it-IT')}</p>
+          <p><strong>Client:</strong> ${context.clientName || "N/A"}</p>
+          <p><strong>Cartella:</strong> ${context.syncFolder || "N/A"}</p>
+          <p><strong>Utente:</strong> ${context.userId || "N/A"}</p>
+          <p><strong>Timestamp:</strong> ${new Date().toLocaleString(
+            "it-IT"
+          )}</p>
         </div>
 
         ${statsHTML}
@@ -469,13 +503,20 @@ export async function sendSyncErrorNotifications(
           process.env.SMTP_USER || "noreply@isodocmanager.it"
         }>`,
         to: admin.email,
-        subject: `🚨 Errori di Sincronizzazione - ${context.clientName || 'Sistema'}`,
+        subject: `🚨 Errori di Sincronizzazione - ${
+          context.clientName || "Sistema"
+        }`,
         html: emailHTML,
       });
     }
 
-    console.log(`Notifiche di errore inviate a ${targetAdmins.length} amministratori`);
+    console.log(
+      `Notifiche di errore inviate a ${targetAdmins.length} amministratori`
+    );
   } catch (error) {
-    console.error('Errore nell\'invio delle notifiche di sincronizzazione:', error);
+    console.error(
+      "Errore nell'invio delle notifiche di sincronizzazione:",
+      error
+    );
   }
 }

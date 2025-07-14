@@ -23,7 +23,7 @@ const app = express();
 
 //  CORS config
 const allowedOrigins = [
-  "https://cruscotto-frontend.onrender.com",
+  "https://cruscotto-sgi.com",
   ...(process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(",") : ["http://localhost:5173"])
 ];
 app.use(
