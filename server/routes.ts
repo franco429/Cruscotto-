@@ -1,16 +1,13 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import * as os from "os"; 
-import * as fs from "fs"; 
-import * as path from "path"; 
-import { v4 as uuidv4 } from "uuid"; 
+import * as os from "os";
+import * as fs from "fs";
+import * as path from "path";
+import { v4 as uuidv4 } from "uuid";
 
 import { mongoStorage as storage } from "./mongo-storage";
 import { getNextSequence } from "./models/mongoose-models";
-import {
-  hashPassword,
-  comparePasswords,
-} from "./auth";
+import { hashPassword, comparePasswords } from "./auth";
 import {
   syncWithGoogleDrive,
   startAutomaticSync,
@@ -21,9 +18,7 @@ import {
   updateExcelExpiryDates,
   calculateDynamicAlertStatus,
 } from "./google-drive";
-import {
-  startExpirationChecks,
-} from "./notification-service";
+import { startExpirationChecks } from "./notification-service";
 import {
   handleContactRequest,
   handlePasswordReset,
@@ -41,13 +36,13 @@ import {
 } from "./google-oauth";
 import { InsertCompanyCode } from "./shared-types/companycode";
 import type { CompanyCodeDocument } from "./shared-types/companycode";
-import { 
-  insertClientSchema, 
+import {
+  insertClientSchema,
   registerAdminSchema,
   strongPasswordSchema,
   documentSchema,
   documentUpdateSchema,
-  changePasswordSchema
+  changePasswordSchema,
 } from "./shared-types/validators";
 import { InsertUser } from "./shared-types/schema";
 import { z } from "zod";
@@ -56,7 +51,11 @@ import { validateContactRequest } from "./security";
 import logger from "./logger";
 
 // Helper function per gestire il timeout della sessione
-const handleSessionTimeout = (req: Request, res: Response, next: NextFunction): boolean => {
+const handleSessionTimeout = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): boolean => {
   if (req.isAuthenticated() && req.user && req.user.sessionExpiry) {
     if (new Date() > new Date(req.user.sessionExpiry)) {
       req.logout((err) => {
@@ -75,23 +74,23 @@ const handleSessionTimeout = (req: Request, res: Response, next: NextFunction): 
 const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
   // Controlla prima se la sessione è scaduta
   if (handleSessionTimeout(req, res, next)) {
-    return; 
+    return;
   }
-  
+
   // Se la sessione è valida, controlla l'autenticazione
   if (!req.isAuthenticated()) {
-    logger.warn('Authentication failed - user not authenticated', {
+    logger.warn("Authentication failed - user not authenticated", {
       url: req.url,
       method: req.method,
       ip: req.ip,
-      userAgent: req.get('User-Agent')
+      userAgent: req.get("User-Agent"),
     });
-    return res.status(401).json({ 
+    return res.status(401).json({
       message: "Non autenticato",
-      code: "NOT_AUTHENTICATED"
+      code: "NOT_AUTHENTICATED",
     });
   }
-  
+
   next();
 };
 
@@ -99,40 +98,43 @@ const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
 const isAdmin = (req: Request, res: Response, next: NextFunction) => {
   // Controlla prima se la sessione è scaduta
   if (handleSessionTimeout(req, res, next)) {
-    return; 
+    return;
   }
-  
+
   // Se la sessione è valida, controlla l'autenticazione
   if (!req.isAuthenticated()) {
-    logger.warn('Admin access denied - user not authenticated', {
+    logger.warn("Admin access denied - user not authenticated", {
       url: req.url,
       method: req.method,
       ip: req.ip,
-      userAgent: req.get('User-Agent')
+      userAgent: req.get("User-Agent"),
     });
-    return res.status(401).json({ 
+    return res.status(401).json({
       message: "Non autenticato",
-      code: "NOT_AUTHENTICATED"
+      code: "NOT_AUTHENTICATED",
     });
   }
-  
+
   // Controlla i permessi di admin
-  if (!req.user || (req.user.role !== "admin" && req.user.role !== "superadmin")) {
-    logger.warn('Admin access denied - insufficient permissions', {
+  if (
+    !req.user ||
+    (req.user.role !== "admin" && req.user.role !== "superadmin")
+  ) {
+    logger.warn("Admin access denied - insufficient permissions", {
       url: req.url,
       method: req.method,
       ip: req.ip,
       userId: req.user?.legacyId,
       userRole: req.user?.role,
-      userEmail: req.user?.email
+      userEmail: req.user?.email,
     });
-    return res.status(403).json({ 
+    return res.status(403).json({
       message: "Accesso negato - richiesti permessi di amministratore",
       code: "INSUFFICIENT_PERMISSIONS",
-      userRole: req.user?.role
+      userRole: req.user?.role,
     });
   }
-  
+
   next();
 };
 
@@ -140,14 +142,16 @@ const isAdmin = (req: Request, res: Response, next: NextFunction) => {
 const isSuperAdmin = (req: Request, res: Response, next: NextFunction) => {
   // Controlla prima se la sessione è scaduta
   if (handleSessionTimeout(req, res, next)) {
-    return; 
+    return;
   }
-  
+
   // Se la sessione è valida, controlla l'autenticazione e i permessi
   if (!req.isAuthenticated() || req.user.role !== "superadmin") {
-    return res.status(403).json({ message: "Accesso riservato al super-admin" });
+    return res
+      .status(403)
+      .json({ message: "Accesso riservato al super-admin" });
   }
-  
+
   next();
 };
 
@@ -159,15 +163,18 @@ const adminRegistrationSchema = z.object({
     .regex(/[A-Z]/, "La password deve contenere almeno una lettera maiuscola")
     .regex(/[a-z]/, "La password deve contenere almeno una lettera minuscola")
     .regex(/\d/, "La password deve contenere almeno un numero")
-    .regex(/[@$!%*?&]/, "La password deve contenere almeno un carattere speciale (@$!%*?&)"),
+    .regex(
+      /[@$!%*?&]/,
+      "La password deve contenere almeno un carattere speciale (@$!%*?&)"
+    ),
   clientName: z.string().min(2, "Il nome dell'azienda è obbligatorio"),
-  driveFolderUrl: z.string().url("Inserisci un URL valido per la cartella Google Drive"),
+  driveFolderUrl: z
+    .string()
+    .url("Inserisci un URL valido per la cartella Google Drive"),
   companyCode: z.string().min(1, "Il codice aziendale è obbligatorio"),
 });
 
 export async function registerRoutes(app: Express): Promise<Express> {
- 
-
   app.post("/api/register/admin", async (req, res) => {
     try {
       const validation = adminRegistrationSchema.safeParse(req.body);
@@ -209,7 +216,9 @@ export async function registerRoutes(app: Express): Promise<Express> {
       req.login(user, (err) => {
         if (err) {
           // Errore da loggare centralmente.
-          return res.status(500).json({ message: "Errore durante la login automatica" });
+          return res
+            .status(500)
+            .json({ message: "Errore durante la login automatica" });
         }
         const { password: _, ...safeUser } = user;
         res.status(201).json({
@@ -373,13 +382,15 @@ export async function registerRoutes(app: Express): Promise<Express> {
       }
 
       if (!existingDoc.isObsolete) {
-        return res.status(400).json({ 
-          message: "Il documento non è obsoleto e non può essere ripristinato" 
+        return res.status(400).json({
+          message: "Il documento non è obsoleto e non può essere ripristinato",
         });
       }
 
       // Ripristina il documento
-      const restoredDoc = await storage.updateDocument(id, { isObsolete: false });
+      const restoredDoc = await storage.updateDocument(id, {
+        isObsolete: false,
+      });
 
       if (req.user) {
         await storage.createLog({
@@ -392,9 +403,9 @@ export async function registerRoutes(app: Express): Promise<Express> {
         });
       }
 
-      res.json({ 
+      res.json({
         message: "Document restored successfully",
-        document: restoredDoc 
+        document: restoredDoc,
       });
     } catch (error) {
       res.status(500).json({ message: "Error restoring document" });
@@ -495,12 +506,14 @@ export async function registerRoutes(app: Express): Promise<Express> {
       }
 
       const validatedData = insertClientSchema.parse(req.body);
-      
+
       // Crea il nuovo client
       const client = await storage.createClient(validatedData);
 
       if (!client) {
-        return res.status(500).json({ message: "Impossibile creare il client" });
+        return res
+          .status(500)
+          .json({ message: "Impossibile creare il client" });
       }
 
       // Log dell'azione
@@ -518,9 +531,9 @@ export async function registerRoutes(app: Express): Promise<Express> {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Errore sconosciuto";
-      res.status(400).json({ 
-        message: "Impossibile creare il client.", 
-        error: errorMessage 
+      res.status(400).json({
+        message: "Impossibile creare il client.",
+        error: errorMessage,
       });
     }
   });
@@ -529,7 +542,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
   app.put("/api/clients/:id", isAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id, 10);
-      
+
       if (!req.user?.legacyId) {
         return res.status(401).json({ message: "Utente non autenticato" });
       }
@@ -542,11 +555,11 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
       // Verifica che l'admin possa modificare questo client
       const adminClients = await storage.getClientsByAdminId(req.user.legacyId);
-      const canEdit = adminClients.some(client => client.legacyId === id);
-      
+      const canEdit = adminClients.some((client) => client.legacyId === id);
+
       if (!canEdit && req.user.role !== "superadmin") {
-        return res.status(403).json({ 
-          message: "Non hai i permessi per modificare questo cliente" 
+        return res.status(403).json({
+          message: "Non hai i permessi per modificare questo cliente",
         });
       }
 
@@ -559,14 +572,16 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
       // Sincronizza subito dopo l'aggiornamento
       if (req.user) {
-        syncWithGoogleDrive(client.driveFolderId, req.user.legacyId).catch((err) => {
-          logError(err, {
-            context: "manual-sync",
-            clientId: client.legacyId,
-            userId: req.user?.legacyId,
-            driveFolderId: client.driveFolderId,
-          });
-        });
+        syncWithGoogleDrive(client.driveFolderId, req.user.legacyId).catch(
+          (err) => {
+            logError(err, {
+              context: "manual-sync",
+              clientId: client.legacyId,
+              userId: req.user?.legacyId,
+              driveFolderId: client.driveFolderId,
+            });
+          }
+        );
       }
 
       // Log dell'azione
@@ -585,9 +600,9 @@ export async function registerRoutes(app: Express): Promise<Express> {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Errore sconosciuto";
-      res.status(400).json({ 
-        message: "Impossibile aggiornare il cliente.", 
-        error: errorMessage 
+      res.status(400).json({
+        message: "Impossibile aggiornare il cliente.",
+        error: errorMessage,
       });
     }
   });
@@ -630,11 +645,11 @@ export async function registerRoutes(app: Express): Promise<Express> {
   app.delete("/api/users/:legacyId", isAdmin, async (req, res) => {
     try {
       const userId = parseInt(req.params.legacyId, 10);
-      
+
       // Prevent admin from deleting themselves
       if (userId === req.user?.legacyId) {
-        return res.status(400).json({ 
-          message: "Non puoi eliminare il tuo stesso account" 
+        return res.status(400).json({
+          message: "Non puoi eliminare il tuo stesso account",
         });
       }
 
@@ -646,14 +661,16 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
       // Ensure admin can only delete users from their own client
       if (userToDelete.clientId !== req.user?.clientId) {
-        return res.status(403).json({ 
-          message: "Non hai i permessi per eliminare questo utente" 
+        return res.status(403).json({
+          message: "Non hai i permessi per eliminare questo utente",
         });
       }
 
       const deleted = await storage.deleteUser(userId);
       if (!deleted) {
-        return res.status(500).json({ message: "Impossibile eliminare l'utente" });
+        return res
+          .status(500)
+          .json({ message: "Impossibile eliminare l'utente" });
       }
 
       // Log the deletion
@@ -724,15 +741,20 @@ export async function registerRoutes(app: Express): Promise<Express> {
       }
 
       //  Controllo che la nuova password sia diversa da quella attuale
-      const isNewPasswordSame = await comparePasswords(newPassword, user.password);
+      const isNewPasswordSame = await comparePasswords(
+        newPassword,
+        user.password
+      );
       if (isNewPasswordSame) {
         return res
           .status(400)
-          .json({ message: "La nuova password deve essere diversa da quella attuale" });
+          .json({
+            message: "La nuova password deve essere diversa da quella attuale",
+          });
       }
 
       const hashedPassword = await hashPassword(newPassword);
-      
+
       const updatedUser = await storage.updateUserPassword(
         user.legacyId,
         hashedPassword
@@ -782,28 +804,31 @@ export async function registerRoutes(app: Express): Promise<Express> {
       const clientId = req.user?.clientId;
       const userId = req.user?.legacyId;
 
-      logger.info('Manual sync requested', { clientId, userId });
+      logger.info("Manual sync requested", { clientId, userId });
 
       if (!clientId || !userId) {
-        logger.error('Sync failed: missing clientId or userId', { clientId, userId });
+        logger.error("Sync failed: missing clientId or userId", {
+          clientId,
+          userId,
+        });
         return res
           .status(400)
           .json({ message: "Nessun cliente associato a questo utente." });
       }
 
       const client = await storage.getClient(clientId);
-      logger.info('Client retrieved for sync', { 
-        clientId, 
-        hasClient: !!client, 
+      logger.info("Client retrieved for sync", {
+        clientId,
+        hasClient: !!client,
         hasDriveFolderId: !!client?.driveFolderId,
-        driveFolderId: client?.driveFolderId 
+        driveFolderId: client?.driveFolderId,
       });
 
       if (!client || !client.driveFolderId) {
-        logger.error('Sync failed: no client or drive folder configured', { 
-          clientId, 
-          hasClient: !!client, 
-          hasDriveFolderId: !!client?.driveFolderId 
+        logger.error("Sync failed: no client or drive folder configured", {
+          clientId,
+          hasClient: !!client,
+          hasDriveFolderId: !!client?.driveFolderId,
         });
         return res
           .status(400)
@@ -812,48 +837,50 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
       // Verifica se il client ha i token Google configurati
       if (!client.google?.refreshToken) {
-        logger.error('Sync failed: no Google refresh token', { clientId });
+        logger.error("Sync failed: no Google refresh token", { clientId });
         return res
           .status(400)
-          .json({ message: "Google Drive non connesso. Connetti prima Google Drive." });
+          .json({
+            message: "Google Drive non connesso. Connetti prima Google Drive.",
+          });
       }
 
-      logger.info('Starting manual sync', { 
-        clientId, 
-        userId, 
-        driveFolderId: client.driveFolderId 
+      logger.info("Starting manual sync", {
+        clientId,
+        userId,
+        driveFolderId: client.driveFolderId,
       });
 
       // Avvia la sincronizzazione ottimizzata
       const syncPromise = syncWithGoogleDrive(client.driveFolderId, userId);
-      
+
       // Rispondi immediatamente che la sync è iniziata
-      res.json({ 
+      res.json({
         message: "Processo di sincronizzazione avviato",
-        syncId: Date.now().toString() // ID univoco per tracciare la sync
+        syncId: Date.now().toString(), // ID univoco per tracciare la sync
       });
 
       // Esegui la sync in background
       syncPromise
-        .then(result => {
-          logger.info('Manual sync completed', {
+        .then((result) => {
+          logger.info("Manual sync completed", {
             userId,
             clientId,
             success: result.success,
             processed: result.processed,
             failed: result.failed,
             duration: result.duration,
-            errorCount: result.errors.length
+            errorCount: result.errors.length,
           });
         })
-        .catch(error => {
-          logger.error('Manual sync failed', {
+        .catch((error) => {
+          logger.error("Manual sync failed", {
             userId,
             clientId,
             error: error instanceof Error ? error.message : String(error),
-            stack: error instanceof Error ? error.stack : undefined
+            stack: error instanceof Error ? error.stack : undefined,
           });
-          
+
           logError(error, {
             context: "manual-sync",
             clientId: client.legacyId,
@@ -861,15 +888,14 @@ export async function registerRoutes(app: Express): Promise<Express> {
             driveFolderId: client.driveFolderId,
           });
         });
-
     } catch (error) {
-      logger.error('Sync endpoint error', {
+      logger.error("Sync endpoint error", {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
         clientId: req.user?.clientId,
-        userId: req.user?.legacyId
+        userId: req.user?.legacyId,
       });
-      
+
       res
         .status(500)
         .json({ message: "Errore nell'avviare la sincronizzazione" });
@@ -890,8 +916,8 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
       // Verifica se ci sono documenti recenti (ultimi 10 minuti)
       const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
-      const recentDocuments = documents.filter(doc => 
-        doc.createdAt && new Date(doc.createdAt) > tenMinutesAgo
+      const recentDocuments = documents.filter(
+        (doc) => doc.createdAt && new Date(doc.createdAt) > tenMinutesAgo
       );
 
       res.json({
@@ -899,10 +925,14 @@ export async function registerRoutes(app: Express): Promise<Express> {
         documentCount,
         recentDocumentCount: recentDocuments.length,
         lastSync: documentCount > 0 ? new Date().toISOString() : null,
-        hasDocuments: documentCount > 0
+        hasDocuments: documentCount > 0,
       });
     } catch (error) {
-      res.status(500).json({ message: "Errore nel recuperare lo stato della sincronizzazione" });
+      res
+        .status(500)
+        .json({
+          message: "Errore nel recuperare lo stato della sincronizzazione",
+        });
     }
   });
 
@@ -955,14 +985,14 @@ export async function registerRoutes(app: Express): Promise<Express> {
       const { name, email, message, to, subject } = req.body;
 
       // Log della richiesta per sicurezza
-      logger.info('Contact form submission', {
+      logger.info("Contact form submission", {
         ip: req.ip,
-        userAgent: req.get('User-Agent'),
+        userAgent: req.get("User-Agent"),
         email: email,
         name: name,
-        subject: subject || 'Richiesta di assistenza',
+        subject: subject || "Richiesta di assistenza",
         messageLength: message.length,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       const info = await transporter.sendMail({
@@ -977,7 +1007,9 @@ export async function registerRoutes(app: Express): Promise<Express> {
               <p><strong>Da:</strong> ${name}</p>
               <p><strong>Email:</strong> ${email}</p>
               <p><strong>IP:</strong> ${req.ip}</p>
-              <p><strong>User-Agent:</strong> ${req.get('User-Agent') || 'N/A'}</p>
+              <p><strong>User-Agent:</strong> ${
+                req.get("User-Agent") || "N/A"
+              }</p>
               <p><strong>Messaggio:</strong></p>
               <p style="white-space: pre-wrap;">${message}</p>
             </div>
@@ -991,23 +1023,23 @@ export async function registerRoutes(app: Express): Promise<Express> {
       });
 
       // Log del successo
-      logger.info('Contact email sent successfully', {
+      logger.info("Contact email sent successfully", {
         messageId: info.messageId,
         ip: req.ip,
         email: email,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
-      
+
       res.status(200).json({ success: true, messageId: info.messageId });
     } catch (error) {
       // Log dell'errore
-      logger.error('Contact email failed', {
-        error: error instanceof Error ? error.message : 'Unknown error',
+      logger.error("Contact email failed", {
+        error: error instanceof Error ? error.message : "Unknown error",
         ip: req.ip,
         email: req.body.email,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
-      
+
       res.status(500).json({ error: "Errore nell'invio dell'email" });
     }
   });
@@ -1033,48 +1065,62 @@ export async function registerRoutes(app: Express): Promise<Express> {
   });
 
   // POST - Crea un nuovo codice aziendale (solo admin) - VERSIONE CORRETTA
-  app.post("/api/company-codes/bulk-generate", isSuperAdmin, async (req, res) => {
-    try {
-      const codesToCreate: (InsertCompanyCode & { legacyId: number })[] = [];
-      const year = new Date().getFullYear();
-      const createdBy = req.user?.legacyId || 0;
+  app.post(
+    "/api/company-codes/bulk-generate",
+    isSuperAdmin,
+    async (req, res) => {
+      try {
+        const codesToCreate: (InsertCompanyCode & { legacyId: number })[] = [];
+        const year = new Date().getFullYear();
+        const createdBy = req.user?.legacyId || 0;
 
-      // Genera 30 codici, ognuno con il proprio legacyId univoco
-      for (let i = 0; i < 30; i++) {
-        const legacyId = await getNextSequence("companyCodeId"); // Usa la sequenza per ogni codice
-        const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
-        const newCodeString = `BULK-${year}-${randomPart}`;
-        
-        codesToCreate.push({
-          legacyId, 
-          code: newCodeString,
-          role: "admin",
-          usageLimit: 1,
-          expiresAt: null,
-          isActive: true,
-          createdBy,
+        // Genera 30 codici, ognuno con il proprio legacyId univoco
+        for (let i = 0; i < 30; i++) {
+          const legacyId = await getNextSequence("companyCodeId"); // Usa la sequenza per ogni codice
+          const randomPart = Math.random()
+            .toString(36)
+            .substring(2, 8)
+            .toUpperCase();
+          const newCodeString = `BULK-${year}-${randomPart}`;
+
+          codesToCreate.push({
+            legacyId,
+            code: newCodeString,
+            role: "admin",
+            usageLimit: 1,
+            expiresAt: null,
+            isActive: true,
+            createdBy,
+          });
+        }
+
+        // Usa insertMany per efficienza
+        const newCodes = await storage.createManyCompanyCodes(codesToCreate);
+
+        await storage.createLog({
+          userId: createdBy,
+          action: "company_code_bulk_created",
+          details: {
+            message: "30 company codes created in bulk",
+            count: newCodes.length,
+            timestamp: new Date().toISOString(),
+          },
         });
+
+        res
+          .status(201)
+          .json({ message: `${newCodes.length} codici creati con successo.` });
+      } catch (error) {
+        logger.error(
+          "Errore durante la generazione in blocco dei codici",
+          error
+        );
+        res
+          .status(500)
+          .json({ message: "Errore durante la generazione dei codici." });
       }
-
-      // Usa insertMany per efficienza
-      const newCodes = await storage.createManyCompanyCodes(codesToCreate);
-
-      await storage.createLog({
-        userId: createdBy,
-        action: "company_code_bulk_created",
-        details: {
-          message: "30 company codes created in bulk",
-          count: newCodes.length,
-          timestamp: new Date().toISOString(),
-        },
-      });
-
-      res.status(201).json({ message: `${newCodes.length} codici creati con successo.` });
-    } catch (error) {
-      logger.error("Errore durante la generazione in blocco dei codici", error);
-      res.status(500).json({ message: "Errore durante la generazione dei codici." });
     }
-  });
+  );
 
   // PATCH - Aggiorna un codice - VERSIONE CORRETTA
   app.patch("/api/company-codes/:id", isAdmin, async (req, res) => {
@@ -1089,13 +1135,17 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
       const existingCode = await storage.getCompanyCode(id);
       if (!existingCode) {
-        return res.status(404).json({ message: "Codice aziendale non trovato" });
+        return res
+          .status(404)
+          .json({ message: "Codice aziendale non trovato" });
       }
 
       if (code && code !== existingCode.code) {
         const duplicateCode = await storage.getCompanyCodeByCode(code);
         if (duplicateCode && duplicateCode.legacyId !== id) {
-          return res.status(400).json({ message: "Questo codice aziendale esiste già" });
+          return res
+            .status(400)
+            .json({ message: "Questo codice aziendale esiste già" });
         }
       }
 
@@ -1124,7 +1174,10 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
       res.json(updatedCode);
     } catch (error) {
-      logger.error(`Errore durante l'aggiornamento del codice aziendale ${req.params.id}`, error);
+      logger.error(
+        `Errore durante l'aggiornamento del codice aziendale ${req.params.id}`,
+        error
+      );
       res.status(500).json({
         message: "Errore durante l'aggiornamento del codice aziendale",
       });
@@ -1142,7 +1195,9 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
       const existingCode = await storage.getCompanyCode(id);
       if (!existingCode) {
-        return res.status(404).json({ message: "Codice aziendale non trovato" });
+        return res
+          .status(404)
+          .json({ message: "Codice aziendale non trovato" });
       }
 
       // Passa l'ID numerico alla funzione di storage
@@ -1159,12 +1214,19 @@ export async function registerRoutes(app: Express): Promise<Express> {
             timestamp: new Date().toISOString(),
           },
         });
-        res.status(200).json({ message: "Codice aziendale eliminato con successo" });
+        res
+          .status(200)
+          .json({ message: "Codice aziendale eliminato con successo" });
       } else {
-        res.status(404).json({ message: "Codice aziendale non trovato o già eliminato" });
+        res
+          .status(404)
+          .json({ message: "Codice aziendale non trovato o già eliminato" });
       }
     } catch (error) {
-      logger.error(`Errore durante l'eliminazione del codice aziendale ${req.params.id}`, error);
+      logger.error(
+        `Errore durante l'eliminazione del codice aziendale ${req.params.id}`,
+        error
+      );
       res.status(500).json({
         message: "Errore durante l'eliminazione del codice aziendale",
       });
@@ -1191,11 +1253,18 @@ export async function registerRoutes(app: Express): Promise<Express> {
       const documentDir = path.resolve(documentsRoot, document.path);
       const requestedFile = path.resolve(filePath);
       if (!requestedFile.startsWith(documentDir + path.sep)) {
-        return res.status(400).json({ message: "Accesso al file non consentito: il file deve essere sotto la directory del documento." });
+        return res
+          .status(400)
+          .json({
+            message:
+              "Accesso al file non consentito: il file deve essere sotto la directory del documento.",
+          });
       }
       // Protezione path traversal
       if (path.relative(documentDir, requestedFile).includes("..")) {
-        return res.status(400).json({ message: "Path traversal non consentito." });
+        return res
+          .status(400)
+          .json({ message: "Path traversal non consentito." });
       }
 
       const updatedDocument = await storage.hashAndEncryptDocument(
@@ -1398,14 +1467,15 @@ export async function registerRoutes(app: Express): Promise<Express> {
           userId: 0,
           action: "security-alert",
           details: {
-            message: "Tentativo di bypass verifica link reset password - parametri mancanti",
+            message:
+              "Tentativo di bypass verifica link reset password - parametri mancanti",
             ipAddress: req.ip || "unknown",
             userAgent: req.get("User-Agent") || "unknown",
             timestamp: new Date().toISOString(),
-            endpoint: "/api/verify-reset-link"
-          }
+            endpoint: "/api/verify-reset-link",
+          },
         });
-        
+
         return res
           .status(400)
           .json({ success: false, message: "Parametri mancanti" });
@@ -1420,17 +1490,18 @@ export async function registerRoutes(app: Express): Promise<Express> {
           userId: 0,
           action: "security-alert",
           details: {
-            message: "Tentativo di bypass verifica link reset password - firma HMAC non valida",
+            message:
+              "Tentativo di bypass verifica link reset password - firma HMAC non valida",
             ipAddress: req.ip || "unknown",
             userAgent: req.get("User-Agent") || "unknown",
             timestamp: new Date().toISOString(),
             endpoint: "/api/verify-reset-link",
             providedData: data.substring(0, 50) + "...", // Log parziale per sicurezza
             providedExpires: expires,
-            providedSignature: signature.substring(0, 20) + "..."
-          }
+            providedSignature: signature.substring(0, 20) + "...",
+          },
         });
-        
+
         return res
           .status(401)
           .json({ success: false, message: "Link non valido o scaduto" });
@@ -1442,16 +1513,17 @@ export async function registerRoutes(app: Express): Promise<Express> {
           userId: 0,
           action: "security-alert",
           details: {
-            message: "Tentativo di uso improprio di link sicuro per reset password",
+            message:
+              "Tentativo di uso improprio di link sicuro per reset password",
             ipAddress: req.ip || "unknown",
             userAgent: req.get("User-Agent") || "unknown",
             timestamp: new Date().toISOString(),
             endpoint: "/api/verify-reset-link",
             action: linkData.action,
-            userId: linkData.userId
-          }
+            userId: linkData.userId,
+          },
         });
-        
+
         return res
           .status(401)
           .json({ success: false, message: "Tipo di link non valido" });
@@ -1465,14 +1537,14 @@ export async function registerRoutes(app: Express): Promise<Express> {
           message: "Link di reset password verificato con successo",
           ipAddress: req.ip || "unknown",
           userAgent: req.get("User-Agent") || "unknown",
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       });
 
       res.json({ success: true, message: "Link valido", data: linkData });
     } catch (error) {
       console.error("Errore durante la verifica del link di reset:", error);
-      
+
       // Log dell'errore
       await storage.createLog({
         userId: 0,
@@ -1483,20 +1555,23 @@ export async function registerRoutes(app: Express): Promise<Express> {
           userAgent: req.get("User-Agent") || "unknown",
           timestamp: new Date().toISOString(),
           endpoint: "/api/verify-reset-link",
-          error: error instanceof Error ? error.message : "Unknown error"
-        }
+          error: error instanceof Error ? error.message : "Unknown error",
+        },
       });
-      
+
       res
         .status(500)
-        .json({ success: false, message: "Errore durante la verifica del link" });
+        .json({
+          success: false,
+          message: "Errore durante la verifica del link",
+        });
     }
   });
 
   app.post("/api/reset-password", async (req, res) => {
     try {
       const { userId, password, data, expires, signature } = req.body;
-      
+
       let userIdToUpdate: number;
       let linkData: any = null;
 
@@ -1506,30 +1581,31 @@ export async function registerRoutes(app: Express): Promise<Express> {
       } else if (data && expires && signature) {
         // Validazione rigorosa del token con controlli HMAC completi
         linkData = verifySecureLink(data, expires, signature);
-        
+
         if (!linkData) {
           // Log del tentativo di bypass
           await storage.createLog({
             userId: 0,
             action: "security-alert",
             details: {
-              message: "Tentativo di bypass reset password - firma HMAC non valida",
+              message:
+                "Tentativo di bypass reset password - firma HMAC non valida",
               ipAddress: req.ip || "unknown",
               userAgent: req.get("User-Agent") || "unknown",
               timestamp: new Date().toISOString(),
               endpoint: "/api/reset-password",
               providedData: data.substring(0, 50) + "...",
               providedExpires: expires,
-              providedSignature: signature.substring(0, 20) + "..."
-            }
+              providedSignature: signature.substring(0, 20) + "...",
+            },
           });
-          
-          return res.status(401).json({ 
-            success: false, 
-            message: "Token non valido o scaduto" 
+
+          return res.status(401).json({
+            success: false,
+            message: "Token non valido o scaduto",
           });
         }
-        
+
         if (linkData.action !== "reset-password") {
           await storage.createLog({
             userId: 0,
@@ -1541,16 +1617,16 @@ export async function registerRoutes(app: Express): Promise<Express> {
               timestamp: new Date().toISOString(),
               endpoint: "/api/reset-password",
               action: linkData.action,
-              userId: linkData.userId
-            }
+              userId: linkData.userId,
+            },
           });
-          
-          return res.status(401).json({ 
-            success: false, 
-            message: "Tipo di token non valido" 
+
+          return res.status(401).json({
+            success: false,
+            message: "Tipo di token non valido",
           });
         }
-        
+
         userIdToUpdate = linkData.userId;
       } else {
         // Log del tentativo di bypass
@@ -1562,28 +1638,28 @@ export async function registerRoutes(app: Express): Promise<Express> {
             ipAddress: req.ip || "unknown",
             userAgent: req.get("User-Agent") || "unknown",
             timestamp: new Date().toISOString(),
-            endpoint: "/api/reset-password"
-          }
+            endpoint: "/api/reset-password",
+          },
         });
-        
-        return res.status(400).json({ 
-          success: false, 
-          message: "Dati incompleti: userId o token richiesti" 
+
+        return res.status(400).json({
+          success: false,
+          message: "Dati incompleti: userId o token richiesti",
         });
       }
 
       if (!password) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Password mancante" 
+        return res.status(400).json({
+          success: false,
+          message: "Password mancante",
         });
       }
 
       // Validazione della password
       if (password.length < 8) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "La password deve essere di almeno 8 caratteri" 
+        return res.status(400).json({
+          success: false,
+          message: "La password deve essere di almeno 8 caratteri",
         });
       }
 
@@ -1599,26 +1675,29 @@ export async function registerRoutes(app: Express): Promise<Express> {
             userAgent: req.get("User-Agent") || "unknown",
             timestamp: new Date().toISOString(),
             endpoint: "/api/reset-password",
-            attemptedUserId: userIdToUpdate
-          }
+            attemptedUserId: userIdToUpdate,
+          },
         });
-        
-        return res.status(404).json({ 
-          success: false, 
-          message: "Utente non trovato" 
+
+        return res.status(404).json({
+          success: false,
+          message: "Utente non trovato",
         });
       }
 
       // Hash della nuova password usando scrypt (stesso algoritmo del login)
-      const { hashPassword } = await import('./auth');
+      const { hashPassword } = await import("./auth");
       const hashedPassword = await hashPassword(password);
 
       // Aggiorna la password
-      const updatedUser = await storage.updateUserPassword(userIdToUpdate, hashedPassword);
+      const updatedUser = await storage.updateUserPassword(
+        userIdToUpdate,
+        hashedPassword
+      );
       if (!updatedUser) {
         return res.status(500).json({
           success: false,
-          message: "Errore nell'aggiornamento della password"
+          message: "Errore nell'aggiornamento della password",
         });
       }
 
@@ -1632,17 +1711,17 @@ export async function registerRoutes(app: Express): Promise<Express> {
           ipAddress: req.ip || "unknown",
           userAgent: req.get("User-Agent") || "unknown",
           resetMethod: linkData ? "secure-link" : "direct-userId",
-          userEmail: user.email
-        }
+          userEmail: user.email,
+        },
       });
 
-      res.json({ 
-        success: true, 
-        message: "Password reimpostata con successo" 
+      res.json({
+        success: true,
+        message: "Password reimpostata con successo",
       });
     } catch (error) {
       console.error("Errore nel reset della password:", error);
-      
+
       // Log dell'errore
       await storage.createLog({
         userId: 0,
@@ -1653,13 +1732,13 @@ export async function registerRoutes(app: Express): Promise<Express> {
           userAgent: req.get("User-Agent") || "unknown",
           timestamp: new Date().toISOString(),
           endpoint: "/api/reset-password",
-          error: error instanceof Error ? error.message : "Unknown error"
-        }
+          error: error instanceof Error ? error.message : "Unknown error",
+        },
       });
-      
+
       res.status(500).json({
         success: false,
-        message: "Errore durante il reset della password"
+        message: "Errore durante il reset della password",
       });
     }
   });
@@ -1670,31 +1749,31 @@ export async function registerRoutes(app: Express): Promise<Express> {
       const clientId = req.user?.clientId;
       const userId = req.user?.legacyId;
 
-      logger.info('Testing Google Drive configuration', { clientId, userId });
+      logger.info("Testing Google Drive configuration", { clientId, userId });
 
       if (!clientId || !userId) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Nessun cliente associato a questo utente.",
           hasClientId: !!clientId,
-          hasUserId: !!userId
+          hasUserId: !!userId,
         });
       }
 
       // 1. Verifica utente
       const user = await storage.getUser(userId);
       if (!user) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Utente non trovato.",
-          userId
+          userId,
         });
       }
 
       // 2. Verifica client
       const client = await storage.getClient(clientId);
       if (!client) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Client non trovato.",
-          clientId
+          clientId,
         });
       }
 
@@ -1706,26 +1785,29 @@ export async function registerRoutes(app: Express): Promise<Express> {
         hasRefreshToken: !!client.google?.refreshToken,
         userEmail: user.email,
         userRole: user.role,
-        clientName: client.name
+        clientName: client.name,
       };
 
       // 4. Test connessione Google Drive (se configurato)
       let driveConnectionTest = null;
       if (client.google?.refreshToken && client.driveFolderId) {
         try {
-          logger.info('Testing Google Drive connection', { clientId });
+          logger.info("Testing Google Drive connection", { clientId });
           const drive = await getDriveClientForClient(clientId);
           const isConnected = await validateDriveConnection(drive);
-          
+
           driveConnectionTest = {
             success: isConnected,
-            message: isConnected ? "Connessione Google Drive OK" : "Connessione Google Drive fallita"
+            message: isConnected
+              ? "Connessione Google Drive OK"
+              : "Connessione Google Drive fallita",
           };
         } catch (error) {
           driveConnectionTest = {
             success: false,
-            message: error instanceof Error ? error.message : "Errore sconosciuto",
-            error: error instanceof Error ? error.message : String(error)
+            message:
+              error instanceof Error ? error.message : "Errore sconosciuto",
+            error: error instanceof Error ? error.message : String(error),
           };
         }
       }
@@ -1734,19 +1816,18 @@ export async function registerRoutes(app: Express): Promise<Express> {
         message: "Test configurazione completato",
         configStatus,
         driveConnectionTest,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
-
     } catch (error) {
-      logger.error('Test configuration error', {
+      logger.error("Test configuration error", {
         error: error instanceof Error ? error.message : String(error),
         clientId: req.user?.clientId,
-        userId: req.user?.legacyId
+        userId: req.user?.legacyId,
       });
-      
-      res.status(500).json({ 
+
+      res.status(500).json({
         message: "Errore durante il test della configurazione",
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
     }
   });
@@ -1762,30 +1843,34 @@ export async function registerRoutes(app: Express): Promise<Express> {
       try {
         const authStatus = {
           isAuthenticated: req.isAuthenticated(),
-          user: req.user ? {
-            id: req.user.legacyId,
-            email: req.user.email,
-            role: req.user.role,
-            clientId: req.user.clientId,
-            sessionExpiry: req.user.sessionExpiry
-          } : null,
-          session: req.session ? {
-            id: req.session.id,
-            cookie: req.session.cookie
-          } : null,
+          user: req.user
+            ? {
+                id: req.user.legacyId,
+                email: req.user.email,
+                role: req.user.role,
+                clientId: req.user.clientId,
+                sessionExpiry: req.user.sessionExpiry,
+              }
+            : null,
+          session: req.session
+            ? {
+                id: req.session.id,
+                cookie: req.session.cookie,
+              }
+            : null,
           headers: {
-            'user-agent': req.get('User-Agent'),
-            'origin': req.get('Origin'),
-            'referer': req.get('Referer')
+            "user-agent": req.get("User-Agent"),
+            origin: req.get("Origin"),
+            referer: req.get("Referer"),
           },
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         };
 
         res.json(authStatus);
       } catch (error) {
-        res.status(500).json({ 
+        res.status(500).json({
           message: "Errore nel debug dell'autenticazione",
-          error: error instanceof Error ? error.message : String(error)
+          error: error instanceof Error ? error.message : String(error),
         });
       }
     });
@@ -1797,10 +1882,13 @@ export async function registerRoutes(app: Express): Promise<Express> {
       const clientId = req.user?.clientId;
       const userId = req.user?.legacyId;
 
-      logger.info('Excel expiry dates update requested', { clientId, userId });
+      logger.info("Excel expiry dates update requested", { clientId, userId });
 
       if (!clientId || !userId) {
-        logger.error('Excel update failed: missing clientId or userId', { clientId, userId });
+        logger.error("Excel update failed: missing clientId or userId", {
+          clientId,
+          userId,
+        });
         return res
           .status(400)
           .json({ message: "Nessun cliente associato a questo utente." });
@@ -1808,69 +1896,76 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
       const client = await storage.getClient(clientId);
       if (!client || !client.google?.refreshToken) {
-        logger.error('Excel update failed: no Google refresh token', { clientId });
+        logger.error("Excel update failed: no Google refresh token", {
+          clientId,
+        });
         return res
           .status(400)
-          .json({ message: "Google Drive non connesso. Connetti prima Google Drive." });
+          .json({
+            message: "Google Drive non connesso. Connetti prima Google Drive.",
+          });
       }
 
       // Ottieni il client Google Drive
       const drive = await getDriveClientForClient(clientId);
       if (!drive) {
-        logger.error('Excel update failed: could not get Google Drive client', { clientId });
+        logger.error("Excel update failed: could not get Google Drive client", {
+          clientId,
+        });
         return res
           .status(500)
           .json({ message: "Errore nella connessione a Google Drive." });
       }
 
-      logger.info('Starting Excel expiry dates update', { clientId, userId });
+      logger.info("Starting Excel expiry dates update", { clientId, userId });
 
       // Avvia l'aggiornamento in background
       const updatePromise = updateExcelExpiryDates(drive, userId);
-      
+
       // Rispondi immediatamente che l'aggiornamento è iniziato
-      res.json({ 
+      res.json({
         message: "Aggiornamento date di scadenza Excel avviato",
-        updateId: Date.now().toString()
+        updateId: Date.now().toString(),
       });
 
       // Esegui l'aggiornamento in background
       updatePromise
-        .then(result => {
-          logger.info('Excel expiry dates update completed', {
+        .then((result) => {
+          logger.info("Excel expiry dates update completed", {
             userId,
             clientId,
             updated: result.updated,
             failed: result.failed,
-            errorCount: result.errors.length
+            errorCount: result.errors.length,
           });
         })
-        .catch(error => {
-          logger.error('Excel expiry dates update failed', {
+        .catch((error) => {
+          logger.error("Excel expiry dates update failed", {
             userId,
             clientId,
             error: error instanceof Error ? error.message : String(error),
-            stack: error instanceof Error ? error.stack : undefined
+            stack: error instanceof Error ? error.stack : undefined,
           });
-          
+
           logError(error, {
             context: "excel-expiry-update",
             clientId: client.legacyId,
             userId,
           });
         });
-
     } catch (error) {
-      logger.error('Excel expiry update endpoint error', {
+      logger.error("Excel expiry update endpoint error", {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
         clientId: req.user?.clientId,
-        userId: req.user?.legacyId
+        userId: req.user?.legacyId,
       });
-      
+
       res
         .status(500)
-        .json({ message: "Errore nell'avviare l'aggiornamento delle date di scadenza" });
+        .json({
+          message: "Errore nell'avviare l'aggiornamento delle date di scadenza",
+        });
     }
   });
 
@@ -1880,10 +1975,16 @@ export async function registerRoutes(app: Express): Promise<Express> {
       const clientId = req.user?.clientId;
       const userId = req.user?.legacyId;
 
-      logger.info('Dynamic alert status update requested', { clientId, userId });
+      logger.info("Dynamic alert status update requested", {
+        clientId,
+        userId,
+      });
 
       if (!clientId || !userId) {
-        logger.error('Alert status update failed: missing clientId or userId', { clientId, userId });
+        logger.error("Alert status update failed: missing clientId or userId", {
+          clientId,
+          userId,
+        });
         return res
           .status(400)
           .json({ message: "Nessun cliente associato a questo utente." });
@@ -1891,12 +1992,14 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
       // Ottieni tutti i documenti attivi del cliente
       const allDocuments = await storage.getAllDocuments();
-      const clientDocuments = allDocuments.filter(doc => doc.clientId === clientId && !doc.isObsolete);
+      const clientDocuments = allDocuments.filter(
+        (doc) => doc.clientId === clientId && !doc.isObsolete
+      );
 
-      logger.info('Starting dynamic alert status update', { 
-        clientId, 
-        userId, 
-        totalDocuments: clientDocuments.length 
+      logger.info("Starting dynamic alert status update", {
+        clientId,
+        userId,
+        totalDocuments: clientDocuments.length,
       });
 
       let updatedCount = 0;
@@ -1907,11 +2010,11 @@ export async function registerRoutes(app: Express): Promise<Express> {
           if (doc.expiryDate) {
             // Calcola il nuovo stato di allerta basandosi sulla data corrente
             const newAlertStatus = calculateDynamicAlertStatus(doc.expiryDate);
-            
+
             // Aggiorna solo se lo stato è cambiato
             if (newAlertStatus !== doc.alertStatus) {
               await storage.updateDocument(doc.legacyId, {
-                alertStatus: newAlertStatus
+                alertStatus: newAlertStatus,
               });
 
               // Crea un log dell'aggiornamento
@@ -1923,56 +2026,57 @@ export async function registerRoutes(app: Express): Promise<Express> {
                   message: `Aggiornato stato di allerta da ${doc.alertStatus} a ${newAlertStatus}`,
                   oldAlertStatus: doc.alertStatus,
                   newAlertStatus: newAlertStatus,
-                  expiryDate: doc.expiryDate
+                  expiryDate: doc.expiryDate,
                 },
               });
 
               updatedCount++;
-              
-              logger.info('Updated document alert status', {
+
+              logger.info("Updated document alert status", {
                 documentId: doc.legacyId,
                 title: doc.title,
                 oldAlertStatus: doc.alertStatus,
                 newAlertStatus: newAlertStatus,
-                expiryDate: doc.expiryDate
+                expiryDate: doc.expiryDate,
               });
             }
           }
         } catch (error) {
-          const errorMessage = `Failed to update document ${doc.legacyId}: ${error instanceof Error ? error.message : String(error)}`;
+          const errorMessage = `Failed to update document ${doc.legacyId}: ${
+            error instanceof Error ? error.message : String(error)
+          }`;
           errors.push(errorMessage);
-          
-          logger.error('Failed to update document alert status', {
+
+          logger.error("Failed to update document alert status", {
             documentId: doc.legacyId,
             title: doc.title,
-            error: error instanceof Error ? error.message : String(error)
+            error: error instanceof Error ? error.message : String(error),
           });
         }
       }
 
-      logger.info('Dynamic alert status update completed', {
+      logger.info("Dynamic alert status update completed", {
         userId,
         clientId,
         updated: updatedCount,
         errors: errors.length,
-        totalProcessed: clientDocuments.length
+        totalProcessed: clientDocuments.length,
       });
 
       res.json({
         message: "Aggiornamento stati di allerta completato",
         updated: updatedCount,
         errors: errors,
-        totalProcessed: clientDocuments.length
+        totalProcessed: clientDocuments.length,
       });
-
     } catch (error) {
-      logger.error('Dynamic alert status update endpoint error', {
+      logger.error("Dynamic alert status update endpoint error", {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
         clientId: req.user?.clientId,
-        userId: req.user?.legacyId
+        userId: req.user?.legacyId,
       });
-      
+
       res
         .status(500)
         .json({ message: "Errore nell'aggiornamento degli stati di allerta" });

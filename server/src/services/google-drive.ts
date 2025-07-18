@@ -13,7 +13,9 @@ export async function syncDocuments(userId: number): Promise<any> {
     if (!user) {
       throw new Error("User not found");
     }
-    const client = await ClientModel.findOne({ legacyId: user.clientId }).lean();
+    const client = await ClientModel.findOne({
+      legacyId: user.clientId,
+    }).lean();
     console.log("👤 [DRIVE] Dati utente:", {
       id: user?.legacyId,
       email: user?.email,
@@ -46,8 +48,6 @@ export async function syncDocuments(userId: number): Promise<any> {
         mimeType: f.mimeType,
       }))
     );
-
-    
   } catch (error) {
     console.error("❌ [DRIVE] Errore sincronizzazione:", error);
     throw error;

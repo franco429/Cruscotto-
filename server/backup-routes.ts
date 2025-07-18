@@ -507,7 +507,6 @@ export function registerBackupRoutes(app: express.Express): void {
         });
       }
 
-      
       const backupPath = path.join(process.cwd(), "backups", filename);
       if (fs.existsSync(backupPath)) {
         fs.unlinkSync(backupPath);

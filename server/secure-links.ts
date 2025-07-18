@@ -1,15 +1,19 @@
-import { createHmac } from 'crypto';
-import { mongoStorage as storage } from './mongo-storage';
+import { createHmac } from "crypto";
+import { mongoStorage as storage } from "./mongo-storage";
 
 // Forza la configurazione di LINK_SECRET_KEY in produzione
 const SECRET_KEY = process.env.LINK_SECRET_KEY;
 if (!SECRET_KEY) {
-  throw new Error('LINK_SECRET_KEY deve essere configurata nelle variabili d\'ambiente. Questa chiave è critica per la sicurezza dei link condivisi.');
+  throw new Error(
+    "LINK_SECRET_KEY deve essere configurata nelle variabili d'ambiente. Questa chiave è critica per la sicurezza dei link condivisi."
+  );
 }
 
 // Assicuriamoci che la chiave sia abbastanza lunga per la sicurezza
 if (SECRET_KEY.length < 32) {
-  throw new Error('LINK_SECRET_KEY deve essere di almeno 32 caratteri per garantire la sicurezza.');
+  throw new Error(
+    "LINK_SECRET_KEY deve essere di almeno 32 caratteri per garantire la sicurezza."
+  );
 }
 
 const DEFAULT_EXPIRY = 24 * 60 * 60 * 1000; // 24 ore in millisecondi
@@ -30,41 +34,43 @@ export function generateSecureLink(
 ): string {
   // Genera un timestamp di scadenza
   const expires = Date.now() + expiryMs;
-  
+
   // Dati da includere nel token
   const data = {
     documentId,
     userId,
     action,
-    expires
+    expires,
   };
-  
+
   // Converti in stringa per la firma
   const dataString = JSON.stringify(data);
   const dataBuffer = Buffer.from(dataString);
-  const encodedData = dataBuffer.toString('base64');
-  
+  const encodedData = dataBuffer.toString("base64");
+
   // Genera la firma HMAC
-  const hmac = createHmac('sha256', SECRET_KEY);
+  const hmac = createHmac("sha256", SECRET_KEY);
   hmac.update(`${encodedData}.${expires}`);
-  const signature = hmac.digest('base64url');
-  
+  const signature = hmac.digest("base64url");
+
   // Registra il link nel log
   if (userId) {
-    storage.createLog({
-      userId,
-      action: 'create-secure-link',
-      documentId: documentId || undefined,
-      details: {
-        action,
-        expires: new Date(expires).toISOString(),
-        timestamp: new Date().toISOString()
-      }
-    }).catch(err => {
-      // In produzione, questo errore andrebbe gestito da un sistema di logging centralizzato.
-    });
+    storage
+      .createLog({
+        userId,
+        action: "create-secure-link",
+        documentId: documentId || undefined,
+        details: {
+          action,
+          expires: new Date(expires).toISOString(),
+          timestamp: new Date().toISOString(),
+        },
+      })
+      .catch((err) => {
+        // In produzione, questo errore andrebbe gestito da un sistema di logging centralizzato.
+      });
   }
-  
+
   // Restituisci l'URL completo
   return `/api/secure/${encodedData}/${expires}/${signature}`;
 }
@@ -80,45 +86,50 @@ export function verifySecureLink(
   encodedData: string,
   expires: string,
   signature: string
-): { documentId: number | null; userId: number; action: string; expires: number } | null {
+): {
+  documentId: number | null;
+  userId: number;
+  action: string;
+  expires: number;
+} | null {
   // Validazione input rigorosa
   if (!encodedData || !expires || !signature) {
-    console.warn('verifySecureLink: Parametri mancanti', { 
-      hasData: !!encodedData, 
-      hasExpires: !!expires, 
-      hasSignature: !!signature 
+    console.warn("verifySecureLink: Parametri mancanti", {
+      hasData: !!encodedData,
+      hasExpires: !!expires,
+      hasSignature: !!signature,
     });
     return null;
   }
 
   // Validazione formato della firma (deve essere base64url)
   if (!/^[A-Za-z0-9_-]+$/.test(signature)) {
-    console.warn('verifySecureLink: Formato firma non valido');
+    console.warn("verifySecureLink: Formato firma non valido");
     return null;
   }
 
   // Verifica se il link è scaduto
   const expiryTime = parseInt(expires, 10);
   if (isNaN(expiryTime) || Date.now() > expiryTime) {
-    console.warn('verifySecureLink: Link scaduto', { 
-      expiryTime, 
+    console.warn("verifySecureLink: Link scaduto", {
+      expiryTime,
       currentTime: Date.now(),
-      difference: Date.now() - expiryTime 
+      difference: Date.now() - expiryTime,
     });
     return null; // Link scaduto
   }
 
   // Verifica la firma HMAC con timing attack protection
-  const hmac = createHmac('sha256', SECRET_KEY);
+  const hmac = createHmac("sha256", SECRET_KEY);
   hmac.update(`${encodedData}.${expires}`);
-  const expectedSignature = hmac.digest('base64url');
-  
+  const expectedSignature = hmac.digest("base64url");
+
   // Confronto sicuro delle firme (timing attack resistant)
   if (signature.length !== expectedSignature.length) {
-    console.warn('verifySecureLink: Lunghezza firma non valida');
+    console.warn("verifySecureLink: Lunghezza firma non valida");
     return null;
   }
-  
+
   // Confronto costante nel tempo per prevenire timing attacks
   let isValid = true;
   for (let i = 0; i < signature.length; i++) {
@@ -126,51 +137,56 @@ export function verifySecureLink(
       isValid = false;
     }
   }
-  
+
   if (!isValid) {
-    console.warn('verifySecureLink: Firma HMAC non valida');
-    return null; 
+    console.warn("verifySecureLink: Firma HMAC non valida");
+    return null;
   }
-  
+
   try {
     // Decodifica i dati con validazione aggiuntiva
-    const dataBuffer = Buffer.from(encodedData, 'base64');
+    const dataBuffer = Buffer.from(encodedData, "base64");
     const dataString = dataBuffer.toString();
-    
+
     // Validazione JSON
-    if (!dataString.startsWith('{') || !dataString.endsWith('}')) {
-      console.warn('verifySecureLink: Formato dati non valido');
+    if (!dataString.startsWith("{") || !dataString.endsWith("}")) {
+      console.warn("verifySecureLink: Formato dati non valido");
       return null;
     }
-    
+
     const data = JSON.parse(dataString);
-    
+
     // Validazione struttura dati
-    if (!data || typeof data !== 'object') {
-      console.warn('verifySecureLink: Struttura dati non valida');
+    if (!data || typeof data !== "object") {
+      console.warn("verifySecureLink: Struttura dati non valida");
       return null;
     }
-    
-    if (typeof data.userId !== 'number' || typeof data.action !== 'string') {
-      console.warn('verifySecureLink: Campi obbligatori mancanti o non validi');
+
+    if (typeof data.userId !== "number" || typeof data.action !== "string") {
+      console.warn("verifySecureLink: Campi obbligatori mancanti o non validi");
       return null;
     }
-    
+
     // Validazione azioni consentite
-    const allowedActions = ['view', 'download', 'reset-password'];
+    const allowedActions = ["view", "download", "reset-password"];
     if (!allowedActions.includes(data.action)) {
-      console.warn('verifySecureLink: Azione non consentita', { action: data.action });
+      console.warn("verifySecureLink: Azione non consentita", {
+        action: data.action,
+      });
       return null;
     }
-    
+
     return {
       documentId: data.documentId,
       userId: data.userId,
       action: data.action,
-      expires: expiryTime
+      expires: expiryTime,
     };
   } catch (error) {
-    console.error('verifySecureLink: Errore durante la decodifica dei dati:', error);
+    console.error(
+      "verifySecureLink: Errore durante la decodifica dei dati:",
+      error
+    );
     return null;
   }
 }

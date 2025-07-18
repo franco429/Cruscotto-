@@ -18,7 +18,7 @@ export async function hashPassword(password: string): Promise<string> {
   } catch (error) {
     throw new Error("Password non rispetta i requisiti di sicurezza");
   }
-  
+
   const salt = randomBytes(16).toString("hex");
   const buf = (await scryptAsync(password, salt, 64)) as Buffer;
   return `${buf.toString("hex")}.${salt}`;
@@ -29,7 +29,7 @@ export async function comparePasswords(
   stored: string
 ): Promise<boolean> {
   if (!stored) return false;
-  
+
   // Prima prova con scrypt (algoritmo corrente)
   const [hashed, salt] = stored.split(".");
   if (hashed && salt) {
@@ -42,10 +42,10 @@ export async function comparePasswords(
       return true;
     }
   }
-  
+
   // Se scrypt fallisce, prova con bcrypt (per compatibilità con password vecchie)
   try {
-    const bcrypt = await import('bcrypt');
+    const bcrypt = await import("bcrypt");
     const isBcryptValid = await bcrypt.compare(supplied, stored);
     return isBcryptValid;
   } catch (error) {
@@ -64,12 +64,12 @@ export function sessionTimeoutMiddleware(
     if (new Date() > new Date(req.user.sessionExpiry)) {
       req.logout((err) => {
         if (err) return next(err);
-       
+
         return res.status(401).json({
           message: "Sessione scaduta. Effettua nuovamente l'accesso.",
         });
       });
-      return; 
+      return;
     }
   }
   next();
@@ -78,9 +78,13 @@ export function sessionTimeoutMiddleware(
 export function setupAuth(app: Express) {
   const sessionSecret = process.env.SESSION_SECRET;
   if (!sessionSecret || sessionSecret.length < 32) {
-    console.error('❌ CRITICAL SECURITY ERROR: SESSION_SECRET environment variable is required and must be at least 32 characters long!');
-    console.error('   Please set SESSION_SECRET in your environment variables.');
-    console.error('   Example: SESSION_SECRET=your-secure-32-character-key');
+    console.error(
+      "❌ CRITICAL SECURITY ERROR: SESSION_SECRET environment variable is required and must be at least 32 characters long!"
+    );
+    console.error(
+      "   Please set SESSION_SECRET in your environment variables."
+    );
+    console.error("   Example: SESSION_SECRET=your-secure-32-character-key");
     process.exit(1);
   }
   const sessionSettings: session.SessionOptions = {
@@ -133,7 +137,11 @@ export function setupAuth(app: Express) {
 
           if (passwordsMatch) {
             // Login riuscito: migra la password se necessario e resetta i tentativi falliti
-            await migratePasswordIfNeeded(user.legacyId, password, user.password);
+            await migratePasswordIfNeeded(
+              user.legacyId,
+              password,
+              user.password
+            );
             await storage.resetLoginAttempts(email);
             return done(null, user);
           } else {
@@ -327,20 +335,28 @@ export async function migratePasswordIfNeeded(
 ): Promise<void> {
   try {
     // Controlla se la password è in formato bcrypt (inizia con $2b$)
-    if (storedPassword.startsWith('$2b$')) {
-      const bcrypt = await import('bcrypt');
-      const isBcryptValid = await bcrypt.compare(suppliedPassword, storedPassword);
-      
+    if (storedPassword.startsWith("$2b$")) {
+      const bcrypt = await import("bcrypt");
+      const isBcryptValid = await bcrypt.compare(
+        suppliedPassword,
+        storedPassword
+      );
+
       if (isBcryptValid) {
         // Migra la password a scrypt
         const newHashedPassword = await hashPassword(suppliedPassword);
-        const { mongoStorage } = await import('./mongo-storage');
+        const { mongoStorage } = await import("./mongo-storage");
         await mongoStorage.updateUserPassword(userId, newHashedPassword);
-        
-        console.log(`✅ Password migrata per utente ${userId} da bcrypt a scrypt`);
+
+        console.log(
+          `✅ Password migrata per utente ${userId} da bcrypt a scrypt`
+        );
       }
     }
   } catch (error) {
-    console.error(`❌ Errore nella migrazione password per utente ${userId}:`, (error as Error).message);
+    console.error(
+      `❌ Errore nella migrazione password per utente ${userId}:`,
+      (error as Error).message
+    );
   }
 }

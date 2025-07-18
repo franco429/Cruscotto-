@@ -3,7 +3,7 @@ import { Request, Response } from "express";
 import { mongoStorage } from "./mongo-storage";
 import dotenv from "dotenv";
 import logger from "./logger";
-import crypto from 'crypto'; 
+import crypto from "crypto";
 
 dotenv.config();
 
@@ -17,7 +17,6 @@ function buildOAuthClient() {
     `${process.env.API_GOOGLE_URL}/api/google/callback`
   );
 }
-
 
 function successHtml(nonce: string) {
   return `
@@ -53,7 +52,6 @@ export async function googleAuth(req: Request, res: Response) {
     ...(hasRefresh ? {} : { prompt: "consent" }),
   });
 
-  
   res.redirect(authUrl);
 }
 
@@ -69,12 +67,10 @@ export async function googleAuthCallback(req: Request, res: Response) {
     return res.status(400).send("clientId non valido");
 
   try {
-    
-    const nonce = crypto.randomBytes(16).toString('base64');
+    const nonce = crypto.randomBytes(16).toString("base64");
 
-    
     res.setHeader(
-      'Content-Security-Policy',
+      "Content-Security-Policy",
       `script-src 'self' 'nonce-${nonce}'`
     );
 
@@ -83,11 +79,9 @@ export async function googleAuthCallback(req: Request, res: Response) {
     if (!tokens.refresh_token) {
       const existing = await mongoStorage.getClient(clientId);
       if (existing?.google?.refreshToken) {
-       
         return res.send(successHtml(nonce));
       }
 
-      
       return res
         .status(400)
         .send(
@@ -106,45 +100,44 @@ export async function googleAuthCallback(req: Request, res: Response) {
       if (client?.driveFolderId) {
         // Trova l'admin del client per avviare la sync
         const users = await mongoStorage.getUsersByClientId(clientId);
-        const adminUser = users.find(user => user.role === 'admin');
-        
+        const adminUser = users.find((user) => user.role === "admin");
+
         if (adminUser) {
           // Importa la funzione di sync
-          const { syncWithGoogleDrive } = await import('./google-drive');
-          
+          const { syncWithGoogleDrive } = await import("./google-drive");
+
           // Avvia la sincronizzazione in background
           syncWithGoogleDrive(client.driveFolderId, adminUser.legacyId)
-            .then(result => {
-              logger.info('Auto-sync completed after Google Drive connection', {
+            .then((result) => {
+              logger.info("Auto-sync completed after Google Drive connection", {
                 clientId,
                 userId: adminUser.legacyId,
                 success: result.success,
                 processed: result.processed,
                 failed: result.failed,
-                duration: result.duration
+                duration: result.duration,
               });
             })
-            .catch(error => {
-              logger.error('Auto-sync failed after Google Drive connection', {
+            .catch((error) => {
+              logger.error("Auto-sync failed after Google Drive connection", {
                 clientId,
                 userId: adminUser.legacyId,
-                error: error instanceof Error ? error.message : String(error)
+                error: error instanceof Error ? error.message : String(error),
               });
             });
         }
       }
     } catch (syncError) {
       // Non bloccare il processo di connessione se la sync fallisce
-      logger.warn('Failed to start auto-sync after Google Drive connection', {
+      logger.warn("Failed to start auto-sync after Google Drive connection", {
         clientId,
-        error: syncError instanceof Error ? syncError.message : String(syncError)
+        error:
+          syncError instanceof Error ? syncError.message : String(syncError),
       });
     }
 
-   
     res.send(successHtml(nonce));
   } catch (err) {
-    
     res
       .status(500)
       .send("Errore durante l'accesso a Google. Chiudi la finestra e riprova.");

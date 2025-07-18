@@ -3,6 +3,9 @@
   "compilerOptions": {
     "lib": ["esnext"],
     "types": ["node"],
-    "rootDir": "./"
+    "rootDir": "./",
+    "outDir": "./dist",
+    "module": "CommonJS",
+    "moduleResolution": "node"
   }
 }

@@ -20,12 +20,16 @@ router.post("/", async (req, res) => {
     }
 
     // Recupera il client associato
-    const client = await ClientModel.findOne({ legacyId: user.clientId }).lean();
+    const client = await ClientModel.findOne({
+      legacyId: user.clientId,
+    }).lean();
     if (!client?.google?.refreshToken) {
       return res.status(400).json({ error: "Google Drive not configured" });
     }
     if (!client?.driveFolderId) {
-      return res.status(400).json({ error: "Drive folder not configured for client" });
+      return res
+        .status(400)
+        .json({ error: "Drive folder not configured for client" });
     }
     // Avvia il processo di sincronizzazione.
     const syncResult = await googleDriveService.syncDocuments(userId);

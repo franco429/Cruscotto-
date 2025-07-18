@@ -1,5 +1,3 @@
-
-
 export interface UserDocument {
   legacyId: number;
   email: string;
@@ -42,7 +40,9 @@ export interface LogDocument {
   timestamp: Date;
 }
 
-
 export type InsertUser = Omit<UserDocument, "legacyId" | "createdAt">;
-export type InsertDocument = Omit<DocumentDocument, "legacyId" | "createdAt" | "updatedAt">;
+export type InsertDocument = Omit<
+  DocumentDocument,
+  "legacyId" | "createdAt" | "updatedAt"
+>;
 export type InsertLog = Omit<LogDocument, "legacyId" | "timestamp">;
