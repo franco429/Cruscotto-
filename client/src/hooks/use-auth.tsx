@@ -5,7 +5,12 @@ import {
   UseMutationResult,
 } from "@tanstack/react-query";
 import { UserDocument as User } from "../../../server/shared-types/schema";
-import { getQueryFn, apiRequest, queryClient, resetCSRFToken } from "../lib/queryClient";
+import {
+  getQueryFn,
+  apiRequest,
+  queryClient,
+  resetCSRFToken,
+} from "../lib/queryClient";
 import { useToast } from "./use-toast";
 import { z } from "zod";
 
@@ -33,12 +38,17 @@ const registerSchema = z
       .regex(/[A-Z]/, "La password deve contenere almeno una lettera maiuscola")
       .regex(/[a-z]/, "La password deve contenere almeno una lettera minuscola")
       .regex(/\d/, "La password deve contenere almeno un numero")
-      .regex(/[@$!%*?&]/, "La password deve contenere almeno un carattere speciale (@$!%*?&)"),
+      .regex(
+        /[@$!%*?&]/,
+        "La password deve contenere almeno un carattere speciale (@$!%*?&)"
+      ),
     confirmPassword: z
       .string()
       .min(8, "La password deve contenere almeno 8 caratteri"),
     clientName: z.string().min(2, "Il nome dell'azienda è obbligatorio"),
-    driveFolderUrl: z.string().url("Inserisci un URL valido per la cartella Google Drive"),
+    driveFolderUrl: z
+      .string()
+      .url("Inserisci un URL valido per la cartella Google Drive"),
     companyCode: z.string().min(1, "Il codice aziendale è obbligatorio"),
     acceptTerms: z.boolean().refine((val) => val === true, {
       message: "Devi accettare i termini e le condizioni",
@@ -57,7 +67,9 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const lastActivityRef = useRef<number>(Date.now());
-  const refetchIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const refetchIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null
+  );
 
   const {
     data: user,
@@ -87,14 +99,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Eventi per rilevare l'attività utente
-    const activityEvents = ['mousedown', 'keypress', 'scroll', 'touchstart', 'click'];
-    
+    const activityEvents = [
+      "mousedown",
+      "keypress",
+      "scroll",
+      "touchstart",
+      "click",
+    ];
+
     const handleActivity = () => {
       lastActivityRef.current = Date.now();
     };
 
     // Aggiungi listener per l'attività utente
-    activityEvents.forEach(event => {
+    activityEvents.forEach((event) => {
       window.addEventListener(event, handleActivity, { passive: true });
     });
 
@@ -102,12 +120,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const shouldRefetch = () => {
       const now = Date.now();
       const timeSinceLastActivity = now - lastActivityRef.current;
-      
+
       // Se l'utente è stato attivo negli ultimi 5 minuti, non serve refetch
       if (timeSinceLastActivity < 5 * 60 * 1000) {
         return false;
       }
-      
+
       // Se l'utente è inattivo da più di 5 minuti, facciamo refetch ogni 10 minuti
       return true;
     };
@@ -121,10 +139,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       // Cleanup
-      activityEvents.forEach(event => {
+      activityEvents.forEach((event) => {
         window.removeEventListener(event, handleActivity);
       });
-      
+
       if (refetchIntervalRef.current) {
         clearInterval(refetchIntervalRef.current);
       }
@@ -136,6 +154,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await apiRequest("POST", "/api/login", credentials);
       return await res.json();
     },
+    // ✅ NUOVO: Disabilita i retry automatici
+    retry: false,
     onSuccess: async (data) => {
       // Forza un refresh della query dell'utente
       await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
@@ -157,13 +177,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const registerMutation = useMutation({
-    mutationFn: async (credentials: RegisterData) => {
-      const { confirmPassword, ...registerData } = credentials;
-      const res = await apiRequest("POST", "/api/register/admin", registerData);
-      return await res.json();
+    mutationFn: async (credentials: RegisterData | FormData) => {
+      if (credentials instanceof FormData) {
+        const res = await apiRequest(
+          "POST",
+          "/api/register/admin",
+          credentials
+        );
+        return await res.json();
+      } else {
+        const { confirmPassword, ...registerData } = credentials;
+        const res = await apiRequest(
+          "POST",
+          "/api/register/admin",
+          registerData
+        );
+        return await res.json();
+      }
     },
     onSuccess: (response) => {
-      
       if (response && response.user) {
         queryClient.setQueryData(["/api/user"], response.user);
         toast({
@@ -176,7 +208,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: "Benvenuto!",
         });
       }
-     
     },
     onError: (error: Error) => {
       toast({

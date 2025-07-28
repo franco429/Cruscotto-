@@ -206,7 +206,7 @@ DocumentiIso/
 
 - **Ricerca Avanzata** per titolo, contenuto, tipo
 - **Filtri** per stato, scadenza, tipo file
-- **Anteprima** documenti
+- **Visualizzazione Integrata Universale** - Preview diretta di PDF, XLSX, XLS, DOCX senza download
 - **Gestione Versioni** e revisioni
 - **Notifiche Scadenze** automatiche
 

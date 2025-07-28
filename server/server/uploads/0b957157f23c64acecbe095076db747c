@@ -1,0 +1,84 @@
+BODY {
+	PADDING-RIGHT: 0px; PADDING-LEFT: 0px; FONT-SIZE: 10px; BACKGROUND: #ffffff; PADDING-BOTTOM: 0px; MARGIN: 0px auto; WIDTH: 780px; PADDING-TOP: 0px; FONT-FAMILY: arial; TEXT-ALIGN: center
+}
+#header {
+	BORDER-RIGHT: #cc9966 0px solid; PADDING-RIGHT: 0px; BORDER-TOP: #cc9966 0px solid; PADDING-LEFT: 0px; BACKGROUND: #ffffff; PADDING-BOTTOM: 10px; BORDER-LEFT: #cc9966 0px solid; PADDING-TOP: 0px; BORDER-BOTTOM: #cc9966 0px solid
+}
+#logo {
+	FLOAT: left; TOP: 0px; TEXT-ALIGN: left; positio: relative; left0: 
+}
+#logomini {
+	TEXT-ALIGN: right
+}
+#htitolo {
+	BORDER-RIGHT: #cc9966 0px solid; PADDING-RIGHT: 0px; BORDER-TOP: #cc9966 0px solid; PADDING-LEFT: 0px; FONT-SIZE: 18px; BACKGROUND: #fff; FLOAT: right; PADDING-BOTTOM: 10px; MARGIN: 5px 5px 0px 0px; BORDER-LEFT: #cc9966 2px solid; WIDTH: 450px; COLOR: #cc9966; PADDING-TOP: 10px; BORDER-BOTTOM: #cc9966 2px solid; FONT-FAMILY: arial black; TEXT-ALIGN: center
+}
+#corpo {
+	CLEAR: both; WIDTH: 780px; POSITION: relative
+}
+#colonnasx {
+	BORDER-RIGHT: #cc9966 0px solid; PADDING-RIGHT: 10px; BORDER-TOP: #cc9966 0px solid; PADDING-LEFT: 0px; BACKGROUND: #ffffff; PADDING-BOTTOM: 0px; MARGIN: 0px; BORDER-LEFT: #cc9966 0px solid; PADDING-TOP: 10px; BORDER-BOTTOM: #cc9966 0px solid; valign: top
+}
+#colonnatesto {
+	BORDER-RIGHT: #cc9966 0px solid; PADDING-RIGHT: 10px; BORDER-TOP: #cc9966 0px solid; PADDING-LEFT: 10px; BACKGROUND: #ffffff; PADDING-BOTTOM: 0px; BORDER-LEFT: #cc9966 1px solid; PADDING-TOP: 0px; BORDER-BOTTOM: #cc9966 0px solid
+}
+#dati {
+	BORDER-RIGHT: #cc9966 1px solid; PADDING-RIGHT: 2px; BORDER-TOP: #cc9966 1px solid; PADDING-LEFT: 2px; FONT-SIZE: 9px; BACKGROUND: #fae5e5; PADDING-BOTTOM: 5px; MARGIN: 0px 0px 0px 14px; BORDER-LEFT: #cc9966 1px solid; PADDING-TOP: 5px; BORDER-BOTTOM: #cc9966 1px solid; TEXT-ALIGN: center
+}
+#footer {
+	BORDER-RIGHT: #cc9966 0px solid; BORDER-TOP: #cc9966 1px solid; FONT-SIZE: 10px; BORDER-LEFT: #cc9966 0px solid; BORDER-BOTTOM: #cc9966 0px solid; TEXT-ALIGN: center
+}
+#dataoggi {
+	PADDING-RIGHT: 5px; PADDING-LEFT: 5px; FONT-SIZE: 9px; BACKGROUND: #cc9966; PADDING-BOTTOM: 5px; MARGIN: 0px 0px 0px 14px; COLOR: #ffffff; PADDING-TOP: 5px; TEXT-ALIGN: center
+}
+#dataupd {
+	PADDING-RIGHT: 5px; PADDING-LEFT: 5px; FONT-SIZE: 9px; BACKGROUND: #cc9966; PADDING-BOTTOM: 5px; MARGIN: 0px 0px 0px 14px; COLOR: #ffffff; PADDING-TOP: 5px; TEXT-ALIGN: center
+}
+#box {
+	PADDING-RIGHT: 0px; PADDING-LEFT: 0px; BACKGROUND: #ffffff; PADDING-BOTTOM: 5px; MARGIN: 5px 0px 0px; PADDING-TOP: 5px
+}
+#boxtesto {
+	PADDING-RIGHT: 0px; PADDING-LEFT: 0px; BACKGROUND: #ffffff; PADDING-BOTTOM: 0px; MARGIN: 5px 0px 0px; PADDING-TOP: 0px; TEXT-ALIGN: justify
+}
+#boxtitolo {
+	BORDER-RIGHT: #cc9966 0px solid; PADDING-RIGHT: 0px; BORDER-TOP: #cc9966 0px solid; PADDING-LEFT: 0px; FONT-SIZE: 18px; BACKGROUND: #cc9966; PADDING-BOTTOM: 3px; BORDER-LEFT: #cc9966 0px solid; COLOR: #ffffff; PADDING-TOP: 3px; BORDER-BOTTOM: #cc9966 0px solid; FONT-FAMILY: arial black; TEXT-ALIGN: center
+}
+.eurisp {
+	COLOR: #cc9966; FONT-FAMILY: arial black
+}
+.fascia {
+	BACKGROUND: #999999
+}
+.immagine {
+	FLOAT: right; MARGIN: 20px 0px 5px 10px
+}
+.immagine2 {
+	FLOAT: left; MARGIN: 20px 10px 5px 0px
+}
+.marchio {
+	FLOAT: left; MARGIN: 5px 10px 5px 0px
+}
+HR {
+	DISPLAY: none
+}
+UL.menu1 {
+	PADDING-RIGHT: 0px; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px 0px 0px 14px; PADDING-TOP: 0px; LIST-STYLE-TYPE: none; TEXT-ALIGN: center
+}
+UL.menu1 LI {
+	BORDER-TOP: #fff 0px solid; FONT-SIZE: 13px; BACKGROUND: #fff; LINE-HEIGHT: 22px; BORDER-BOTTOM: #fff 2px solid
+}
+UL.menu1 LI A {
+	BORDER-RIGHT: 10px solid; DISPLAY: block; FONT-FAMILY: arial blackcolor:#CC9966; TEXT-DECORATION: none
+}
+UL.menu1 LI A:link {
+	BORDER-RIGHT: #fff 10px solid; BORDER-TOP: #cc9966 0px solid; MARGIN: 0px; BORDER-LEFT: #cc9966 0px solid; COLOR: #cc9966; BORDER-BOTTOM: #cc9966 1px solid
+}
+UL.menu1 LI A:visited {
+	BORDER-RIGHT: #fff 10px solid; BORDER-TOP: #cc9966 0px solid; MARGIN: 0px; BORDER-LEFT: #cc9966 0px solid; COLOR: #cc9966; BORDER-BOTTOM: #cc9966 1px solid
+}
+UL.menu1 LI A:hover {
+	BORDER-RIGHT: #ff0000 10px solid; BORDER-TOP: #ff0000 0px solid; BACKGROUND: #fff; MARGIN: 0px; BORDER-LEFT: #ff0000 0px solid; COLOR: #ff0000; BORDER-BOTTOM: #ff0000 1px solid
+}
+UL.menu1 LI A:active {
+	BORDER-RIGHT: #ff0000 10px solid; BORDER-TOP: #ff0000 0px solid; BACKGROUND: #fff; MARGIN: 0px; BORDER-LEFT: #ff0000 0px solid; COLOR: #ff0000; BORDER-BOTTOM: #ff0000 1px solid
+}

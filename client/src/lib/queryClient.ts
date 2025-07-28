@@ -8,7 +8,7 @@ async function getCSRFToken(forceRefresh = false): Promise<string> {
   if (!csrfToken || forceRefresh) {
     try {
       const response = await fetch(`${API_BASE_URL}/api/csrf-token`, {
-        credentials: 'include'
+        credentials: "include",
       });
       if (response.ok) {
         const data = await response.json();
@@ -21,16 +21,16 @@ async function getCSRFToken(forceRefresh = false): Promise<string> {
       csrfToken = null;
     }
   }
-  return csrfToken || '';
+  return csrfToken || "";
 }
 
 //  Funzione helper per gestire le risposte non-OK
 async function handleApiError(res: Response): Promise<Error> {
-  const contentType = res.headers.get('content-type');
+  const contentType = res.headers.get("content-type");
   let errorMessage = `HTTP Error: ${res.status} ${res.statusText}`;
 
   try {
-    if (contentType && contentType.includes('application/json')) {
+    if (contentType && contentType.includes("application/json")) {
       const errorJson = await res.json();
       errorMessage = errorJson.message || errorJson.error || errorMessage;
     } else {
@@ -40,27 +40,37 @@ async function handleApiError(res: Response): Promise<Error> {
   } catch (e) {
     // Fallback se il parsing del corpo dell'errore fallisce
   }
-  
+
   return new Error(errorMessage);
 }
 
 export async function apiRequest(
   method: string,
   url: string,
-  data?: unknown | undefined,
+  data?: unknown | undefined
 ): Promise<Response> {
   //  Forza il refresh del token per ogni richiesta modificante
-  const csrfToken = await getCSRFToken(["POST", "PUT", "DELETE", "PATCH"].includes(method));
+  const csrfToken = await getCSRFToken(
+    ["POST", "PUT", "DELETE", "PATCH"].includes(method)
+  );
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+  let headers: Record<string, string> = {
     "X-CSRF-Token": csrfToken,
   };
+  let body: BodyInit | undefined;
+
+  if (data instanceof FormData) {
+    body = data;
+    // NON impostare Content-Type, lo fa il browser!
+  } else if (data !== undefined) {
+    headers["Content-Type"] = "application/json";
+    body = JSON.stringify(data);
+  }
 
   const res = await fetch(`${API_BASE_URL}${url}`, {
     method,
     headers,
-    body: data ? JSON.stringify(data) : undefined,
+    body,
     credentials: "include",
   });
 
@@ -68,7 +78,7 @@ export async function apiRequest(
     //  Usa la nuova funzione per lanciare un errore significativo
     throw await handleApiError(res);
   }
-  
+
   return res;
 }
 
@@ -86,18 +96,17 @@ export const getQueryFn: <T>(options: {
       const res = await fetch(`${API_BASE_URL}${queryKey[0] as string}`, {
         credentials: "include",
       });
-      
+
       if (!res.ok) {
         if (res.status === 401 && unauthorizedBehavior === "returnNull") {
           return null;
         }
         throw await handleApiError(res);
       }
-      
+
       //  Gestisce il caso di risposta OK ma corpo vuoto (es. 204 No Content)
       const text = await res.text();
       return text ? JSON.parse(text) : null;
-
     } catch (error) {
       console.error(`Query failed for key \"${queryKey[0]}\":`, error);
       throw error;
@@ -105,11 +114,11 @@ export const getQueryFn: <T>(options: {
   };
 
 export function handleQueryError(error: unknown): void {
-  console.error('Query error:', error);
+  console.error("Query error:", error);
 }
 
 export function handleMutationError(error: unknown): void {
-  console.error('Mutation error:', error);
+  console.error("Mutation error:", error);
 }
 
 export const queryClient = new QueryClient({
@@ -121,7 +130,7 @@ export const queryClient = new QueryClient({
       staleTime: 5 * 60 * 1000, // 5 minuti
       gcTime: 15 * 60 * 1000, // 15 minuti
       retry: (failureCount, error: any) => {
-        const status = parseInt(error?.message?.split(':')[0]);
+        const status = parseInt(error?.message?.split(":")[0]);
         if (status >= 400 && status < 500) {
           return false; // Non riprovare per errori client (4xx)
         }
@@ -130,7 +139,7 @@ export const queryClient = new QueryClient({
     },
     mutations: {
       retry: (failureCount, error: any) => {
-        const status = parseInt(error?.message?.split(':')[0]);
+        const status = parseInt(error?.message?.split(":")[0]);
         if (status >= 400 && status < 500) {
           return false;
         }

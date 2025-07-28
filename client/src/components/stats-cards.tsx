@@ -19,8 +19,7 @@ interface StatsCardsProps {
 
 export default function StatsCards({ stats }: StatsCardsProps) {
   // Calcola documenti validi (non in scadenza, non scaduti, non obsoleti)
-  const validDocs =
-    stats.total - stats.expiringSoon - stats.expired - stats.obsolete;
+  const validDocs = Math.max(0, stats.total - stats.expiringSoon - stats.expired - stats.obsolete);
 
   return (
     <>

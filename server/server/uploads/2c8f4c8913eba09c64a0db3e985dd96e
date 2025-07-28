@@ -1,0 +1,180 @@
+BODY {
+	COLOR: #000000; BORDER-TOP-STYLE: none; FONT-FAMILY: "Lucida Sans", "Arial", "AvantGarde Md BT", "sans serif"; BORDER-RIGHT-STYLE: none; BORDER-LEFT-STYLE: none; BACKGROUND-COLOR: #ffffff; TEXT-ALIGN: justify; BORDER-BOTTOM-STYLE: none
+}
+.sfondo {
+	BACKGROUND: #ffffe3
+}
+HR {
+	COLOR: #ff6600; HEIGHT: 1px
+}
+A:link {
+	COLOR: #cc0033; TEXT-DECORATION: underline
+}
+A:visited {
+	COLOR: #ff9900; TEXT-DECORATION: none
+}
+A:hover {
+	FONT-SIZE: 102%; COLOR: #ff6600; TEXT-DECORATION: underline
+}
+A.cartabck:link {
+	FONT-SIZE: 102%; COLOR: #2c9939; TEXT-DECORATION: underline
+}
+A.cartabck:visited {
+	COLOR: #2c9939; TEXT-DECORATION: none
+}
+A.cartabck:hover {
+	FONT-SIZE: 102%; COLOR: #2c9939; TEXT-DECORATION: underline
+}
+TABLE {
+	FONT-SIZE: 14pt; BORDER-TOP-STYLE: none; BORDER-RIGHT-STYLE: none; BORDER-LEFT-STYLE: none; TEXT-ALIGN: left; BORDER-BOTTOM-STYLE: none
+}
+TABLE.GARE {
+	FONT-SIZE: 10pt; WIDTH: 100%; TEXT-ALIGN: left
+}
+TABLE.MINI {
+	FONT-SIZE: 8pt; WIDTH: 100%; BORDER-TOP-STYLE: none; BORDER-RIGHT-STYLE: none; BORDER-LEFT-STYLE: none; TEXT-ALIGN: left; BORDER-BOTTOM-STYLE: none
+}
+TABLE.LAV {
+	FONT-SIZE: 8pt; MARGIN-LEFT: 20pt; BORDER-TOP-STYLE: none; MARGIN-RIGHT: 20pt; BORDER-RIGHT-STYLE: none; BORDER-LEFT-STYLE: none; TEXT-ALIGN: left; BORDER-BOTTOM-STYLE: none
+}
+TD.LABEL {
+	FLOAT: right
+}
+TD.BOX {
+	FLOAT: left
+}
+TABLE.FORM {
+	
+}
+IMG {
+	BORDER-TOP-STYLE: none; BORDER-RIGHT-STYLE: none; BORDER-LEFT-STYLE: none; BORDER-BOTTOM-STYLE: none
+}
+BR.break {
+	CLEAR: left
+}
+#titolopag {
+	FONT-WEIGHT: bolder; FONT-SIZE: 28px; COLOR: #ff6600; TEXT-ALIGN: center
+}
+#occhiellopag {
+	FONT-WEIGHT: bolder; FONT-SIZE: 16px; COLOR: #006600; TEXT-ALIGN: center
+}
+.cartello {
+	BACKGROUND-COLOR: #ffffff
+}
+.riq {
+	BORDER-RIGHT: #cccccc thin dotted; PADDING-RIGHT: 10px; BORDER-TOP: #cccccc thin dotted; PADDING-LEFT: 10px; PADDING-BOTTOM: 10px; MARGIN-LEFT: 20%; BORDER-LEFT: #cccccc thin dotted; MARGIN-RIGHT: 20%; PADDING-TOP: 10px; BORDER-BOTTOM: #cccccc thin dotted
+}
+.label {
+	FONT-SIZE: 90%; COLOR: #990000; FONT-STYLE: italic
+}
+.value {
+	FONT-WEIGHT: 200; COLOR: #000000
+}
+.avviso {
+	BORDER-RIGHT: #990000 thin solid; PADDING-RIGHT: 5px; BORDER-TOP: #990000 thin solid; DISPLAY: block; PADDING-LEFT: 5px; FONT-SIZE: 75%; PADDING-BOTTOM: 5px; MARGIN: 5% 10%; BORDER-LEFT: #990000 thin solid; PADDING-TOP: 5px; BORDER-BOTTOM: #990000 thin solid; TEXT-ALIGN: center
+}
+.clDescription {
+	BORDER-RIGHT: #000000 1px solid; PADDING-RIGHT: 3px; BORDER-TOP: #000000 1px solid; PADDING-LEFT: 3px; FONT-SIZE: 65%; PADDING-BOTTOM: 3px; BORDER-LEFT: #000000 1px solid; WIDTH: 142px; PADDING-TOP: 3px; BORDER-BOTTOM: #000000 1px solid; FONT-FAMILY: verdana,arial,helvetica; BACKGROUND-COLOR: #ffffcc; TEXT-ALIGN: left
+}
+#divDescription {
+	Z-INDEX: 200; VISIBILITY: hidden; WIDTH: 200px; POSITION: absolute
+}
+.stampa {
+	BORDER-RIGHT: #990000 thin dotted; BORDER-TOP: #990000 thin dotted; BORDER-LEFT: #990000 thin dotted; BORDER-BOTTOM: #990000 thin dotted
+}
+BODY.popup {
+	BORDER-RIGHT: #b9db7d dashed; BORDER-TOP: #b9db7d dashed; BACKGROUND: #eb9448; BORDER-LEFT: #b9db7d dashed; BORDER-BOTTOM: #b9db7d dashed
+}
+A.popup:link {
+	COLOR: #2c9939; TEXT-DECORATION: none
+}
+A.popup:visited {
+	COLOR: #2c9939; TEXT-DECORATION: none
+}
+A.popup:hover {
+	COLOR: #e2633e; TEXT-DECORATION: none
+}
+.form {
+	BORDER-RIGHT: #999933 thin dotted; BORDER-TOP: #999933 thin dotted; FONT-SIZE: 12px; BORDER-LEFT: #999933 thin dotted; BORDER-BOTTOM: #999933 thin dotted; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif
+}
+#box {
+	MARGIN: 0px auto; WIDTH: 770px; TEXT-ALIGN: left
+}
+.menu {
+	BORDER-RIGHT: #006600 1px solid; PADDING-RIGHT: 10px; BORDER-TOP: #006600 1px solid; DISPLAY: block; PADDING-LEFT: 10px; FONT-SIZE: 85%; PADDING-BOTTOM: 10px; BORDER-LEFT: #006600 1px solid; COLOR: #ff6600; PADDING-TOP: 10px; BORDER-BOTTOM: #006600 1px solid; TEXT-ALIGN: left
+}
+.menu A {
+	COLOR: #ff6600; TEXT-DECORATION: none
+}
+A.menu:link {
+	COLOR: #ff6600; TEXT-DECORATION: none
+}
+A.menu:active {
+	COLOR: #ff6600; TEXT-DECORATION: none
+}
+A.menu:hover {
+	COLOR: #ff6600; TEXT-DECORATION: underline
+}
+.puntomenu {
+	PADDING-RIGHT: 4px; PADDING-LEFT: 4px; PADDING-BOTTOM: 4px; MARGIN: 4px; PADDING-TOP: 4px; BORDER-BOTTOM: black 1px solid
+}
+.menu .tit {
+	BORDER-RIGHT: medium none; BORDER-TOP: medium none; FONT-WEIGHT: bold; FONT-SIZE: 16px; BORDER-LEFT: medium none; COLOR: #006600; BORDER-BOTTOM: medium none; TEXT-ALIGN: center
+}
+#sx {
+	FLOAT: left; MARGIN: 0px; VERTICAL-ALIGN: top; WIDTH: 240px; HEIGHT: 100%
+}
+#centro {
+	FLOAT: left; MARGIN: 0px 0px 0px 25px; WIDTH: 240px
+}
+#dx {
+	FLOAT: right; MARGIN: 0px 0px 0px 25px; WIDTH: 235px
+}
+TABLE.rs {
+	FONT-SIZE: 8pt; WIDTH: 100%; BORDER-COLLAPSE: collapse; TEXT-ALIGN: left
+}
+TABLE.rs TD {
+	PADDING-RIGHT: 5px; PADDING-LEFT: 5px; PADDING-BOTTOM: 5px; MARGIN: 5px; PADDING-TOP: 5px; BORDER-BOTTOM: black 1px solid
+}
+.noborder {
+	BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px
+}
+.border {
+	BORDER-RIGHT: #000000 thin solid; BORDER-TOP: #000000 thin solid; BORDER-LEFT: #000000 thin solid; BORDER-BOTTOM: #000000 thin solid
+}
+.border TD {
+	BORDER-RIGHT: #000000 thin solid; BORDER-TOP: #000000 thin solid; BORDER-LEFT: #000000 thin solid; BORDER-BOTTOM: #000000 thin solid
+}
+.apice {
+	VERTICAL-ALIGN: super
+}
+.pedice {
+	VERTICAL-ALIGN: sub
+}
+UL.nomargin {
+	MARGIN-TOP: 0px; MARGIN-BOTTOM: 0px
+}
+.n_art {
+	FONT-WEIGHT: 500; FONT-SIZE: 19px; FONT-STYLE: normal; TEXT-ALIGN: center
+}
+HR.n_fineart {
+	WIDTH: 15%; COLOR: #ff9933; HEIGHT: 1px
+}
+.n_ente {
+	FONT-WEIGHT: 600; FONT-SIZE: 22px; FONT-STYLE: normal; TEXT-ALIGN: center
+}
+.n_titolo {
+	FONT-WEIGHT: 600; FONT-SIZE: 28px; FONT-STYLE: normal; TEXT-ALIGN: center
+}
+.n_gazzetta {
+	FONT-WEIGHT: 600; FONT-SIZE: 12px; FONT-STYLE: normal; TEXT-ALIGN: center
+}
+.n_descr {
+	FONT-WEIGHT: 600; FONT-SIZE: 16px; FONT-STYLE: normal; TEXT-ALIGN: center
+}
+.n_ilsogg {
+	FONT-WEIGHT: 600; FONT-SIZE: 14px; FONT-STYLE: normal; TEXT-ALIGN: center
+}
+.barrato {
+	TEXT-DECORATION: line-through
+}

@@ -49,6 +49,16 @@ import { z } from "zod";
 import { logError } from "./logger";
 import { validateContactRequest } from "./security";
 import logger from "./logger";
+import multer from "multer";
+// Assicurati che le directory esistano
+const uploadsDir = path.join(process.cwd(), "server", "uploads");
+
+// Crea le directory se non esistono
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const upload = multer({ dest: uploadsDir });
 
 // Helper function per gestire il timeout della sessione
 const handleSessionTimeout = (
@@ -170,14 +180,24 @@ const adminRegistrationSchema = z.object({
   clientName: z.string().min(2, "Il nome dell'azienda è obbligatorio"),
   driveFolderUrl: z
     .string()
-    .url("Inserisci un URL valido per la cartella Google Drive"),
+    .url("Inserisci un URL valido per la cartella Google Drive")
+    .optional()
+    .or(z.literal("")),
   companyCode: z.string().min(1, "Il codice aziendale è obbligatorio"),
 });
 
 export async function registerRoutes(app: Express): Promise<Express> {
-  app.post("/api/register/admin", async (req, res) => {
+  app.post("/api/register/admin", upload.any(), async (req, res) => {
     try {
-      const validation = adminRegistrationSchema.safeParse(req.body);
+      // I campi arrivano sempre come stringa da FormData, quindi normalizzo
+      const body = {
+        email: req.body.email,
+        password: req.body.password,
+        clientName: req.body.clientName,
+        driveFolderUrl: req.body.driveFolderUrl,
+        companyCode: req.body.companyCode,
+      };
+      const validation = adminRegistrationSchema.safeParse(body);
       if (!validation.success) {
         return res.status(400).json({
           message: "Dati di registrazione non validi.",
@@ -187,11 +207,14 @@ export async function registerRoutes(app: Express): Promise<Express> {
       const { email, password, companyCode, clientName, driveFolderUrl } =
         validation.data;
 
-      const driveFolderId = extractFolderIdFromUrl(driveFolderUrl);
-      if (!driveFolderId) {
-        return res
-          .status(400)
-          .json({ message: "URL della cartella Google Drive non valido." });
+      let driveFolderId: string | null = null;
+      if (driveFolderUrl && driveFolderUrl !== "") {
+        driveFolderId = extractFolderIdFromUrl(driveFolderUrl);
+        if (!driveFolderId) {
+          return res
+            .status(400)
+            .json({ message: "URL della cartella Google Drive non valido." });
+        }
       }
 
       const passwordHash = await hashPassword(password);
@@ -201,8 +224,27 @@ export async function registerRoutes(app: Express): Promise<Express> {
         passwordHash,
         companyCode,
         clientName,
-        driveFolderId,
+        driveFolderId: driveFolderId || "",
       });
+
+      // Processa i file caricati in locale (se presenti)
+      if (req.files && Array.isArray(req.files) && req.files.length > 0) {
+        for (const file of req.files) {
+          // Usa processDocumentFile per estrarre info dal nome file
+          const docInfo = await processDocumentFile(
+            file.originalname,
+            "", // Nessun driveUrl per file locale
+            file.path // Percorso temporaneo del file caricato
+          );
+          if (docInfo) {
+            await storage.createDocument({
+              ...docInfo,
+              clientId: client.legacyId,
+              ownerId: user.legacyId,
+            });
+          }
+        }
+      }
 
       await storage.createLog({
         userId: user.legacyId,
@@ -232,7 +274,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
         error instanceof Error
           ? error.message
           : "Errore sconosciuto durante la registrazione.";
-      res.status(400).json({ message: errorMessage });
+      res.status(500).json({ message: errorMessage });
     }
   });
 
@@ -746,11 +788,9 @@ export async function registerRoutes(app: Express): Promise<Express> {
         user.password
       );
       if (isNewPasswordSame) {
-        return res
-          .status(400)
-          .json({
-            message: "La nuova password deve essere diversa da quella attuale",
-          });
+        return res.status(400).json({
+          message: "La nuova password deve essere diversa da quella attuale",
+        });
       }
 
       const hashedPassword = await hashPassword(newPassword);
@@ -838,11 +878,9 @@ export async function registerRoutes(app: Express): Promise<Express> {
       // Verifica se il client ha i token Google configurati
       if (!client.google?.refreshToken) {
         logger.error("Sync failed: no Google refresh token", { clientId });
-        return res
-          .status(400)
-          .json({
-            message: "Google Drive non connesso. Connetti prima Google Drive.",
-          });
+        return res.status(400).json({
+          message: "Google Drive non connesso. Connetti prima Google Drive.",
+        });
       }
 
       logger.info("Starting manual sync", {
@@ -928,11 +966,9 @@ export async function registerRoutes(app: Express): Promise<Express> {
         hasDocuments: documentCount > 0,
       });
     } catch (error) {
-      res
-        .status(500)
-        .json({
-          message: "Errore nel recuperare lo stato della sincronizzazione",
-        });
+      res.status(500).json({
+        message: "Errore nel recuperare lo stato della sincronizzazione",
+      });
     }
   });
 
@@ -1253,12 +1289,10 @@ export async function registerRoutes(app: Express): Promise<Express> {
       const documentDir = path.resolve(documentsRoot, document.path);
       const requestedFile = path.resolve(filePath);
       if (!requestedFile.startsWith(documentDir + path.sep)) {
-        return res
-          .status(400)
-          .json({
-            message:
-              "Accesso al file non consentito: il file deve essere sotto la directory del documento.",
-          });
+        return res.status(400).json({
+          message:
+            "Accesso al file non consentito: il file deve essere sotto la directory del documento.",
+        });
       }
       // Protezione path traversal
       if (path.relative(documentDir, requestedFile).includes("..")) {
@@ -1559,12 +1593,10 @@ export async function registerRoutes(app: Express): Promise<Express> {
         },
       });
 
-      res
-        .status(500)
-        .json({
-          success: false,
-          message: "Errore durante la verifica del link",
-        });
+      res.status(500).json({
+        success: false,
+        message: "Errore durante la verifica del link",
+      });
     }
   });
 
@@ -1899,11 +1931,9 @@ export async function registerRoutes(app: Express): Promise<Express> {
         logger.error("Excel update failed: no Google refresh token", {
           clientId,
         });
-        return res
-          .status(400)
-          .json({
-            message: "Google Drive non connesso. Connetti prima Google Drive.",
-          });
+        return res.status(400).json({
+          message: "Google Drive non connesso. Connetti prima Google Drive.",
+        });
       }
 
       // Ottieni il client Google Drive
@@ -1961,11 +1991,9 @@ export async function registerRoutes(app: Express): Promise<Express> {
         userId: req.user?.legacyId,
       });
 
-      res
-        .status(500)
-        .json({
-          message: "Errore nell'avviare l'aggiornamento delle date di scadenza",
-        });
+      res.status(500).json({
+        message: "Errore nell'avviare l'aggiornamento delle date di scadenza",
+      });
     }
   });
 
@@ -2080,6 +2108,260 @@ export async function registerRoutes(app: Express): Promise<Express> {
       res
         .status(500)
         .json({ message: "Errore nell'aggiornamento degli stati di allerta" });
+    }
+  });
+
+  // Upload documenti locali (cartella)
+  app.post(
+    "/api/documents/local-upload",
+    isAdmin,
+    upload.array("localFiles"),
+    async (req, res) => {
+      try {
+        logger.info("Starting local document upload", {
+          userId: req.user?.legacyId,
+          clientId: req.user?.clientId,
+          fileCount: req.files?.length || 0,
+        });
+
+        if (!req.user?.clientId) {
+          logger.warn("Upload denied - user not associated with client", {
+            userId: req.user?.legacyId,
+          });
+          return res.status(403).json({
+            message: "Accesso negato: l'utente non è associato a nessun client",
+          });
+        }
+
+        const clientId = req.user.clientId;
+        const userId = req.user.legacyId;
+        const files = req.files as Express.Multer.File[];
+
+        if (!files || files.length === 0) {
+          logger.warn("No files uploaded", { userId, clientId });
+          return res.status(400).json({ message: "Nessun file caricato" });
+        }
+
+        logger.info("Processing uploaded files", {
+          userId,
+          clientId,
+          fileCount: files.length,
+          fileNames: files.map(f => f.originalname),
+        });
+
+        const processedDocs = [];
+        const errors = [];
+
+        for (const file of files) {
+          try {
+            logger.debug("Processing file", {
+              fileName: file.originalname,
+              fileSize: file.size,
+              filePath: file.path,
+              userId,
+              clientId,
+            });
+
+            // Usa la logica già esistente per processare i file (estrai metadati, scadenze, revisioni)
+            const docData = await processDocumentFile(
+              file.originalname,
+              "",
+              file.path
+            );
+
+            if (!docData) {
+              logger.warn("Failed to process document file", {
+                fileName: file.originalname,
+                userId,
+                clientId,
+              });
+              errors.push(`Impossibile processare il file: ${file.originalname}`);
+              continue;
+            }
+
+            // Associa client e owner
+            docData.clientId = clientId;
+            docData.ownerId = userId;
+            // Salva anche il nome fisico reale del file caricato
+            docData.filePath = file.filename;
+
+            logger.debug("Document data processed", {
+              fileName: file.originalname,
+              title: docData.title,
+              path: docData.path,
+              revision: docData.revision,
+              fileType: docData.fileType,
+              userId,
+              clientId,
+            });
+
+            // Salva o aggiorna il documento (se già esiste per path+title+revision, aggiorna)
+            const existing = await storage.getDocumentByPathAndTitleAndRevision(
+              docData.path,
+              docData.title,
+              docData.revision,
+              clientId
+            );
+
+            let savedDoc;
+            if (existing) {
+              logger.info("Updating existing document", {
+                documentId: existing.legacyId,
+                fileName: file.originalname,
+                userId,
+                clientId,
+              });
+              savedDoc = await storage.updateDocument(existing.legacyId, docData);
+            } else {
+              logger.info("Creating new document", {
+                fileName: file.originalname,
+                userId,
+                clientId,
+              });
+              savedDoc = await storage.createDocument(docData);
+            }
+
+            processedDocs.push(savedDoc);
+
+            logger.info("File processed successfully", {
+              fileName: file.originalname,
+              documentId: savedDoc.legacyId,
+              userId,
+              clientId,
+            });
+
+          } catch (fileError) {
+            logger.error("Error processing individual file", {
+              fileName: file.originalname,
+              error: fileError instanceof Error ? fileError.message : String(fileError),
+              userId,
+              clientId,
+            });
+            errors.push(`Errore nel processare ${file.originalname}: ${fileError instanceof Error ? fileError.message : 'Errore sconosciuto'}`);
+          }
+        }
+
+        logger.info("Local upload completed", {
+          userId,
+          clientId,
+          processed: processedDocs.length,
+          errors: errors.length,
+        });
+
+        if (errors.length > 0) {
+          return res.status(207).json({
+            success: true,
+            documents: processedDocs,
+            errors: errors,
+            message: `Upload completato con ${errors.length} errori`,
+          });
+        }
+
+        res.json({ 
+          success: true, 
+          documents: processedDocs,
+          message: `${processedDocs.length} documenti caricati con successo`,
+        });
+
+      } catch (error) {
+        logger.error("Error during local document upload", {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          userId: req.user?.legacyId,
+          clientId: req.user?.clientId,
+        });
+
+        res.status(500).json({ 
+          message: "Errore durante l'upload dei documenti locali",
+          error: error instanceof Error ? error.message : "Errore sconosciuto",
+        });
+      }
+    }
+  );
+
+  app.get("/api/documents/:id/preview", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      const document = await storage.getDocument(id);
+      if (!document) {
+        return res.status(404).json({ message: "Documento non trovato" });
+      }
+
+      // Solo file caricati localmente (driveUrl vuoto)
+      if (document.driveUrl) {
+        return res
+          .status(400)
+          .json({ message: "Anteprima non disponibile per file Google Drive" });
+      }
+
+      // Path file originale (robusto: path o filePath)
+      let originalPath = path.join(uploadsDir, document.path);
+      if (!fs.existsSync(originalPath) && document.filePath) {
+        const altPath = path.join(uploadsDir, document.filePath);
+        if (fs.existsSync(altPath)) {
+          originalPath = altPath;
+        } else {
+          return res.status(404).json({ message: "File non trovato" });
+        }
+      } else if (!fs.existsSync(originalPath)) {
+        return res.status(404).json({ message: "File non trovato" });
+      }
+
+      // Determina il content-type corretto
+      const mimeTypes = {
+        pdf: 'application/pdf',
+        doc: 'application/msword',
+        docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        xls: 'application/vnd.ms-excel',
+        xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      };
+      const ext = document.fileType.toLowerCase();
+      const contentType = mimeTypes[ext] || 'application/octet-stream';
+
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Content-Disposition', `inline; filename="${document.title}.${document.fileType}"`);
+      res.sendFile(originalPath);
+    } catch (error) {
+      console.error("Errore download documento:", error);
+      res.status(500).json({
+        message: "Errore download documento",
+        error: error instanceof Error ? error.message : "Errore sconosciuto"
+      });
+    }
+  });
+
+  app.get("/api/documents/:id/download", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      const document = await storage.getDocument(id);
+      if (!document) {
+        return res.status(404).json({ message: "Documento non trovato" });
+      }
+
+      // Se è un file Google Drive, reindirizza
+      if (document.driveUrl) {
+        return res.redirect(document.driveUrl);
+      }
+
+      // Path file originale
+      const originalPath = path.join(uploadsDir, document.path);
+      if (!fs.existsSync(originalPath)) {
+        return res.status(404).json({ message: "File non trovato" });
+      }
+
+      // Imposta headers per il download
+      const fileName = `${document.title}.${document.fileType}`;
+      res.setHeader("Content-Type", "application/octet-stream");
+      res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+      
+      // Stream del file
+      return fs.createReadStream(originalPath).pipe(res);
+    } catch (error) {
+      console.error("Errore download documento:", error);
+      res.status(500).json({ 
+        message: "Errore download documento",
+        error: error instanceof Error ? error.message : "Errore sconosciuto"
+      });
     }
   });
 

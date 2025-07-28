@@ -31,22 +31,36 @@ export default function Footer() {
               monitoraggio della conformità.
             </p>
             <div className="flex space-x-3 sm:space-x-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="hover:text-primary h-8 w-8 sm:h-9 sm:w-9"
+              <a
+                href="https://www.facebook.com/?locale=it_IT"
+                target="_blank"
+                rel="noopener noreferrer"
                 aria-label="Facebook"
               >
-                <Facebook className="h-4 w-4 sm:h-5 sm:w-5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="hover:text-primary h-8 w-8 sm:h-9 sm:w-9"
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="hover:text-primary h-4 w-4"
+                  asChild
+                >
+                  <Facebook className="h-3 w-3" />
+                </Button>
+              </a>
+              <a
+                href="https://www.instagram.com/"
+                target="_blank"
+                rel="noopener noreferrer"
                 aria-label="Instagram"
               >
-                <Instagram className="h-4 w-4 sm:h-5 sm:w-5" />
-              </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="hover:text-primary h-4 w-4"
+                  asChild
+                >
+                  <Instagram className="h-3 w-3" />
+                </Button>
+              </a>
             </div>
           </div>
 

@@ -76,6 +76,12 @@ export class MongoStorage implements IStorage {
       return;
     }
 
+    // HOTFIX: se l'utente è già bloccato, non incrementare ulteriormente
+    if (userDoc.lockoutUntil && new Date(userDoc.lockoutUntil) > new Date()) {
+      console.log(`[DEBUG] recordFailedLoginAttempt: email=${email.toLowerCase()} is already locked out until ${userDoc.lockoutUntil}, skipping increment.`);
+      return;
+    }
+
     const now = new Date();
     const currentAttempts = userDoc.failedLoginAttempts || 0;
     const newAttemptCount = currentAttempts + 1;
@@ -95,6 +101,9 @@ export class MongoStorage implements IStorage {
       newLockoutUntil = new Date(now.getTime() + lockoutDurations[5]);
     }
 
+    // DEBUG LOG
+    console.log(`[DEBUG] recordFailedLoginAttempt: email=${email.toLowerCase()}, before: failedLoginAttempts=${currentAttempts}, lockoutUntil=${userDoc.lockoutUntil}`);
+
     try {
       await UserModel.updateOne(
         { legacyId: userDoc.legacyId },
@@ -105,16 +114,24 @@ export class MongoStorage implements IStorage {
           },
         }
       ).exec();
+      // DEBUG LOG
+      console.log(`[DEBUG] recordFailedLoginAttempt: email=${email.toLowerCase()}, after: failedLoginAttempts=${newAttemptCount}, lockoutUntil=${newLockoutUntil}`);
     } catch (error) {
       // Errore durante l'aggiornamento dei tentativi di login.
       // Da loggare centralmente.
+      console.error('[ERROR] recordFailedLoginAttempt:', error);
     }
   }
   public async resetLoginAttempts(email: string): Promise<void> {
+    // DEBUG LOG
+    const userDoc = await UserModel.findOne({ email: email.toLowerCase() }).lean().exec();
+    console.log(`[DEBUG] resetLoginAttempts: email=${email.toLowerCase()}, before: failedLoginAttempts=${userDoc?.failedLoginAttempts}, lockoutUntil=${userDoc?.lockoutUntil}`);
     await UserModel.updateOne(
       { email: email.toLowerCase() },
       { $set: { failedLoginAttempts: 0, lockoutUntil: null } }
     ).exec();
+    // DEBUG LOG
+    console.log(`[DEBUG] resetLoginAttempts: email=${email.toLowerCase()}, after: failedLoginAttempts=0, lockoutUntil=null`);
   }
 
   async registerNewAdminAndClient(registrationData: {
@@ -122,7 +139,7 @@ export class MongoStorage implements IStorage {
     passwordHash: string;
     companyCode: string;
     clientName: string;
-    driveFolderId: string;
+    driveFolderId?: string;
   }): Promise<{ user: User; client: Client }> {
     const { email, passwordHash, companyCode, clientName, driveFolderId } =
       registrationData;
@@ -159,7 +176,9 @@ export class MongoStorage implements IStorage {
       await codeDoc.save({ session });
 
       const newClient = await this.createClient(
-        { name: clientName, driveFolderId },
+        driveFolderId && driveFolderId !== ""
+          ? { name: clientName, driveFolderId }
+          : { name: clientName },
         session
       );
 
@@ -348,8 +367,8 @@ export class MongoStorage implements IStorage {
     client: InsertClient,
     session?: ClientSession
   ): Promise<Client> {
-    if (!client.name || !client.driveFolderId) {
-      throw new Error("Nome e ID cartella Drive sono obbligatori");
+    if (!client.name) {
+      throw new Error("Nome azienda obbligatorio");
     }
     const legacyId = await getNextSequence("clientId");
     const newClient = new ClientModel({ ...client, legacyId });

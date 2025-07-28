@@ -6,9 +6,11 @@ export const strongPasswordSchema = z
   .regex(/[A-Z]/, "La password deve contenere almeno una lettera maiuscola")
   .regex(/[a-z]/, "La password deve contenere almeno una lettera minuscola")
   .regex(/\d/, "La password deve contenere almeno un numero")
-  .regex(/[@$!%*?&]/, "La password deve contenere almeno un carattere speciale (@$!%*?&)")
+  .regex(
+    /[@$!%*?&]/,
+    "La password deve contenere almeno un carattere speciale (@$!%*?&)"
+  )
   .refine((password) => {
-    
     return /^[A-Za-z\d@$!%*?&]+$/.test(password);
   }, "La password contiene caratteri non permessi");
 
@@ -31,7 +33,7 @@ export const insertDocumentSchema = z.object({
 
 export const insertUserSchema = z.object({
   email: z.string().email(),
-  password: strongPasswordSchema, 
+  password: strongPasswordSchema,
   role: z.enum(["superadmin", "admin", "viewer"]),
   clientId: z.number().nullable(),
   lastLogin: z.date().nullable(),
@@ -54,22 +56,23 @@ export const verifyCompanyCodeSchema = z.object({
   code: z.string(),
 });
 
-
 export const loginSchema = z.object({
   email: z.string().email("Inserisci un indirizzo email valido"),
   password: z.string().min(1, "La password è obbligatoria"),
   remember: z.boolean().default(false),
 });
 
-
 export const registerAdminSchema = z.object({
   email: z.string().email("Inserisci un indirizzo email valido"),
   password: strongPasswordSchema,
   clientName: z.string().min(2, "Il nome dell'azienda è obbligatorio"),
-  driveFolderUrl: z.string().url("Inserisci un URL valido per la cartella Google Drive"),
+  driveFolderUrl: z
+    .string()
+    .url("Inserisci un URL valido per la cartella Google Drive")
+    .optional()
+    .or(z.literal("")),
   companyCode: z.string().min(1, "Il codice aziendale è obbligatorio"),
 });
-
 
 export const documentSchema = z.object({
   title: z.string().min(1, "Il titolo è obbligatorio"),
@@ -86,7 +89,6 @@ export const documentSchema = z.object({
   clientId: z.number().optional(),
   ownerId: z.number().optional(),
 });
-
 
 export const documentUpdateSchema = documentSchema.partial();
 

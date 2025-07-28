@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -54,14 +54,20 @@ const registerAdminSchema = z
       .regex(/[A-Z]/, "La password deve contenere almeno una lettera maiuscola")
       .regex(/[a-z]/, "La password deve contenere almeno una lettera minuscola")
       .regex(/\d/, "La password deve contenere almeno un numero")
-      .regex(/[@$!%*?&]/, "La password deve contenere almeno un carattere speciale (@$!%*?&)"),
+      .regex(
+        /[@$!%*?&]/,
+        "La password deve contenere almeno un carattere speciale (@$!%*?&)"
+      ),
     confirmPassword: z
       .string()
       .min(8, "La password deve contenere almeno 8 caratteri"),
     clientName: z.string().min(2, "Il nome dell'azienda è obbligatorio"),
     driveFolderUrl: z
       .string()
-      .url("Inserisci un URL valido per la cartella Google Drive"),
+      .url("Inserisci un URL valido per la cartella Google Drive")
+      .optional()
+      .or(z.literal("")),
+    localFiles: z.any().optional(),
     companyCode: z.string().min(1, "Il codice aziendale è obbligatorio"),
     acceptTerms: z.boolean().refine((val) => val, {
       message: "Devi accettare i termini e le condizioni",
@@ -70,7 +76,21 @@ const registerAdminSchema = z
   .refine((data) => data.password === data.confirmPassword, {
     message: "Le password non coincidono",
     path: ["confirmPassword"],
-  });
+  })
+  .refine(
+    (data) => {
+      // Almeno uno tra driveFolderUrl e localFiles deve essere presente
+      return (
+        (data.driveFolderUrl && data.driveFolderUrl !== "") ||
+        (data.localFiles && data.localFiles.length > 0)
+      );
+    },
+    {
+      message:
+        "Devi inserire l'URL della cartella Google Drive oppure caricare una cartella locale di documenti",
+      path: ["driveFolderUrl"],
+    }
+  );
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 type RegisterAdminFormValues = z.infer<typeof registerAdminSchema>;
@@ -80,10 +100,12 @@ export default function AuthPage() {
   const [showLoadingSpinner, setShowLoadingSpinner] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
 
-  
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // ✅ NUOVO: Ref per prevenire richieste multiple
+  const isSubmittingRef = useRef(false);
 
   const [_, setLocation] = useLocation();
   const { user, isLoading, loginMutation, registerMutation } = useAuth();
@@ -117,7 +139,9 @@ export default function AuthPage() {
     defaultValues: { email: "", password: "", remember: false },
   });
 
-  const registerForm = useForm<RegisterAdminFormValues>({
+  const registerForm = useForm<
+    RegisterAdminFormValues & { localFiles?: FileList }
+  >({
     resolver: zodResolver(registerAdminSchema),
     defaultValues: {
       email: "",
@@ -125,15 +149,50 @@ export default function AuthPage() {
       confirmPassword: "",
       clientName: "",
       driveFolderUrl: "",
+      localFiles: undefined,
       companyCode: "",
       acceptTerms: false,
     },
   });
 
-  const onLoginSubmit = (values: LoginFormValues) =>
-    loginMutation.mutate(values);
-  const onRegisterSubmit = (values: RegisterAdminFormValues) =>
-    registerMutation.mutate(values);
+  const onLoginSubmit = (values: LoginFormValues) => {
+    // ✅ NUOVO: Prevenzione richieste multiple
+    if (isSubmittingRef.current) {
+      console.log("[DEBUG] Login request already in progress, skipping...");
+      return;
+    }
+    
+    isSubmittingRef.current = true;
+    console.log("[DEBUG] Starting login request...");
+    
+    loginMutation.mutate(values, {
+      onSettled: () => {
+        // ✅ NUOVO: Reset del flag quando la richiesta è completata (successo o errore)
+        isSubmittingRef.current = false;
+        console.log("[DEBUG] Login request completed, resetting flag...");
+      }
+    });
+  };
+  const onRegisterSubmit = (
+    values: RegisterAdminFormValues & { localFiles?: FileList }
+  ) => {
+    // Se ci sono file locali, prepara FormData
+    if (values.localFiles && values.localFiles.length > 0) {
+      const formData = new FormData();
+      Object.entries(values).forEach(([key, val]) => {
+        if (key === "localFiles" && val instanceof FileList) {
+          Array.from(val).forEach((file) => {
+            formData.append("localFiles", file);
+          });
+        } else {
+          formData.append(key, val as any);
+        }
+      });
+      registerMutation.mutate(formData as any);
+    } else {
+      registerMutation.mutate(values);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -322,7 +381,9 @@ export default function AuthPage() {
                               </div>
                             </FormControl>
                             <FormDescription>
-                              Deve contenere almeno 8 caratteri, una maiuscola, una minuscola, un numero e un carattere speciale (@$!%*?&)
+                              Deve contenere almeno 8 caratteri, una maiuscola,
+                              una minuscola, un numero e un carattere speciale
+                              (@$!%*?&)
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -383,6 +444,36 @@ export default function AuthPage() {
                                 />
                               </div>
                             </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      {/* Nuovo campo: Caricamento cartella locale */}
+                      <FormField
+                        control={registerForm.control}
+                        name="localFiles"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              Carica Cartella Locale (opzionale)
+                            </FormLabel>
+                            <FormControl>
+                              <input
+                                type="file"
+                                webkitdirectory="true"
+                                directory="true"
+                                multiple
+                                accept=".xlsx,.xls,.docx,.pdf,.ods,.csv"
+                                onChange={(e) => field.onChange(e.target.files)}
+                                className="block w-full text-sm text-slate-900 border border-slate-300 rounded-lg cursor-pointer bg-slate-50 dark:text-slate-200 dark:bg-slate-700 dark:border-slate-600"
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              Puoi caricare una cartella dal tuo PC contenente
+                              documenti (xlsx, xls, docx, pdf, ods, csv). In
+                              alternativa, inserisci l'URL della cartella Google
+                              Drive qui sotto.
+                            </FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}

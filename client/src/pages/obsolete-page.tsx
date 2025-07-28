@@ -40,6 +40,7 @@ export default function ObsoletePage() {
     error,
   } = useQuery<Document[]>({
     queryKey: ["/api/documents/obsolete"],
+    refetchInterval: 10000, // Aggiorna ogni 10 secondi
   });
 
   /* -----------------------------------------------------------
@@ -246,11 +247,12 @@ export default function ObsoletePage() {
                       </tbody>
                     </table>
                   </div>
-                  
+
                   {/* Pagination info */}
                   {totalPages > 1 && (
                     <div className="mt-4 text-center text-sm text-slate-500 dark:text-slate-400">
-                      Mostrando {startIndex + 1}-{Math.min(endIndex, totalItems)} di {totalItems} risultati
+                      Mostrando {startIndex + 1}-
+                      {Math.min(endIndex, totalItems)} di {totalItems} risultati
                     </div>
                   )}
                 </>
@@ -271,16 +273,20 @@ export default function ObsoletePage() {
               <Pagination>
                 <PaginationContent>
                   <PaginationItem>
-                    <PaginationPrevious 
+                    <PaginationPrevious
                       href="#"
                       onClick={(e) => {
                         e.preventDefault();
                         if (currentPage > 1) setCurrentPage(currentPage - 1);
                       }}
-                      className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                      className={
+                        currentPage === 1
+                          ? "pointer-events-none opacity-50"
+                          : ""
+                      }
                     />
                   </PaginationItem>
-                  
+
                   {Array.from({ length: totalPages }, (_, index) => {
                     const pageNumber = index + 1;
                     return (
@@ -298,15 +304,20 @@ export default function ObsoletePage() {
                       </PaginationItem>
                     );
                   })}
-                  
+
                   <PaginationItem>
-                    <PaginationNext 
+                    <PaginationNext
                       href="#"
                       onClick={(e) => {
                         e.preventDefault();
-                        if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+                        if (currentPage < totalPages)
+                          setCurrentPage(currentPage + 1);
                       }}
-                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                      className={
+                        currentPage === totalPages
+                          ? "pointer-events-none opacity-50"
+                          : ""
+                      }
                     />
                   </PaginationItem>
                 </PaginationContent>

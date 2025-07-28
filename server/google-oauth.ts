@@ -29,7 +29,7 @@ function successHtml(nonce: string) {
       <div>Connessione completata! Chiudi pure la finestra…</div>
       <script nonce="${nonce}">
         window.opener?.postMessage({type:"GOOGLE_DRIVE_CONNECTED"},"*");
-        setTimeout(()=>window.close(),1500);
+        setTimeout(()=>window.close(),7000);
       </script>
       <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
     </body></html>`;

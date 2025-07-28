@@ -32,8 +32,9 @@ export const documentSchema = new Schema<DocumentDocument & MongooseDocument>({
   legacyId: { type: Number, required: true, unique: true, index: true },
   title: { type: String, required: true, index: true },
   path: { type: String, required: true, index: true },
+  filePath: { type: String, required: false },
   revision: { type: String, required: true },
-  driveUrl: { type: String, required: true },
+  driveUrl: { type: String },
   fileType: { type: String, required: true },
   alertStatus: {
     type: String,
@@ -66,7 +67,7 @@ const logSchema = new Schema<LogDocument & MongooseDocument>({
 const clientSchema = new Schema<ClientDocument & MongooseDocument>({
   legacyId: { type: Number, required: true, unique: true, index: true },
   name: { type: String, required: true },
-  driveFolderId: { type: String, required: true },
+  driveFolderId: { type: String, required: false },
   google: {
     accessToken: { type: String, required: false },
     refreshToken: { type: String, required: false },

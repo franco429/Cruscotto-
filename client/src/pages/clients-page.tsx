@@ -229,10 +229,11 @@ export default function ClientsPage() {
         toast({
           title: "Connessione completata",
           description:
-            "Connessione Google Drive completata! Sincronizzazione in corso...",
+            "Connessione Google Drive completata! Avvio sincronizzazione automatica...",
         });
 
-        startSyncPolling();
+        // Avvia sincronizzazione automatica
+        startAutomaticSync();
       }
     };
 
@@ -240,64 +241,49 @@ export default function ClientsPage() {
     return () => window.removeEventListener("message", handleMessage);
   }, []);
 
-  const startSyncPolling = () => {
-    let attempts = 0;
-    const maxAttempts = 60;
+  const startAutomaticSync = async () => {
+    try {
+      // Avvia la sincronizzazione
+      const response = await apiRequest("POST", "/api/sync");
+      
+      if (response.ok) {
+        toast({
+          title: "Sincronizzazione avviata",
+          description: "I documenti si stanno sincronizzando...",
+        });
 
-    const checkSyncStatus = async () => {
-      try {
-        // Verifica lo stato della sincronizzazione
-        const response = await apiRequest("GET", "/api/sync/status");
+        // Attendi un po' per permettere alla sync di iniziare
+        setTimeout(() => {
+          // Reindirizza alla home page con parametro per indicare la provenienza
+          window.location.href = "/home-page?fromDrive=true";
+        }, 5000); // 5 secondi di attesa per essere più veloci
+      } else {
+        const errorData = await response.json();
+        toast({
+          title: "Errore sincronizzazione",
+          description: errorData.message || "Impossibile avviare la sincronizzazione",
+          variant: "destructive",
+        });
 
-        if (response.ok) {
-          const syncStatus = await response.json();
-
-          if (syncStatus.hasDocuments && syncStatus.documentCount > 0) {
-            toast({
-              title: "Sincronizzazione completata",
-              description: `${syncStatus.documentCount} documenti sincronizzati con successo!`,
-            });
-
-            // Reindirizza alla home page con parametro per indicare la provenienza
-            setTimeout(() => {
-              window.location.href = "/home-page";
-            }, 5000);
-            return;
-          }
-        }
-
-        attempts++;
-        if (attempts < maxAttempts) {
-          toast({
-            title: "Sincronizzazione in corso",
-            description: `Attendere... Tentativo ${attempts}/${maxAttempts}`,
-          });
-
-          setTimeout(checkSyncStatus, 5000);
-        } else {
-          toast({
-            title: "Sincronizzazione in corso",
-            description:
-              "Reindirizzamento alla home page. I documenti appariranno presto.",
-          });
-
-          setTimeout(() => {
-            window.location.href = "/home-page";
-          }, 5000);
-        }
-      } catch (error) {
-        console.error(
-          "Errore durante il polling della sincronizzazione:",
-          error
-        );
-
+        // Reindirizza comunque alla home page dopo un errore
         setTimeout(() => {
           window.location.href = "/home-page";
         }, 5000);
       }
-    };
+    } catch (error) {
+      console.error("Errore durante l'avvio della sincronizzazione:", error);
+      
+      toast({
+        title: "Errore sincronizzazione",
+        description: "Impossibile avviare la sincronizzazione automatica",
+        variant: "destructive",
+      });
 
-    setTimeout(checkSyncStatus, 2000);
+      // Reindirizza comunque alla home page dopo un errore
+      setTimeout(() => {
+        window.location.href = "/home-page";
+      }, 5000);
+    }
   };
 
   const formatDate = (dateString: string | Date) => {

@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../hooks/use-auth";
+import { useConfirmationToast } from "../hooks/use-confirmation-toast";
 import { apiRequest } from "../lib/queryClient";
 import HeaderBar from "@/components/header-bar";
 import Footer from "@/components/footer";
@@ -60,13 +61,14 @@ interface BackupFile {
 
 export default function BackupPage() {
   const { user } = useAuth();
+  const { showConfirmationWithLoading } = useConfirmationToast();
   const [backups, setBackups] = useState<BackupFile[]>([]);
   const [isCreatingBackup, setIsCreatingBackup] = useState(false);
-  const [isRestoring, setIsRestoring] = useState(false);
+
   const [selectedBackup, setSelectedBackup] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+
 
   // Verifica se l'utente ha i permessi
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
@@ -117,32 +119,36 @@ export default function BackupPage() {
   };
 
   const restoreBackup = async (backupPath: string) => {
-    if (
-      !confirm(
-        "⚠️ ATTENZIONE: Il ripristino sovrascriverà tutti i dati attuali. Continuare?"
-      )
-    ) {
-      return;
-    }
-
-    setIsRestoring(true);
     try {
-      const response = await apiRequest("POST", "/api/admin/restore", {
-        backupPath,
-      });
+      const confirmed = await showConfirmationWithLoading(
+        {
+          title: "Conferma Ripristino",
+          message: `⚠️ ATTENZIONE: Il ripristino di "${backupPath}" sovrascriverà tutti i dati attuali. Continuare?`,
+          confirmText: "Ripristina",
+          cancelText: "Annulla",
+          variant: "warning",
+        },
+        async () => {
+          const response = await apiRequest("POST", "/api/admin/restore", {
+            backupPath,
+          });
 
-      const result = await response.json();
+          const result = await response.json();
 
-      if (result.success) {
-        toast.success("Database ripristinato con successo!");
-        setSelectedBackup(null);
-      } else {
-        toast.error(`Errore: ${result.message || result.error}`);
+          if (result.success) {
+            toast.success("Database ripristinato con successo!");
+            setSelectedBackup(null);
+          } else {
+            throw new Error(result.message || result.error);
+          }
+        }
+      );
+
+      if (!confirmed) {
+        return;
       }
     } catch (error) {
-      toast.error("Errore durante il ripristino");
-    } finally {
-      setIsRestoring(false);
+      toast.error(`Errore durante il ripristino: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`);
     }
   };
 
@@ -170,33 +176,37 @@ export default function BackupPage() {
   };
 
   const deleteBackup = async (filename: string) => {
-    if (
-      !confirm(
-        "⚠️ ATTENZIONE: Questa azione eliminerà definitivamente il backup. Continuare?"
-      )
-    ) {
-      return;
-    }
-
-    setIsDeleting(filename);
     try {
-      const response = await apiRequest(
-        "DELETE",
-        `/api/admin/backup/${filename}`
+      const confirmed = await showConfirmationWithLoading(
+        {
+          title: "Conferma Eliminazione",
+          message: `Sei sicuro di voler eliminare "${filename}"? Questa azione non può essere annullata.`,
+          confirmText: "Elimina",
+          cancelText: "Annulla",
+          variant: "destructive",
+        },
+        async () => {
+          const response = await apiRequest(
+            "DELETE",
+            `/api/admin/backup/${filename}`
+          );
+
+          const result = await response.json();
+
+          if (result.success) {
+            toast.success("Backup eliminato con successo!");
+            await loadBackups(); 
+          } else {
+            throw new Error(result.message || result.error);
+          }
+        }
       );
 
-      const result = await response.json();
-
-      if (result.success) {
-        toast.success("Backup eliminato con successo!");
-        await loadBackups(); 
-      } else {
-        toast.error(`Errore: ${result.message || result.error}`);
+      if (!confirmed) {
+        return;
       }
     } catch (error) {
-      toast.error("Errore durante l'eliminazione");
-    } finally {
-      setIsDeleting(null);
+      toast.error(`Errore durante l'eliminazione: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`);
     }
   };
 
@@ -558,15 +568,10 @@ export default function BackupPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => restoreBackup(backup.filename)}
-                            disabled={isRestoring}
                             className="flex items-center gap-2"
                           >
-                            {isRestoring ? (
-                              <RefreshCw className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Upload className="h-4 w-4" />
-                            )}
-                            {isRestoring ? "Ripristino..." : "Ripristina"}
+                            <Upload className="h-4 w-4" />
+                            Ripristina
                           </Button>
 
                           {isSuperAdmin && (
@@ -574,17 +579,10 @@ export default function BackupPage() {
                               variant="outline"
                               size="sm"
                               onClick={() => deleteBackup(backup.filename)}
-                              disabled={isDeleting === backup.filename}
                               className="flex items-center gap-2 text-red-600 hover:text-red-700"
                             >
-                              {isDeleting === backup.filename ? (
-                                <RefreshCw className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-4 w-4" />
-                              )}
-                              {isDeleting === backup.filename
-                                ? "Eliminazione..."
-                                : "Elimina"}
+                              <Trash2 className="h-4 w-4" />
+                              Elimina
                             </Button>
                           )}
                         </div>

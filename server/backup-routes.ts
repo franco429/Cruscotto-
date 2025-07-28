@@ -126,7 +126,7 @@ export function registerBackupRoutes(app: express.Express): void {
     try {
       console.log("Avvio operazione di backup in background...");
 
-      const { clientId } = req.body; // Opzionale: ID del client per cui creare il backup
+      const { clientId } = req.body || {}; // Safe destructuring
 
       // Determina le opzioni di backup in base al ruolo
       let backupOptions: any = {

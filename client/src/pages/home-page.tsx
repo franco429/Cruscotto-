@@ -53,7 +53,7 @@ export default function HomePage() {
     
     if (fromDrive === 'true') {
       setIsFromGoogleDriveConnection(true);
-      toast.success("Benvenuto! I documenti si stanno sincronizzando...");
+      toast.success("Connessione Google Drive completata! I documenti si stanno sincronizzando...");
       
       // Rimuovi il parametro dall'URL
       const newUrl = new URL(window.location.href);
@@ -88,7 +88,7 @@ export default function HomePage() {
       console.error("❌ Errore caricamento documenti:", error);
     },
     // Aumenta il refetch interval se l'utente arriva dalla connessione Drive
-    refetchInterval: isFromGoogleDriveConnection ? 3000 : false, // Refetch ogni 3 secondi
+    refetchInterval: isFromGoogleDriveConnection ? 2000 : false, // Refetch ogni 2 secondi per essere più veloci
     refetchIntervalInBackground: false,
   });
 
@@ -107,6 +107,14 @@ export default function HomePage() {
       console.error("❌ Errore caricamento documenti obsoleti:", error);
     },
   });
+
+  // Mostra messaggio quando i documenti vengono caricati dopo la connessione Google Drive
+  useEffect(() => {
+    if (isFromGoogleDriveConnection && documents && documents.length > 0) {
+      toast.success(`Sincronizzazione completata! ${documents.length} documenti disponibili.`);
+      setIsFromGoogleDriveConnection(false); // Reset per evitare messaggi duplicati
+    }
+  }, [isFromGoogleDriveConnection, documents]);
 
   /* -----------------------------------------------------------
    * MUTATION – sync con Google Drive ottimizzato
@@ -355,6 +363,7 @@ export default function HomePage() {
           isSyncing={syncMutation.isPending || syncProgress.isSyncing}
           isAdmin={user?.role === "admin"}
           driveFolderId={driveFolderId || ""}
+          onSyncComplete={refetch}
         />
 
         {/* Sync Progress Component */}
@@ -390,6 +399,7 @@ export default function HomePage() {
             documents={filteredDocuments}
             onPreview={handlePreview}
             isAdmin={user?.role === "admin"}
+            onDelete={() => refetch()}
           />
         )}
       </main>
