@@ -58,7 +58,86 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-const upload = multer({ dest: uploadsDir });
+// Configurazione sicura di multer con limiti e validazioni
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    // Genera un nome file sicuro con timestamp e hash
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
+  }
+});
+
+const fileFilter = (req: Express.Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  // Verifica il tipo MIME del file
+  const allowedMimeTypes = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'text/plain',
+    'text/csv'
+  ];
+  
+  if (allowedMimeTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error(`Tipo di file non supportato: ${file.mimetype}`));
+  }
+};
+
+const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB max
+    files: 10 // Max 10 file per richiesta
+  }
+});
+
+// Middleware per gestire gli errori di multer
+const handleMulterError = (err: any, req: Request, res: Response, next: NextFunction) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({
+        message: 'File troppo grande. Dimensione massima: 10MB',
+        code: 'FILE_TOO_LARGE'
+      });
+    }
+    if (err.code === 'LIMIT_FILE_COUNT') {
+      return res.status(400).json({
+        message: 'Troppi file. Massimo 10 file per richiesta',
+        code: 'TOO_MANY_FILES'
+      });
+    }
+    if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+      return res.status(400).json({
+        message: 'Campo file non previsto',
+        code: 'UNEXPECTED_FILE_FIELD'
+      });
+    }
+    return res.status(400).json({
+      message: 'Errore durante l\'upload del file',
+      code: 'UPLOAD_ERROR'
+    });
+  }
+  
+  if (err.message && err.message.includes('Tipo di file non supportato')) {
+    return res.status(400).json({
+      message: err.message,
+      code: 'UNSUPPORTED_FILE_TYPE'
+    });
+  }
+  
+  next(err);
+};
 
 // Helper function per gestire il timeout della sessione
 const handleSessionTimeout = (
@@ -187,7 +266,7 @@ const adminRegistrationSchema = z.object({
 });
 
 export async function registerRoutes(app: Express): Promise<Express> {
-  app.post("/api/register/admin", upload.any(), async (req, res) => {
+  app.post("/api/register/admin", upload.any(), handleMulterError, async (req, res) => {
     try {
       // I campi arrivano sempre come stringa da FormData, quindi normalizzo
       const body = {
@@ -2116,6 +2195,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
     "/api/documents/local-upload",
     isAdmin,
     upload.array("localFiles"),
+    handleMulterError,
     async (req, res) => {
       try {
         logger.info("Starting local document upload", {
