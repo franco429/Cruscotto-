@@ -104,7 +104,7 @@ export default function AuthPage() {
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // ✅ NUOVO: Ref per prevenire richieste multiple
+  //  Ref per prevenire richieste multiple
   const isSubmittingRef = useRef(false);
 
   const [_, setLocation] = useLocation();
@@ -156,20 +156,16 @@ export default function AuthPage() {
   });
 
   const onLoginSubmit = (values: LoginFormValues) => {
-    // ✅ NUOVO: Prevenzione richieste multiple
     if (isSubmittingRef.current) {
-      console.log("[DEBUG] Login request already in progress, skipping...");
       return;
     }
     
     isSubmittingRef.current = true;
-    console.log("[DEBUG] Starting login request...");
     
     loginMutation.mutate(values, {
       onSettled: () => {
-        // ✅ NUOVO: Reset del flag quando la richiesta è completata (successo o errore)
+        //  Reset del flag quando la richiesta è completata (successo o errore)
         isSubmittingRef.current = false;
-        console.log("[DEBUG] Login request completed, resetting flag...");
       }
     });
   };
@@ -448,7 +444,7 @@ export default function AuthPage() {
                           </FormItem>
                         )}
                       />
-                      {/* Nuovo campo: Caricamento cartella locale */}
+                      {/*  Caricamento cartella locale */}
                       <FormField
                         control={registerForm.control}
                         name="localFiles"

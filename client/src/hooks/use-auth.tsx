@@ -154,7 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await apiRequest("POST", "/api/login", credentials);
       return await res.json();
     },
-    // ✅ NUOVO: Disabilita i retry automatici
+    //  Disabilita i retry automatici
     retry: false,
     onSuccess: async (data) => {
       // Forza un refresh della query dell'utente

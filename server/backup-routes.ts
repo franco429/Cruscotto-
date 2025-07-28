@@ -44,7 +44,6 @@ async function syncBackupsWithDatabase() {
     const backupDir = path.join(process.cwd(), "backups");
 
     if (!fs.existsSync(backupDir)) {
-      console.log("Cartella backup non trovata, creazione...");
       await fs.promises.mkdir(backupDir, { recursive: true });
       return { success: true, message: "Cartella backup creata" };
     }
@@ -94,7 +93,6 @@ async function syncBackupsWithDatabase() {
 
           await backupRecord.save();
           syncedCount++;
-          console.log(`Backup sincronizzato: ${filename}`);
         }
       } catch (error) {
         console.error(
@@ -124,7 +122,6 @@ export function registerBackupRoutes(app: express.Express): void {
   // Route per creare un backup
   app.post("/api/admin/backup", isAdmin, async (req, res) => {
     try {
-      console.log("Avvio operazione di backup in background...");
 
       const { clientId } = req.body || {}; // Safe destructuring
 
@@ -264,7 +261,6 @@ export function registerBackupRoutes(app: express.Express): void {
         // Superadmin può ripristinare qualsiasi backup
       }
 
-      console.log("Avvio operazione di ripristino in background...");
 
       // Avvia il ripristino in background
       const result = await storage.restoreFromBackup(backupPath);

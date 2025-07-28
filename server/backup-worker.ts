@@ -58,7 +58,6 @@ async function connectToDB() {
     }
     try {
       await mongoose.connect(dbUri);
-      console.log("Worker connesso a MongoDB.");
     } catch (error) {
       console.error("Errore di connessione a MongoDB nel worker:", error);
       throw error; // Lancia l'errore per fermare l'esecuzione
@@ -70,7 +69,6 @@ async function connectToDB() {
 async function disconnectFromDB() {
   if (mongoose.connection.readyState !== 0) {
     await mongoose.disconnect();
-    console.log("Worker disconnesso da MongoDB.");
   }
 }
 

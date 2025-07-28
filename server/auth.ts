@@ -347,10 +347,6 @@ export async function migratePasswordIfNeeded(
         const newHashedPassword = await hashPassword(suppliedPassword);
         const { mongoStorage } = await import("./mongo-storage");
         await mongoStorage.updateUserPassword(userId, newHashedPassword);
-
-        console.log(
-          `✅ Password migrata per utente ${userId} da bcrypt a scrypt`
-        );
       }
     }
   } catch (error) {

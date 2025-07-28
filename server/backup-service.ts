@@ -30,7 +30,6 @@ export class BackupService {
     const __dirname = path.dirname(__filename);
 
     const workerPath = path.join(__dirname, "dist", "backup-worker.cjs");
-    console.log(`Avvio del worker dal percorso: ${workerPath}`);
 
     return new Worker(workerPath, {
       workerData: {},

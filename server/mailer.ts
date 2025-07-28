@@ -133,9 +133,6 @@ export async function handlePasswordReset(req: Request, res: Response) {
         html: emailHTML,
       });
 
-      console.log(
-        `✅ Email di reset password inviata a ${user.email} (MessageId: ${info.messageId})`
-      );
 
       // In ambiente di sviluppo, forniamo anche l'URL per facilitare il testing
       if (process.env.NODE_ENV === "development") {

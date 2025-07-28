@@ -77,7 +77,7 @@ export default function ActionsBar({
     }
   };
 
-  // Nuovo: Gestione aggiornamento documenti locali
+  //  Gestione aggiornamento documenti locali
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleUpdateLocalDocs = () => {
@@ -157,7 +157,7 @@ export default function ActionsBar({
             Backup
           </Button>
 
-          {/* Nuovo: Aggiorna documenti locali */}
+          {/*  Aggiorna documenti locali */}
           <Button
             onClick={handleUpdateLocalDocs}
             variant="outline"

@@ -78,7 +78,6 @@ export class MongoStorage implements IStorage {
 
     // HOTFIX: se l'utente è già bloccato, non incrementare ulteriormente
     if (userDoc.lockoutUntil && new Date(userDoc.lockoutUntil) > new Date()) {
-      console.log(`[DEBUG] recordFailedLoginAttempt: email=${email.toLowerCase()} is already locked out until ${userDoc.lockoutUntil}, skipping increment.`);
       return;
     }
 
@@ -101,8 +100,6 @@ export class MongoStorage implements IStorage {
       newLockoutUntil = new Date(now.getTime() + lockoutDurations[5]);
     }
 
-    // DEBUG LOG
-    console.log(`[DEBUG] recordFailedLoginAttempt: email=${email.toLowerCase()}, before: failedLoginAttempts=${currentAttempts}, lockoutUntil=${userDoc.lockoutUntil}`);
 
     try {
       await UserModel.updateOne(
@@ -114,8 +111,6 @@ export class MongoStorage implements IStorage {
           },
         }
       ).exec();
-      // DEBUG LOG
-      console.log(`[DEBUG] recordFailedLoginAttempt: email=${email.toLowerCase()}, after: failedLoginAttempts=${newAttemptCount}, lockoutUntil=${newLockoutUntil}`);
     } catch (error) {
       // Errore durante l'aggiornamento dei tentativi di login.
       // Da loggare centralmente.
@@ -125,13 +120,10 @@ export class MongoStorage implements IStorage {
   public async resetLoginAttempts(email: string): Promise<void> {
     // DEBUG LOG
     const userDoc = await UserModel.findOne({ email: email.toLowerCase() }).lean().exec();
-    console.log(`[DEBUG] resetLoginAttempts: email=${email.toLowerCase()}, before: failedLoginAttempts=${userDoc?.failedLoginAttempts}, lockoutUntil=${userDoc?.lockoutUntil}`);
     await UserModel.updateOne(
       { email: email.toLowerCase() },
       { $set: { failedLoginAttempts: 0, lockoutUntil: null } }
     ).exec();
-    // DEBUG LOG
-    console.log(`[DEBUG] resetLoginAttempts: email=${email.toLowerCase()}, after: failedLoginAttempts=0, lockoutUntil=null`);
   }
 
   async registerNewAdminAndClient(registrationData: {

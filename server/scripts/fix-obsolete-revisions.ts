@@ -29,7 +29,7 @@ async function fixObsoleteRevisions() {
       }
     }
   }
-  console.log("Obsolete fix completed.");
-}
+  
+};
 
 fixObsoleteRevisions().then(() => process.exit(0));
