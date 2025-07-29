@@ -34,6 +34,11 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   getAllUsers(): Promise<User[]>;
+  getUsersByClientIdWithPagination(
+    clientId: number,
+    limit: number,
+    offset: number
+  ): Promise<{ users: User[]; total: number }>;
   updateUserRole(id: number, role: string): Promise<User | undefined>;
   updateUserSession(
     id: number,
@@ -65,7 +70,9 @@ export interface IStorage {
     title: string,
     clientId: number
   ) => Promise<Document[]>;
+  getDocumentsByClientId(clientId: number): Promise<Document[]>;
   getObsoleteDocuments: () => Promise<Document[]>;
+  getObsoleteDocumentsByClientId(clientId: number): Promise<Document[]>;
   createDocument(document: InsertDocument): Promise<Document>;
   updateDocument(
     id: number,
@@ -88,6 +95,7 @@ export interface IStorage {
   getClientByName(name: string): Promise<Client | undefined>;
   createClient(client: InsertClient): Promise<Client>;
   getAllClients(): Promise<Client[]>;
+  getClientsByAdminId(adminId: number): Promise<Client[]>;
   updateClient(
     id: number,
     client: Partial<InsertClient>
@@ -325,6 +333,21 @@ export class MemStorage implements IStorage {
     return Array.from(this.users.values());
   }
 
+  async getUsersByClientIdWithPagination(
+    clientId: number,
+    limit: number,
+    offset: number
+  ): Promise<{ users: User[]; total: number }> {
+    const allUsers = Array.from(this.users.values()).filter(
+      (user) => user.clientId === clientId
+    );
+    
+    const total = allUsers.length;
+    const users = allUsers.slice(offset, offset + limit);
+    
+    return { users, total };
+  }
+
   async updateUserRole(id: number, role: string): Promise<User | undefined> {
     const user = this.users.get(id);
     if (!user) return undefined;
@@ -424,6 +447,12 @@ export class MemStorage implements IStorage {
     return Array.from(this.clients.values());
   }
 
+  async getClientsByAdminId(adminId: number): Promise<Client[]> {
+    // In MemStorage, assumiamo che tutti i clienti appartengano all'admin
+    // In una implementazione reale, dovresti avere una relazione admin-client
+    return Array.from(this.clients.values());
+  }
+
   async updateClient(
     id: number,
     clientUpdate: Partial<InsertClient>
@@ -501,6 +530,36 @@ export class MemStorage implements IStorage {
 
   async getObsoleteDocuments(): Promise<Document[]> {
     return Array.from(this.documents.values()).filter((doc) => doc.isObsolete);
+  }
+
+  async getDocumentsByClientId(clientId: number): Promise<Document[]> {
+    return Array.from(this.documents.values())
+      .filter((doc) => doc.clientId === clientId && !doc.isObsolete)
+      .sort((a, b) => {
+        const aParts = a.path.split(".").map(Number);
+        const bParts = b.path.split(".").map(Number);
+        for (let i = 0; i < Math.min(aParts.length, bParts.length); i++) {
+          if (aParts[i] !== bParts[i]) {
+            return aParts[i] - bParts[i];
+          }
+        }
+        return aParts.length - bParts.length;
+      });
+  }
+
+  async getObsoleteDocumentsByClientId(clientId: number): Promise<Document[]> {
+    return Array.from(this.documents.values())
+      .filter((doc) => doc.clientId === clientId && doc.isObsolete)
+      .sort((a, b) => {
+        const aParts = a.path.split(".").map(Number);
+        const bParts = b.path.split(".").map(Number);
+        for (let i = 0; i < Math.min(aParts.length, bParts.length); i++) {
+          if (aParts[i] !== bParts[i]) {
+            return aParts[i] - bParts[i];
+          }
+        }
+        return aParts.length - bParts.length;
+      });
   }
 
   async createDocument(insertDocument: InsertDocument): Promise<Document> {

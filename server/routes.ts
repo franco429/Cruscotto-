@@ -358,17 +358,27 @@ export async function registerRoutes(app: Express): Promise<Express> {
   });
 
   app.get("/api/documents", isAuthenticated, async (req, res) => {
-    const clientId = req.user?.clientId;
-    if (!clientId) return res.json([]);
-    const documents = await storage.getDocumentsByClientId(clientId);
-    res.json(documents);
+    try {
+      const clientId = req.user?.clientId;
+      if (!clientId) return res.json([]);
+      const documents = await storage.getDocumentsByClientId(clientId);
+      res.json(documents);
+    } catch (error) {
+      console.error("Error fetching documents:", error);
+      res.status(500).json({ message: "Errore nel recupero dei documenti" });
+    }
   });
 
   app.get("/api/documents/obsolete", isAdmin, async (req, res) => {
-    const clientId = req.user?.clientId;
-    if (!clientId) return res.json([]);
-    const documents = await storage.getObsoleteDocumentsByClientId(clientId);
-    res.json(documents);
+    try {
+      const clientId = req.user?.clientId;
+      if (!clientId) return res.json([]);
+      const documents = await storage.getObsoleteDocumentsByClientId(clientId);
+      res.json(documents);
+    } catch (error) {
+      console.error("Error fetching obsolete documents:", error);
+      res.status(500).json({ message: "Errore nel recupero dei documenti obsoleti" });
+    }
   });
 
   app.get("/api/documents/:id", isAuthenticated, async (req, res) => {
@@ -562,6 +572,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
         hasPrevPage: page > 1,
       });
     } catch (error) {
+      console.error("Error fetching users:", error);
       res.status(500).json({ message: "Errore nel recupero degli utenti" });
     }
   });
