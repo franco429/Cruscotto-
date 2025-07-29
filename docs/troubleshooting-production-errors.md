@@ -50,29 +50,45 @@
 **Sintomi:**
 - `storage.getDocumentsByClientId is not a function`
 - `storage.getObsoleteDocumentsByClientId is not a function`
+- `storage.getClientsByAdminId is not a function`
 - Errori generici del server
 
 **Cause possibili:**
 - Metodi mancanti nell'interfaccia IStorage
+- Conflitti di nomi tra `storage` e `multer.diskStorage`
 - Problemi di connessione database
 - Variabili d'ambiente mancanti
 
 **Soluzioni:**
 
-1. **Verifica implementazione storage:**
+1. **Verifica conflitti di nomi (RISOLTO):**
+   ```bash
+   # Il problema era un conflitto tra storage e multer.diskStorage
+   # Ora risolto rinominando multer.diskStorage in multerStorage
+   grep -r "multerStorage" server/routes.ts
+   ```
+
+2. **Verifica implementazione storage:**
    ```bash
    # Controlla che tutti i metodi siano implementati
    grep -r "getDocumentsByClientId" server/
    grep -r "getObsoleteDocumentsByClientId" server/
+   grep -r "getClientsByAdminId" server/
    ```
 
-2. **Verifica connessione database:**
+3. **Test dei metodi storage:**
+   ```bash
+   # Esegui il test dei metodi
+   npx tsx server/scripts/test-storage-methods.ts
+   ```
+
+4. **Verifica connessione database:**
    ```bash
    # Controlla i log del server
    tail -f logs/server.log
    ```
 
-3. **Verifica variabili d'ambiente:**
+5. **Verifica variabili d'ambiente:**
    ```bash
    # Esegui verifica completa
    node server/scripts/check-production-config.js
@@ -179,7 +195,26 @@ CORS_ORIGIN=https://your-domain.com
 NODE_ENV=production
 ```
 
-### 7. Contatti Supporto
+### 7. Problemi Risolti
+
+#### ✅ Conflitto di Nomi Storage (Risolto)
+
+**Problema:** Errori `storage.getClientsByAdminId is not a function`
+
+**Causa:** Conflitto di nomi tra `mongoStorage` e `multer.diskStorage` nel file `server/routes.ts`
+
+**Soluzione Applicata:**
+1. Rinominato `multer.diskStorage` in `multerStorage`
+2. Aggiornato tutti i riferimenti da `storage` a `mongoStorage`
+3. Aggiunta gestione errori migliorata
+
+**Verifica:**
+```bash
+# Test dei metodi storage
+npx tsx server/scripts/test-storage-methods.ts
+```
+
+### 8. Contatti Supporto
 
 Se i problemi persistono:
 

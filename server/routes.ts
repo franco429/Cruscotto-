@@ -5,7 +5,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { v4 as uuidv4 } from "uuid";
 
-import { mongoStorage as storage } from "./mongo-storage";
+import { mongoStorage } from "./mongo-storage";
 import { getNextSequence } from "./models/mongoose-models";
 import { hashPassword, comparePasswords } from "./auth";
 import {
@@ -59,7 +59,7 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 // Configurazione sicura di multer con limiti e validazioni
-const storage = multer.diskStorage({
+const multerStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadsDir);
   },
@@ -94,7 +94,7 @@ const fileFilter = (req: Express.Request, file: Express.Multer.File, cb: multer.
 };
 
 const upload = multer({
-  storage: storage,
+  storage: multerStorage,
   fileFilter: fileFilter,
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB max
@@ -298,7 +298,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
       const passwordHash = await hashPassword(password);
 
-      const { user, client } = await storage.registerNewAdminAndClient({
+      const { user, client } = await mongoStorage.registerNewAdminAndClient({
         email,
         passwordHash,
         companyCode,
@@ -316,7 +316,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
             file.path // Percorso temporaneo del file caricato
           );
           if (docInfo) {
-            await storage.createDocument({
+            await mongoStorage.createDocument({
               ...docInfo,
               clientId: client.legacyId,
               ownerId: user.legacyId,
@@ -325,7 +325,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
         }
       }
 
-      await storage.createLog({
+      await mongoStorage.createLog({
         userId: user.legacyId,
         action: "admin-registration",
         details: {
@@ -361,7 +361,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
     try {
       const clientId = req.user?.clientId;
       if (!clientId) return res.json([]);
-      const documents = await storage.getDocumentsByClientId(clientId);
+      const documents = await mongoStorage.getDocumentsByClientId(clientId);
       res.json(documents);
     } catch (error) {
       console.error("Error fetching documents:", error);
@@ -373,7 +373,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
     try {
       const clientId = req.user?.clientId;
       if (!clientId) return res.json([]);
-      const documents = await storage.getObsoleteDocumentsByClientId(clientId);
+      const documents = await mongoStorage.getObsoleteDocumentsByClientId(clientId);
       res.json(documents);
     } catch (error) {
       console.error("Error fetching obsolete documents:", error);
@@ -384,7 +384,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
   app.get("/api/documents/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id, 10);
-      const document = await storage.getDocument(id);
+      const document = await mongoStorage.getDocument(id);
 
       if (!document || document.clientId !== req.user?.clientId) {
         return res.status(404).json({ message: "Document not found" });
@@ -407,9 +407,9 @@ export async function registerRoutes(app: Express): Promise<Express> {
         ...req.body,
         clientId: req.user.clientId,
       });
-      const document = await storage.createDocument(validatedData);
+      const document = await mongoStorage.createDocument(validatedData);
       if (req.user) {
-        await storage.createLog({
+        await mongoStorage.createLog({
           userId: req.user.legacyId,
           action: "upload",
           documentId: document.legacyId,
@@ -426,7 +426,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
     try {
       const id = parseInt(req.params.legacyId, 10);
 
-      const existingDoc = await storage.getDocument(id);
+      const existingDoc = await mongoStorage.getDocument(id);
       if (!existingDoc) {
         return res.status(404).json({ message: "Document not found" });
       }
@@ -443,10 +443,10 @@ export async function registerRoutes(app: Express): Promise<Express> {
         clientId: req.user.clientId,
       });
 
-      const document = await storage.updateDocument(id, validatedData);
+      const document = await mongoStorage.updateDocument(id, validatedData);
 
       if (req.user && document) {
-        await storage.createLog({
+        await mongoStorage.createLog({
           userId: req.user.legacyId,
           action: "update",
           documentId: document.legacyId,
@@ -464,7 +464,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
     try {
       const id = parseInt(req.params.legacyId, 10);
 
-      const existingDoc = await storage.getDocument(id);
+      const existingDoc = await mongoStorage.getDocument(id);
       if (!existingDoc) {
         return res.status(404).json({ message: "Document not found" });
       }
@@ -476,10 +476,10 @@ export async function registerRoutes(app: Express): Promise<Express> {
         });
       }
 
-      await storage.markDocumentObsolete(id);
+      await mongoStorage.markDocumentObsolete(id);
 
       if (req.user) {
-        await storage.createLog({
+        await mongoStorage.createLog({
           userId: req.user.legacyId,
           action: "delete",
           documentId: id,
@@ -500,7 +500,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
     try {
       const id = parseInt(req.params.legacyId, 10);
 
-      const existingDoc = await storage.getDocument(id);
+      const existingDoc = await mongoStorage.getDocument(id);
       if (!existingDoc) {
         return res.status(404).json({ message: "Document not found" });
       }
@@ -519,12 +519,12 @@ export async function registerRoutes(app: Express): Promise<Express> {
       }
 
       // Ripristina il documento
-      const restoredDoc = await storage.updateDocument(id, {
+      const restoredDoc = await mongoStorage.updateDocument(id, {
         isObsolete: false,
       });
 
       if (req.user) {
-        await storage.createLog({
+        await mongoStorage.createLog({
           userId: req.user.legacyId,
           action: "restore",
           documentId: id,
@@ -555,7 +555,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
       const limit = parseInt(req.query.limit as string) || 10;
       const offset = (page - 1) * limit;
 
-      const { users, total } = await storage.getUsersByClientIdWithPagination(
+      const { users, total } = await mongoStorage.getUsersByClientIdWithPagination(
         clientId,
         limit,
         offset
@@ -594,7 +594,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
         });
       }
 
-      const existingUser = await storage.getUserByEmail(email);
+      const existingUser = await mongoStorage.getUserByEmail(email);
       if (existingUser) {
         return res
           .status(400)
@@ -602,7 +602,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
       }
 
       const hashedPassword = await hashPassword(password);
-      const newUser = await storage.createUser({
+      const newUser = await mongoStorage.createUser({
         email,
         password: hashedPassword,
         role: "viewer",
@@ -624,10 +624,15 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
   // Clients API
   app.get("/api/clients", isAdmin, async (req, res) => {
-    if (!req.user?.legacyId)
-      return res.status(401).json({ message: "Utente non autenticato" });
-    const clients = await storage.getClientsByAdminId(req.user.legacyId);
-    res.json(clients);
+    try {
+      if (!req.user?.legacyId)
+        return res.status(401).json({ message: "Utente non autenticato" });
+      const clients = await mongoStorage.getClientsByAdminId(req.user.legacyId);
+      res.json(clients);
+    } catch (error) {
+      console.error("Error fetching clients:", error);
+      res.status(500).json({ message: "Errore nel recupero dei clienti" });
+    }
   });
 
   // POST - Crea un nuovo client (solo superadmin)
@@ -640,7 +645,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
       const validatedData = insertClientSchema.parse(req.body);
 
       // Crea il nuovo client
-      const client = await storage.createClient(validatedData);
+      const client = await mongoStorage.createClient(validatedData);
 
       if (!client) {
         return res
@@ -649,7 +654,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
       }
 
       // Log dell'azione
-      await storage.createLog({
+      await mongoStorage.createLog({
         userId: req.user.legacyId,
         action: "client-created",
         details: {
@@ -680,13 +685,13 @@ export async function registerRoutes(app: Express): Promise<Express> {
       }
 
       // Verifica che il client esista
-      const existingClient = await storage.getClient(id);
+      const existingClient = await mongoStorage.getClient(id);
       if (!existingClient) {
         return res.status(404).json({ message: "Cliente non trovato" });
       }
 
       // Verifica che l'admin possa modificare questo client
-      const adminClients = await storage.getClientsByAdminId(req.user.legacyId);
+      const adminClients = await mongoStorage.getClientsByAdminId(req.user.legacyId);
       const canEdit = adminClients.some((client) => client.legacyId === id);
 
       if (!canEdit && req.user.role !== "superadmin") {
@@ -697,7 +702,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
       const validatedData = insertClientSchema.partial().parse(req.body);
 
-      const client = await storage.updateClient(id, validatedData);
+      const client = await mongoStorage.updateClient(id, validatedData);
       if (!client) {
         return res.status(404).json({ message: "Cliente non trovato" });
       }
@@ -717,7 +722,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
       }
 
       // Log dell'azione
-      await storage.createLog({
+      await mongoStorage.createLog({
         userId: req.user.legacyId,
         action: "client-updated",
         details: {
@@ -748,13 +753,13 @@ export async function registerRoutes(app: Express): Promise<Express> {
         return res.status(400).json({ message: "Ruolo non valido" });
       }
 
-      const updatedUser = await storage.updateUserRole(userId, role);
+      const updatedUser = await mongoStorage.updateUserRole(userId, role);
       if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
       }
 
       if (req.user) {
-        await storage.createLog({
+        await mongoStorage.createLog({
           userId: req.user.legacyId,
           action: "user-role-change",
           details: {
@@ -786,7 +791,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
       }
 
       // Check if user exists and belongs to the same client
-      const userToDelete = await storage.getUser(userId);
+      const userToDelete = await mongoStorage.getUser(userId);
       if (!userToDelete) {
         return res.status(404).json({ message: "Utente non trovato" });
       }
@@ -798,7 +803,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
         });
       }
 
-      const deleted = await storage.deleteUser(userId);
+      const deleted = await mongoStorage.deleteUser(userId);
       if (!deleted) {
         return res
           .status(500)
@@ -807,7 +812,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
       // Log the deletion
       if (req.user) {
-        await storage.createLog({
+        await mongoStorage.createLog({
           userId: req.user.legacyId,
           action: "user-deleted",
           details: {
@@ -856,7 +861,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
         return res.status(401).json({ message: "Utente non autenticato" });
       }
 
-      const user = await storage.getUser(req.user.legacyId);
+      const user = await mongoStorage.getUser(req.user.legacyId);
       if (!user) {
         return res.status(404).json({ message: "Utente non trovato" });
       }
@@ -885,7 +890,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
       const hashedPassword = await hashPassword(newPassword);
 
-      const updatedUser = await storage.updateUserPassword(
+      const updatedUser = await mongoStorage.updateUserPassword(
         user.legacyId,
         hashedPassword
       );
@@ -896,7 +901,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
           .json({ message: "Impossibile aggiornare la password" });
       }
 
-      await storage.createLog({
+      await mongoStorage.createLog({
         userId: user.legacyId,
         action: "password-change",
         details: {
@@ -921,7 +926,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
         return res.json([]);
       }
 
-      const logs = await storage.getLogsByClientId(clientId);
+      const logs = await mongoStorage.getLogsByClientId(clientId);
       res.json(logs);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch audit logs" });
@@ -946,7 +951,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
           .json({ message: "Nessun cliente associato a questo utente." });
       }
 
-      const client = await storage.getClient(clientId);
+      const client = await mongoStorage.getClient(clientId);
       logger.info("Client retrieved for sync", {
         clientId,
         hasClient: !!client,
@@ -1039,7 +1044,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
       }
 
       // Conta i documenti del client
-      const documents = await storage.getDocumentsByClientId(clientId);
+      const documents = await mongoStorage.getDocumentsByClientId(clientId);
       const documentCount = documents.length;
 
       // Verifica se ci sono documenti recenti (ultimi 10 minuti)
@@ -1067,24 +1072,24 @@ export async function registerRoutes(app: Express): Promise<Express> {
       const userId = parseInt(req.params.legacyId, 10);
       const { clientId } = req.body;
 
-      const user = await storage.getUser(userId);
+      const user = await mongoStorage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "Utente non trovato" });
       }
 
       if (clientId !== null) {
-        const client = await storage.getClient(clientId);
+        const client = await mongoStorage.getClient(clientId);
         if (!client) {
           return res.status(404).json({ message: "Client non trovato" });
         }
       }
 
-      const updatedUser = await storage.updateUserClient(userId, clientId);
+      const updatedUser = await mongoStorage.updateUserClient(userId, clientId);
 
       const { password, ...userWithoutPassword } = updatedUser!;
 
       if (req.user) {
-        await storage.createLog({
+        await mongoStorage.createLog({
           userId: req.user.legacyId,
           action: "user-client-assignment",
           details: {
@@ -1180,7 +1185,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
       const page = parseInt(req.query.page as string, 10) || 1;
       const limit = parseInt(req.query.limit as string, 10) || 10;
 
-      const result = await storage.getPaginatedCompanyCodes({ page, limit });
+      const result = await mongoStorage.getPaginatedCompanyCodes({ page, limit });
 
       res.json(result);
     } catch (error) {
@@ -1221,9 +1226,9 @@ export async function registerRoutes(app: Express): Promise<Express> {
         }
 
         // Usa insertMany per efficienza
-        const newCodes = await storage.createManyCompanyCodes(codesToCreate);
+        const newCodes = await mongoStorage.createManyCompanyCodes(codesToCreate);
 
-        await storage.createLog({
+        await mongoStorage.createLog({
           userId: createdBy,
           action: "company_code_bulk_created",
           details: {
@@ -1259,7 +1264,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
       const { code, role, usageLimit, expiresAt, isActive } = req.body;
 
-      const existingCode = await storage.getCompanyCode(id);
+      const existingCode = await mongoStorage.getCompanyCode(id);
       if (!existingCode) {
         return res
           .status(404)
@@ -1267,7 +1272,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
       }
 
       if (code && code !== existingCode.code) {
-        const duplicateCode = await storage.getCompanyCodeByCode(code);
+        const duplicateCode = await mongoStorage.getCompanyCodeByCode(code);
         if (duplicateCode && duplicateCode.legacyId !== id) {
           return res
             .status(400)
@@ -1285,9 +1290,9 @@ export async function registerRoutes(app: Express): Promise<Express> {
       if (isActive !== undefined) updateData.isActive = isActive;
 
       // Passa l'ID numerico alla funzione di storage
-      const updatedCode = await storage.updateCompanyCode(id, updateData);
+      const updatedCode = await mongoStorage.updateCompanyCode(id, updateData);
 
-      await storage.createLog({
+      await mongoStorage.createLog({
         userId: req.user?.legacyId || 0,
         action: "company_code_updated",
         details: {
@@ -1319,7 +1324,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
         return res.status(400).json({ message: "ID non valido." });
       }
 
-      const existingCode = await storage.getCompanyCode(id);
+      const existingCode = await mongoStorage.getCompanyCode(id);
       if (!existingCode) {
         return res
           .status(404)
@@ -1327,10 +1332,10 @@ export async function registerRoutes(app: Express): Promise<Express> {
       }
 
       // Passa l'ID numerico alla funzione di storage
-      const deleted = await storage.deleteCompanyCode(id);
+      const deleted = await mongoStorage.deleteCompanyCode(id);
 
       if (deleted) {
-        await storage.createLog({
+        await mongoStorage.createLog({
           userId: req.user?.legacyId || 0,
           action: "company_code_deleted",
           details: {
@@ -1369,7 +1374,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
         return res.status(400).json({ message: "Percorso del file richiesto" });
       }
 
-      const document = await storage.getDocument(id);
+      const document = await mongoStorage.getDocument(id);
       if (!document) {
         return res.status(404).json({ message: "Documento non trovato" });
       }
@@ -1391,13 +1396,13 @@ export async function registerRoutes(app: Express): Promise<Express> {
           .json({ message: "Path traversal non consentito." });
       }
 
-      const updatedDocument = await storage.hashAndEncryptDocument(
+      const updatedDocument = await mongoStorage.hashAndEncryptDocument(
         id,
         requestedFile
       );
 
       if (req.user && updatedDocument && updatedDocument.encryptedCachePath) {
-        await storage.createLog({
+        await mongoStorage.createLog({
           userId: req.user.legacyId,
           action: "security",
           documentId: id,
@@ -1423,7 +1428,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
     try {
       const id = parseInt(req.params.legacyId, 10);
 
-      const document = await storage.getDocument(id);
+      const document = await mongoStorage.getDocument(id);
       if (!document) {
         return res.status(404).json({ message: "Documento non trovato" });
       }
@@ -1435,10 +1440,10 @@ export async function registerRoutes(app: Express): Promise<Express> {
         });
       }
 
-      const isValid = await storage.verifyDocumentIntegrity(id);
+      const isValid = await mongoStorage.verifyDocumentIntegrity(id);
 
       if (req.user) {
-        await storage.createLog({
+        await mongoStorage.createLog({
           userId: req.user.legacyId,
           action: "security",
           documentId: id,
@@ -1482,7 +1487,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
         });
       }
 
-      const document = await storage.getDocument(id);
+      const document = await mongoStorage.getDocument(id);
       if (!document) {
         return res.status(404).json({ message: "Documento non trovato" });
       }
@@ -1538,12 +1543,12 @@ export async function registerRoutes(app: Express): Promise<Express> {
           .json({ message: "Link non valido: documento non specificato" });
       }
 
-      const document = await storage.getDocument(linkData.documentId);
+      const document = await mongoStorage.getDocument(linkData.documentId);
       if (!document) {
         return res.status(404).json({ message: "Documento non trovato" });
       }
 
-      await storage.createLog({
+      await mongoStorage.createLog({
         userId: linkData.userId,
         action: `secure-link-${linkData.action}`,
         documentId: linkData.documentId,
@@ -1587,7 +1592,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
       if (!data || !expires || !signature) {
         // Log del tentativo di bypass
-        await storage.createLog({
+        await mongoStorage.createLog({
           userId: 0,
           action: "security-alert",
           details: {
@@ -1610,7 +1615,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
       if (!linkData) {
         // Log del tentativo di bypass con firma non valida
-        await storage.createLog({
+        await mongoStorage.createLog({
           userId: 0,
           action: "security-alert",
           details: {
@@ -1633,7 +1638,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
       // Verifica aggiuntiva che sia effettivamente un link di reset password
       if (linkData.action !== "reset-password") {
-        await storage.createLog({
+        await mongoStorage.createLog({
           userId: 0,
           action: "security-alert",
           details: {
@@ -1654,7 +1659,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
       }
 
       // Log dell'accesso legittimo
-      await storage.createLog({
+      await mongoStorage.createLog({
         userId: linkData.userId,
         action: "reset-link-verified",
         details: {
@@ -1670,7 +1675,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
       console.error("Errore durante la verifica del link di reset:", error);
 
       // Log dell'errore
-      await storage.createLog({
+      await mongoStorage.createLog({
         userId: 0,
         action: "security-error",
         details: {
@@ -1706,7 +1711,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
         if (!linkData) {
           // Log del tentativo di bypass
-          await storage.createLog({
+          await mongoStorage.createLog({
             userId: 0,
             action: "security-alert",
             details: {
@@ -1729,7 +1734,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
         }
 
         if (linkData.action !== "reset-password") {
-          await storage.createLog({
+          await mongoStorage.createLog({
             userId: 0,
             action: "security-alert",
             details: {
@@ -1752,7 +1757,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
         userIdToUpdate = linkData.userId;
       } else {
         // Log del tentativo di bypass
-        await storage.createLog({
+        await mongoStorage.createLog({
           userId: 0,
           action: "security-alert",
           details: {
@@ -1786,9 +1791,9 @@ export async function registerRoutes(app: Express): Promise<Express> {
       }
 
       // Verifica che l'utente esista
-      const user = await storage.getUser(userIdToUpdate);
+      const user = await mongoStorage.getUser(userIdToUpdate);
       if (!user) {
-        await storage.createLog({
+        await mongoStorage.createLog({
           userId: 0,
           action: "security-alert",
           details: {
@@ -1812,7 +1817,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
       const hashedPassword = await hashPassword(password);
 
       // Aggiorna la password
-      const updatedUser = await storage.updateUserPassword(
+      const updatedUser = await mongoStorage.updateUserPassword(
         userIdToUpdate,
         hashedPassword
       );
@@ -1824,7 +1829,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
       }
 
       // Log dell'azione di successo
-      await storage.createLog({
+      await mongoStorage.createLog({
         userId: userIdToUpdate,
         action: "password-reset-complete",
         details: {
@@ -1845,7 +1850,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
       console.error("Errore nel reset della password:", error);
 
       // Log dell'errore
-      await storage.createLog({
+      await mongoStorage.createLog({
         userId: 0,
         action: "security-error",
         details: {
@@ -1882,7 +1887,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
       }
 
       // 1. Verifica utente
-      const user = await storage.getUser(userId);
+      const user = await mongoStorage.getUser(userId);
       if (!user) {
         return res.status(400).json({
           message: "Utente non trovato.",
@@ -1891,7 +1896,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
       }
 
       // 2. Verifica client
-      const client = await storage.getClient(clientId);
+      const client = await mongoStorage.getClient(clientId);
       if (!client) {
         return res.status(400).json({
           message: "Client non trovato.",
@@ -2016,7 +2021,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
           .json({ message: "Nessun cliente associato a questo utente." });
       }
 
-      const client = await storage.getClient(clientId);
+      const client = await mongoStorage.getClient(clientId);
       if (!client || !client.google?.refreshToken) {
         logger.error("Excel update failed: no Google refresh token", {
           clientId,
@@ -2109,7 +2114,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
       }
 
       // Ottieni tutti i documenti attivi del cliente
-      const allDocuments = await storage.getAllDocuments();
+      const allDocuments = await mongoStorage.getAllDocuments();
       const clientDocuments = allDocuments.filter(
         (doc) => doc.clientId === clientId && !doc.isObsolete
       );
@@ -2131,12 +2136,12 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
             // Aggiorna solo se lo stato è cambiato
             if (newAlertStatus !== doc.alertStatus) {
-              await storage.updateDocument(doc.legacyId, {
+              await mongoStorage.updateDocument(doc.legacyId, {
                 alertStatus: newAlertStatus,
               });
 
               // Crea un log dell'aggiornamento
-              await storage.createLog({
+              await mongoStorage.createLog({
                 userId,
                 action: "update_alert_status",
                 documentId: doc.legacyId,
@@ -2287,7 +2292,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
             });
 
             // Salva o aggiorna il documento (se già esiste per path+title+revision, aggiorna)
-            const existing = await storage.getDocumentByPathAndTitleAndRevision(
+            const existing = await mongoStorage.getDocumentByPathAndTitleAndRevision(
               docData.path,
               docData.title,
               docData.revision,
@@ -2302,14 +2307,14 @@ export async function registerRoutes(app: Express): Promise<Express> {
                 userId,
                 clientId,
               });
-              savedDoc = await storage.updateDocument(existing.legacyId, docData);
+              savedDoc = await mongoStorage.updateDocument(existing.legacyId, docData);
             } else {
               logger.info("Creating new document", {
                 fileName: file.originalname,
                 userId,
                 clientId,
               });
-              savedDoc = await storage.createDocument(docData);
+              savedDoc = await mongoStorage.createDocument(docData);
             }
 
             processedDocs.push(savedDoc);
@@ -2373,7 +2378,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
   app.get("/api/documents/:id/preview", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id, 10);
-      const document = await storage.getDocument(id);
+      const document = await mongoStorage.getDocument(id);
       if (!document) {
         return res.status(404).json({ message: "Documento non trovato" });
       }
@@ -2424,7 +2429,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
   app.get("/api/documents/:id/download", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id, 10);
-      const document = await storage.getDocument(id);
+      const document = await mongoStorage.getDocument(id);
       if (!document) {
         return res.status(404).json({ message: "Documento non trovato" });
       }
