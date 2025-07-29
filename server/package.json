@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "cross-env NODE_ENV=development tsx index.ts",
-    "build": "npm run build-worker && esbuild index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build": "npm run build-worker && npx esbuild index.ts backup-service.ts --platform=node --packages=external --bundle --format=esm --outdir=dist && npm run verify-build",
     "start": "NODE_ENV=production node dist/index.js",
     "check-env": "tsx verify-env.ts",
     "verify:env": "tsx verify-env.ts",
@@ -13,7 +13,8 @@
     "check": "tsc",
     "test": "vitest",
     "test:run": "vitest run",
-    "build-worker": "esbuild backup-worker.ts --platform=node --bundle --format=cjs --outfile=dist/backup-worker.cjs"
+    "build-worker": "esbuild backup-worker.ts --platform=node --bundle --format=cjs --outfile=dist/backup-worker.cjs",
+    "verify-build": "node -e \"const fs = require('fs'); const path = require('path'); const workerPath = path.join('dist', 'backup-worker.cjs'); if (!fs.existsSync(workerPath)) { console.error('❌ File backup-worker.cjs non trovato in dist/'); process.exit(1); } else { console.log('✅ File backup-worker.cjs trovato correttamente'); }\""
   },
   "dependencies": {
     "@google-cloud/local-auth": "^3.0.1",

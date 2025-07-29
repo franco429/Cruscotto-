@@ -1,6 +1,7 @@
 import { Worker } from "worker_threads";
 import * as path from "path";
 import { fileURLToPath } from "url";
+import * as fs from "fs";
 
 export interface BackupResult {
   success: boolean;
@@ -29,7 +30,14 @@ export class BackupService {
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
 
-    const workerPath = path.join(__dirname, "dist", "backup-worker.cjs");
+    // In produzione, il file è compilato in dist/, quindi __dirname punta già a dist/
+    // In sviluppo, il file è in src/, quindi dobbiamo puntare a dist/
+    const workerPath = path.join(__dirname, "backup-worker.cjs");
+
+    // Verifica che il file del worker esista
+    if (!fs.existsSync(workerPath)) {
+      throw new Error(`File del worker non trovato: ${workerPath}. Assicurati che il build sia stato eseguito correttamente.`);
+    }
 
     return new Worker(workerPath, {
       workerData: {},
@@ -57,6 +65,15 @@ export class BackupService {
         this.worker.on("exit", (code) => {
           if (code !== 0) {
             console.log(`Worker terminato con codice di uscita ${code}`);
+            // Se il worker termina con un codice di errore, risolvi con un errore
+            if (code !== null && code !== 0) {
+              this.worker?.terminate();
+              this.worker = null;
+              reject({ 
+                success: false, 
+                error: `Worker terminato con codice di errore: ${code}` 
+              });
+            }
           }
         });
 
@@ -67,7 +84,7 @@ export class BackupService {
       } catch (error) {
         reject({
           success: false,
-          error: `Errore nell'avvio del worker: ${
+          error: `Errore durante l'avvio del processo di backup: ${
             error instanceof Error ? error.message : String(error)
           }`,
         });
@@ -98,6 +115,15 @@ export class BackupService {
             console.log(
               `Worker (restore) terminato con codice di uscita ${code}`
             );
+            // Se il worker termina con un codice di errore, risolvi con un errore
+            if (code !== null && code !== 0) {
+              this.worker?.terminate();
+              this.worker = null;
+              reject({ 
+                success: false, 
+                error: `Worker terminato con codice di errore: ${code}` 
+              });
+            }
           }
         });
 
@@ -105,7 +131,7 @@ export class BackupService {
       } catch (error) {
         reject({
           success: false,
-          error: `Errore nell'avvio del worker (restore): ${
+          error: `Errore durante l'avvio del processo di ripristino: ${
             error instanceof Error ? error.message : String(error)
           }`,
         });
