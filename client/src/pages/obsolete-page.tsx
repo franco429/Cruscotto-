@@ -72,6 +72,34 @@ export default function ObsoletePage() {
   });
 
   /* -----------------------------------------------------------
+   * MUTATION – ripristino tutti i documenti obsoleti
+   * --------------------------------------------------------- */
+  const restoreAllMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest(
+        "POST",
+        `/api/documents/restore-all-obsolete`
+      );
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/documents/obsolete"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      toast({
+        title: "Documenti ripristinati",
+        description: `${data.restored} documenti sono stati ripristinati con successo.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore durante il ripristino",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  /* -----------------------------------------------------------
    * FILTRO – ricerca locale
    * --------------------------------------------------------- */
   const filteredDocuments = documents?.filter((doc) => {
@@ -176,9 +204,23 @@ export default function ObsoletePage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Archivio Documenti</CardTitle>
-                <div className="text-sm text-slate-500 dark:text-slate-400">
-                  {filteredDocuments?.length ?? 0} / {documents?.length ?? 0}{" "}
-                  documenti obsoleti
+                <div className="flex items-center gap-4">
+                  <div className="text-sm text-slate-500 dark:text-slate-400">
+                    {filteredDocuments?.length ?? 0} / {documents?.length ?? 0}{" "}
+                    documenti obsoleti
+                  </div>
+                  {documents && documents.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => restoreAllMutation.mutate()}
+                      disabled={restoreAllMutation.isPending}
+                      className="flex items-center gap-2"
+                    >
+                      <ArchiveRestore className="h-4 w-4" />
+                      {restoreAllMutation.isPending ? "Ripristinando..." : "Ripristina tutti"}
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardHeader>

@@ -465,16 +465,30 @@ export class MongoStorage implements IStorage {
       .lean()
       .exec()) as Document[];
 
-    // Raggruppa per path+title
-    const documentGroups = new Map<string, Document[]>();
-    documents.forEach((doc) => {
+    // Separa documenti locali e Google Drive
+    const localDocuments = documents.filter(doc => !doc.googleFileId);
+    const driveDocuments = documents.filter(doc => doc.googleFileId);
+
+    // Gestione documenti locali: raggruppa per path+title
+    const localDocumentGroups = new Map<string, Document[]>();
+    localDocuments.forEach((doc) => {
       const key = `${doc.path}__${doc.title}`;
-      if (!documentGroups.has(key)) documentGroups.set(key, []);
-      documentGroups.get(key)!.push(doc);
+      if (!localDocumentGroups.has(key)) localDocumentGroups.set(key, []);
+      localDocumentGroups.get(key)!.push(doc);
+    });
+
+    // Gestione documenti Google Drive: raggruppa per googleFileId
+    const driveDocumentGroups = new Map<string, Document[]>();
+    driveDocuments.forEach((doc) => {
+      const key = doc.googleFileId!;
+      if (!driveDocumentGroups.has(key)) driveDocumentGroups.set(key, []);
+      driveDocumentGroups.get(key)!.push(doc);
     });
 
     const latestDocuments: Document[] = [];
-    for (const group of documentGroups.values()) {
+    
+    // Aggiungi i documenti locali più recenti
+    for (const group of localDocumentGroups.values()) {
       if (group.length === 1) {
         latestDocuments.push(group[0]);
       } else {
@@ -485,13 +499,24 @@ export class MongoStorage implements IStorage {
           return bRev - aRev;
         });
         latestDocuments.push(sorted[0]);
-        // Marca obsolete le altre
-        for (let i = 1; i < sorted.length; i++) {
-          if (!sorted[i].isObsolete)
-            await this.markDocumentObsolete(sorted[i].legacyId);
-        }
       }
     }
+
+    // Aggiungi i documenti Google Drive più recenti
+    for (const group of driveDocumentGroups.values()) {
+      if (group.length === 1) {
+        latestDocuments.push(group[0]);
+      } else {
+        // Ordina per numero revisione decrescente
+        const sorted = group.sort((a, b) => {
+          const aRev = parseInt(a.revision.replace(/[^0-9]/g, ""), 10);
+          const bRev = parseInt(b.revision.replace(/[^0-9]/g, ""), 10);
+          return bRev - aRev;
+        });
+        latestDocuments.push(sorted[0]);
+      }
+    }
+
     // Ordina per path
     return latestDocuments.sort((a, b) => {
       const aParts = a.path.split(".").map(Number);
@@ -501,6 +526,77 @@ export class MongoStorage implements IStorage {
       }
       return aParts.length - bParts.length;
     });
+  }
+
+  // Nuovo metodo per gestire la marcatura dei documenti obsoleti
+  async markObsoleteRevisionsForClient(clientId: number): Promise<void> {
+    const query: any = { isObsolete: false };
+    if (clientId) {
+      query.clientId = clientId;
+    }
+    
+    // Ottieni tutti i documenti non obsoleti
+    const documents = (await DocumentModel.find(query)
+      .lean()
+      .exec()) as Document[];
+
+    // Separa documenti locali e Google Drive
+    const localDocuments = documents.filter(doc => !doc.googleFileId);
+    const driveDocuments = documents.filter(doc => doc.googleFileId);
+
+    // Gestione documenti locali: raggruppa per path+title
+    const localDocumentGroups = new Map<string, Document[]>();
+    localDocuments.forEach((doc) => {
+      const key = `${doc.path}__${doc.title}`;
+      if (!localDocumentGroups.has(key)) localDocumentGroups.set(key, []);
+      localDocumentGroups.get(key)!.push(doc);
+    });
+
+    // Marca obsolete solo i documenti locali con revisioni inferiori
+    for (const group of localDocumentGroups.values()) {
+      if (group.length > 1) {
+        // Ordina per numero revisione decrescente
+        const sorted = group.sort((a, b) => {
+          const aRev = parseInt(a.revision.replace(/[^0-9]/g, ""), 10);
+          const bRev = parseInt(b.revision.replace(/[^0-9]/g, ""), 10);
+          return bRev - aRev;
+        });
+        
+        // Marca obsolete tutte le revisioni tranne la più alta
+        for (let i = 1; i < sorted.length; i++) {
+          if (!sorted[i].isObsolete) {
+            await this.markDocumentObsolete(sorted[i].legacyId);
+          }
+        }
+      }
+    }
+
+    // Gestione documenti Google Drive: raggruppa per googleFileId
+    const driveDocumentGroups = new Map<string, Document[]>();
+    driveDocuments.forEach((doc) => {
+      const key = doc.googleFileId!;
+      if (!driveDocumentGroups.has(key)) driveDocumentGroups.set(key, []);
+      driveDocumentGroups.get(key)!.push(doc);
+    });
+
+    // Marca obsolete solo i documenti Google Drive con revisioni inferiori
+    for (const group of driveDocumentGroups.values()) {
+      if (group.length > 1) {
+        // Ordina per numero revisione decrescente
+        const sorted = group.sort((a, b) => {
+          const aRev = parseInt(a.revision.replace(/[^0-9]/g, ""), 10);
+          const bRev = parseInt(b.revision.replace(/[^0-9]/g, ""), 10);
+          return bRev - aRev;
+        });
+        
+        // Marca obsolete tutte le revisioni tranne la più alta
+        for (let i = 1; i < sorted.length; i++) {
+          if (!sorted[i].isObsolete) {
+            await this.markDocumentObsolete(sorted[i].legacyId);
+          }
+        }
+      }
+    }
   }
 
   async getAllDocumentsRaw(): Promise<Document[]> {
@@ -520,6 +616,31 @@ export class MongoStorage implements IStorage {
     return DocumentModel.find({ clientId, isObsolete: true })
       .lean()
       .exec() as Promise<Document[]>;
+  }
+
+  // Nuova funzione per ripristinare tutti i documenti obsoleti di un client
+  async restoreAllObsoleteDocumentsForClient(clientId: number): Promise<{ restored: number; errors: string[] }> {
+    const result = { restored: 0, errors: [] as string[] };
+    
+    try {
+      const obsoleteDocs = await DocumentModel.find({ clientId, isObsolete: true }).lean().exec();
+      
+      for (const doc of obsoleteDocs) {
+        try {
+          await DocumentModel.updateOne(
+            { legacyId: doc.legacyId },
+            { $set: { isObsolete: false, updatedAt: new Date() } }
+          );
+          result.restored++;
+        } catch (error) {
+          result.errors.push(`Errore nel ripristino del documento ${doc.title}: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`);
+        }
+      }
+    } catch (error) {
+      result.errors.push(`Errore generale: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`);
+    }
+    
+    return result;
   }
 
   async createDocument(
@@ -560,6 +681,11 @@ export class MongoStorage implements IStorage {
       .lean()
       .exec();
     return doc ? (doc as Document) : undefined;
+  }
+
+  async deleteDocument(id: number): Promise<boolean> {
+    const result = await DocumentModel.deleteOne({ legacyId: id });
+    return result.deletedCount > 0;
   }
 
   async getDocumentByGoogleFileId(

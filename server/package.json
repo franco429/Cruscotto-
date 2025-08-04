@@ -14,7 +14,10 @@
     "test": "vitest",
     "test:run": "vitest run",
     "build-worker": "esbuild backup-worker.ts --platform=node --bundle --format=cjs --outfile=dist/backup-worker.cjs",
-    "verify-build": "node -e \"const fs = require('fs'); const path = require('path'); const workerPath = path.join('dist', 'backup-worker.cjs'); if (!fs.existsSync(workerPath)) { console.error('❌ File backup-worker.cjs non trovato in dist/'); process.exit(1); } else { console.log('✅ File backup-worker.cjs trovato correttamente'); }\""
+    "verify-build": "node -e \"const fs = require('fs'); const path = require('path'); const workerPath = path.join('dist', 'backup-worker.cjs'); if (!fs.existsSync(workerPath)) { console.error('❌ File backup-worker.cjs non trovato in dist/'); process.exit(1); } else { console.log('✅ File backup-worker.cjs trovato correttamente'); }\"",
+    "fix-obsolete": "tsx scripts/fix-obsolete-documents.ts",
+    "test-obsolete": "tsx scripts/test-obsolete-fix.ts",
+    "test-deletion": "tsx scripts/test-document-deletion.ts"
   },
   "dependencies": {
     "@google-cloud/local-auth": "^3.0.1",

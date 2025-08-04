@@ -73,12 +73,15 @@ export interface IStorage {
   getDocumentsByClientId(clientId: number): Promise<Document[]>;
   getObsoleteDocuments: () => Promise<Document[]>;
   getObsoleteDocumentsByClientId(clientId: number): Promise<Document[]>;
+  restoreAllObsoleteDocumentsForClient(clientId: number): Promise<{ restored: number; errors: string[] }>;
   createDocument(document: InsertDocument): Promise<Document>;
   updateDocument(
     id: number,
     document: Partial<InsertDocument>
   ): Promise<Document | undefined>;
   markDocumentObsolete(id: number): Promise<Document | undefined>;
+  deleteDocument(id: number): Promise<boolean>;
+  markObsoleteRevisionsForClient(clientId: number): Promise<void>;
   hashAndEncryptDocument: (
     id: number,
     filePath: string
@@ -499,18 +502,45 @@ export class MemStorage implements IStorage {
   }
 
   async getAllDocuments(): Promise<Document[]> {
-    return Array.from(this.documents.values())
-      .filter((doc) => !doc.isObsolete)
-      .sort((a, b) => {
-        const aParts = a.path.split(".").map(Number);
-        const bParts = b.path.split(".").map(Number);
-        for (let i = 0; i < Math.min(aParts.length, bParts.length); i++) {
-          if (aParts[i] !== bParts[i]) {
-            return aParts[i] - bParts[i];
-          }
+    // Ottieni tutti i documenti non obsoleti
+    const documents = Array.from(this.documents.values())
+      .filter((doc) => !doc.isObsolete);
+
+    // Raggruppa per path+title
+    const documentGroups = new Map<string, Document[]>();
+    documents.forEach((doc) => {
+      const key = `${doc.path}__${doc.title}`;
+      if (!documentGroups.has(key)) documentGroups.set(key, []);
+      documentGroups.get(key)!.push(doc);
+    });
+
+    const latestDocuments: Document[] = [];
+    for (const group of documentGroups.values()) {
+      if (group.length === 1) {
+        latestDocuments.push(group[0]);
+      } else {
+        // Ordina per numero revisione decrescente
+        const sorted = group.sort((a, b) => {
+          const aRev = parseInt(a.revision.replace(/[^0-9]/g, ""), 10);
+          const bRev = parseInt(b.revision.replace(/[^0-9]/g, ""), 10);
+          return bRev - aRev;
+        });
+        latestDocuments.push(sorted[0]);
+        // NON marcare obsolete qui - questa logica deve essere separata
+      }
+    }
+    
+    // Ordina per path
+    return latestDocuments.sort((a, b) => {
+      const aParts = a.path.split(".").map(Number);
+      const bParts = b.path.split(".").map(Number);
+      for (let i = 0; i < Math.min(aParts.length, bParts.length); i++) {
+        if (aParts[i] !== bParts[i]) {
+          return aParts[i] - bParts[i];
         }
-        return aParts.length - bParts.length;
-      });
+      }
+      return aParts.length - bParts.length;
+    });
   }
 
   async getDocument(id: number): Promise<Document | undefined> {
@@ -533,18 +563,45 @@ export class MemStorage implements IStorage {
   }
 
   async getDocumentsByClientId(clientId: number): Promise<Document[]> {
-    return Array.from(this.documents.values())
-      .filter((doc) => doc.clientId === clientId && !doc.isObsolete)
-      .sort((a, b) => {
-        const aParts = a.path.split(".").map(Number);
-        const bParts = b.path.split(".").map(Number);
-        for (let i = 0; i < Math.min(aParts.length, bParts.length); i++) {
-          if (aParts[i] !== bParts[i]) {
-            return aParts[i] - bParts[i];
-          }
+    // Ottieni tutti i documenti non obsoleti per il client
+    const documents = Array.from(this.documents.values())
+      .filter((doc) => doc.clientId === clientId && !doc.isObsolete);
+
+    // Raggruppa per path+title
+    const documentGroups = new Map<string, Document[]>();
+    documents.forEach((doc) => {
+      const key = `${doc.path}__${doc.title}`;
+      if (!documentGroups.has(key)) documentGroups.set(key, []);
+      documentGroups.get(key)!.push(doc);
+    });
+
+    const latestDocuments: Document[] = [];
+    for (const group of documentGroups.values()) {
+      if (group.length === 1) {
+        latestDocuments.push(group[0]);
+      } else {
+        // Ordina per numero revisione decrescente
+        const sorted = group.sort((a, b) => {
+          const aRev = parseInt(a.revision.replace(/[^0-9]/g, ""), 10);
+          const bRev = parseInt(b.revision.replace(/[^0-9]/g, ""), 10);
+          return bRev - aRev;
+        });
+        latestDocuments.push(sorted[0]);
+        // NON marcare obsolete qui - questa logica deve essere separata
+      }
+    }
+    
+    // Ordina per path
+    return latestDocuments.sort((a, b) => {
+      const aParts = a.path.split(".").map(Number);
+      const bParts = b.path.split(".").map(Number);
+      for (let i = 0; i < Math.min(aParts.length, bParts.length); i++) {
+        if (aParts[i] !== bParts[i]) {
+          return aParts[i] - bParts[i];
         }
-        return aParts.length - bParts.length;
-      });
+      }
+      return aParts.length - bParts.length;
+    });
   }
 
   async getObsoleteDocumentsByClientId(clientId: number): Promise<Document[]> {
@@ -560,6 +617,30 @@ export class MemStorage implements IStorage {
         }
         return aParts.length - bParts.length;
       });
+  }
+
+  async restoreAllObsoleteDocumentsForClient(clientId: number): Promise<{ restored: number; errors: string[] }> {
+    const client = await this.getClient(clientId);
+    if (!client) {
+      return { restored: 0, errors: ["Client not found"] };
+    }
+
+    let restoredCount = 0;
+    const errors: string[] = [];
+
+    for (const doc of this.documents.values()) {
+      if (doc.clientId === clientId && doc.isObsolete) {
+        const updatedDocument = {
+          ...doc,
+          isObsolete: false,
+          updatedAt: new Date(),
+        };
+        this.documents.set(doc.legacyId, updatedDocument);
+        restoredCount++;
+      }
+    }
+
+    return { restored: restoredCount, errors: [] };
   }
 
   async createDocument(insertDocument: InsertDocument): Promise<Document> {
@@ -610,6 +691,47 @@ export class MemStorage implements IStorage {
     };
     this.documents.set(id, updatedDocument);
     return updatedDocument;
+  }
+
+  async deleteDocument(id: number): Promise<boolean> {
+    return this.documents.delete(id);
+  }
+
+  async markObsoleteRevisionsForClient(clientId: number): Promise<void> {
+    // Raggruppa i documenti per path+title
+    const documentGroups = new Map<string, Document[]>();
+    
+    for (const doc of this.documents.values()) {
+      if (doc.clientId === clientId && !doc.isObsolete) {
+        const key = `${doc.path}__${doc.title}`;
+        if (!documentGroups.has(key)) documentGroups.set(key, []);
+        documentGroups.get(key)!.push(doc);
+      }
+    }
+
+    // Marca obsolete solo i documenti con revisioni inferiori
+    for (const group of documentGroups.values()) {
+      if (group.length > 1) {
+        // Ordina per numero revisione decrescente
+        const sorted = group.sort((a, b) => {
+          const aRev = parseInt(a.revision.replace(/[^0-9]/g, ""), 10);
+          const bRev = parseInt(b.revision.replace(/[^0-9]/g, ""), 10);
+          return bRev - aRev;
+        });
+        
+        // Marca obsolete tutte le revisioni tranne la più alta
+        for (let i = 1; i < sorted.length; i++) {
+          if (!sorted[i].isObsolete) {
+            const updatedDocument = {
+              ...sorted[i],
+              isObsolete: true,
+              updatedAt: new Date(),
+            };
+            this.documents.set(sorted[i].legacyId, updatedDocument);
+          }
+        }
+      }
+    }
   }
 
   async hashAndEncryptDocument(

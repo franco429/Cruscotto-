@@ -476,7 +476,8 @@ export async function registerRoutes(app: Express): Promise<Express> {
         });
       }
 
-      await mongoStorage.markDocumentObsolete(id);
+      // Elimina definitivamente il documento dal database
+      await mongoStorage.deleteDocument(id);
 
       if (req.user) {
         await mongoStorage.createLog({
@@ -484,14 +485,14 @@ export async function registerRoutes(app: Express): Promise<Express> {
           action: "delete",
           documentId: id,
           details: {
-            message: `Document marked as obsolete: ${existingDoc.title}`,
+            message: `Document permanently deleted: ${existingDoc.title}`,
           },
         });
       }
 
-      res.json({ message: "Document marked as obsolete" });
+      res.json({ message: "Document permanently deleted" });
     } catch (error) {
-      res.status(500).json({ message: "Error marking document as obsolete" });
+      res.status(500).json({ message: "Error deleting document" });
     }
   });
 
@@ -540,6 +541,40 @@ export async function registerRoutes(app: Express): Promise<Express> {
       });
     } catch (error) {
       res.status(500).json({ message: "Error restoring document" });
+    }
+  });
+
+  // Ripristina tutti i documenti obsoleti del client
+  app.post("/api/documents/restore-all-obsolete", isAdmin, async (req, res) => {
+    try {
+      const clientId = req.user?.clientId;
+      if (!clientId) {
+        return res.status(403).json({
+          message: "Accesso negato: l'utente non è associato a nessun client",
+        });
+      }
+
+      const result = await mongoStorage.restoreAllObsoleteDocumentsForClient(clientId);
+
+      if (req.user) {
+        await mongoStorage.createLog({
+          userId: req.user.legacyId,
+          action: "restore-all-obsolete",
+          details: {
+            message: `Restored ${result.restored} obsolete documents`,
+            restored: result.restored,
+            errors: result.errors,
+          },
+        });
+      }
+
+      res.json({
+        message: `Ripristinati ${result.restored} documenti obsoleti`,
+        restored: result.restored,
+        errors: result.errors,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Error restoring all obsolete documents" });
     }
   });
 
@@ -2335,6 +2370,11 @@ export async function registerRoutes(app: Express): Promise<Express> {
             });
             errors.push(`Errore nel processare ${file.originalname}: ${fileError instanceof Error ? fileError.message : 'Errore sconosciuto'}`);
           }
+        }
+
+        // Gestione revisioni obsolete dopo aver processato tutti i documenti
+        if (processedDocs.length > 0) {
+          await mongoStorage.markObsoleteRevisionsForClient(clientId);
         }
 
         logger.info("Local upload completed", {

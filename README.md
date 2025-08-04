@@ -2,11 +2,12 @@
 
 ## 📋 Panoramica del Progetto
 
-**DocumentiIso** è un sistema completo di gestione documentale progettato per aziende che necessitano di organizzare, sincronizzare e gestire documenti in modo sicuro e efficiente. Il sistema integra Google Drive per la sincronizzazione automatica dei documenti e offre un'interfaccia web moderna per la gestione e la consultazione.
+**DocumentiIso** è un sistema completo di gestione documentale progettato per aziende che necessitano di organizzare, sincronizzare e gestire documenti in modo sicuro e efficiente. Il sistema integra Google Drive per la sincronizzazione automatica dei documenti e supporta anche il caricamento di documenti locali, offrendo un'interfaccia web moderna per la gestione e la consultazione.
 
 ### 🎯 Obiettivi Principali
 
 - **Sincronizzazione Automatica** con Google Drive
+- **Gestione Documenti Locali** con upload di cartelle complete
 - **Gestione Multi-utente** con ruoli differenziati (Viewer, Admin, SuperAdmin)
 - **Sicurezza Avanzata** con crittografia e autenticazione robusta
 - **Interfaccia Moderna** e responsive
@@ -93,6 +94,32 @@ npm run dev
 3. **Distribuisci i codici** alle aziende per la registrazione
 4. **Configura Google Drive** per le aziende registrate
 
+#### Configurazione Documenti Locali
+
+Le aziende possono scegliere tra due modalità di gestione documenti:
+
+**Opzione A: Google Drive (Raccomandato)**
+- Configura l'URL della cartella Google Drive durante la registrazione
+- Sincronizzazione automatica ogni 15 minuti
+- Backup automatico su Google Drive
+
+**Opzione B: Documenti Locali**
+- Carica cartelle di documenti direttamente dal computer
+- Processamento automatico dei metadati
+- Controllo completo sui file
+- Funziona offline
+
+**Opzione C: Modalità Ibrida**
+- Combina entrambe le modalità
+- Documenti Google Drive e locali nella stessa interfaccia
+- Massima flessibilità per l'azienda
+
+Per utilizzare i documenti locali:
+1. Durante la registrazione, seleziona "Carica Cartella Locale" invece di inserire l'URL Google Drive
+2. Oppure, dopo la registrazione, usa il pulsante "Aggiorna documenti locali" nella dashboard admin
+3. Seleziona una cartella contenente i documenti da caricare
+4. Il sistema processerà automaticamente tutti i file
+
 ### 🔧 Tools di Amministrazione
 
 Il sistema include strumenti per la gestione amministrativa:
@@ -116,6 +143,65 @@ DocumentiIso/
 └── tools/          # Script di utilità
 ```
 
+### Architettura Documenti Locali
+
+Il sistema supporta una **architettura ibrida** per la gestione documenti:
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Google Drive  │    │  Documenti      │    │   Database      │
+│   (Cloud)       │    │  Locali         │    │   MongoDB       │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    Backend Server                              │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
+│  │ Google API  │  │ File Upload │  │ Document    │            │
+│  │ Integration │  │ Processing  │  │ Management  │            │
+│  └─────────────┘  └─────────────┘  └─────────────┘            │
+└─────────────────────────────────────────────────────────────────┘
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    Frontend Client                             │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
+│  │ Drive Sync  │  │ Local Upload│  │ Document    │            │
+│  │ Interface   │  │ Interface   │  │ Viewer      │            │
+│  └─────────────┘  └─────────────┘  └─────────────┘            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Componenti Chiave:**
+- **File Upload Handler**: Gestisce upload di cartelle complete
+- **Document Processor**: Estrae metadati dai nomi file
+- **Excel Analyzer**: Analizza contenuto Excel per scadenze
+- **Storage Manager**: Gestisce file locali e Drive in modo unificato
+- **Preview Engine**: Visualizzazione integrata per entrambi i tipi
+- **Confirmation Toast System**: Sistema di conferma moderno per operazioni critiche
+- **Document Management**: Gestione completa con eliminazione sicura
+
+### Componenti UI Moderni
+
+Il sistema include componenti UI avanzati per un'esperienza utente ottimale:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Componenti UI                               │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
+│  │ Confirmation│  │ Document    │  │ Toast       │            │
+│  │ Toast       │  │ Table       │  │ System      │            │
+│  └─────────────┘  └─────────────┘  └─────────────┘            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Componenti Principali:**
+- **ConfirmationToast**: Toast di conferma per operazioni critiche
+- **DocumentTable**: Tabella documenti con azioni admin
+- **useConfirmationToast**: Hook per gestione toast di conferma
+- **AlertDialog**: Dialog di conferma per eliminazione documenti
+
 ## 🛠️ Stack Tecnologico
 
 ### Frontend (Client)
@@ -130,6 +216,8 @@ DocumentiIso/
 - **Wouter** - Routing leggero
 - **Lucide React** - Icone
 - **Framer Motion** - Animazioni
+- **Toast System** - Sistema di notifiche e conferme moderne
+- **Confirmation Components** - Componenti di conferma per operazioni critiche
 
 ### Backend (Server)
 
@@ -170,6 +258,8 @@ DocumentiIso/
    - Tutte le funzioni Viewer
    - Gestione utenti aziendali
    - Configurazione Google Drive
+   - **Gestione Documenti Locali** (upload cartelle, aggiornamento documenti)
+   - **Gestione Eliminazione Documenti** (eliminazione sicura con conferma)
    - Gestione documenti
    - Visualizzazione audit logs
 
@@ -196,11 +286,78 @@ DocumentiIso/
 - **Gestione Errori** con retry automatico
 - **Notifiche** per errori di sincronizzazione
 
+### 📂 Gestione Documenti Locali
+
+Il sistema supporta il caricamento e la gestione di documenti locali, offrendo un'alternativa completa alla sincronizzazione Google Drive.
+
+#### Funzionalità Documenti Locali
+
+- **Upload Cartella Completa**: Caricamento di intere cartelle di documenti con un singolo click
+- **Processamento Intelligente**: Estrazione automatica di metadati dai nomi file (titolo, revisione, percorso ISO)
+- **Analisi Excel Avanzata**: Estrazione automatica di scadenze e stati di allerta da file Excel
+- **Gestione Duplicati**: Controllo automatico per evitare duplicati e aggiornamento documenti esistenti
+- **Preview Integrata**: Visualizzazione diretta di documenti locali senza download
+- **Compatibilità Completa**: Funziona in parallelo con Google Drive senza conflitti
+
+#### Processo di Upload
+
+1. **Selezione Cartella**: L'admin seleziona una cartella dal proprio computer
+2. **Processamento Automatico**: Il sistema analizza ogni file e estrae:
+   - Titolo del documento dal nome file
+   - Numero di revisione
+   - Percorso ISO standardizzato
+   - Tipo di file
+   - Scadenze (per file Excel)
+3. **Salvataggio Sicuro**: I file vengono salvati nel server con crittografia
+4. **Aggiornamento Database**: Metadati e informazioni vengono memorizzati in MongoDB
+
+#### Tipi di File Supportati
+
+- **Excel**: XLSX, XLS, ODS, CSV
+- **Word**: DOCX, DOC
+- **PDF**: Documenti PDF
+- **Google Sheets**: GSheet (se sincronizzati da Drive)
+
+#### Vantaggi dei Documenti Locali
+
+- **Indipendenza da Google Drive**: Funziona anche senza connessione a Google
+- **Controllo Completo**: I file rimangono sotto il controllo dell'azienda
+- **Velocità**: Upload diretto senza dipendenze esterne
+- **Flessibilità**: Supporto per qualsiasi struttura di cartelle
+- **Sicurezza**: Crittografia locale e controllo accessi
+
+### 🎯 Sistema di Conferma Moderno
+
+Il sistema utilizza **toast di conferma eleganti** invece di modali tradizionali per operazioni critiche, migliorando significativamente l'esperienza utente.
+
+#### Caratteristiche del Sistema Toast
+
+- **Design Moderno**: Toast eleganti con animazioni fluide
+- **Non Bloccante**: L'utente può continuare a lavorare durante la conferma
+- **Responsive**: Si adatta automaticamente a tutti i dispositivi
+- **Tema Supportato**: Funziona perfettamente con tema chiaro e scuro
+- **Accessibilità**: Supporto completo per screen reader e navigazione da tastiera
+
+#### Operazioni Supportate
+
+- **Eliminazione Documenti**: Conferma sicura con toast distruttivo (rosso)
+- **Eliminazione Backup**: Conferma per rimozione backup con avvisi chiari
+- **Ripristino Backup**: Conferma per operazioni di ripristino (warning)
+- **Operazioni Critiche**: Qualsiasi operazione che richiede conferma
+
+#### Vantaggi Rispetto ai Modali
+
+- **UX Migliorata**: Non copre l'intera schermata
+- **Performance**: Transizioni più fluide e veloci
+- **Sicurezza Mantenuta**: Conferma obbligatoria per operazioni critiche
+- **Feedback Immediato**: Stati di loading e messaggi chiari
+
 ### Tipi di Documenti Supportati
 
 - PDF
-- Excel (XLSX, XLS)
+- Excel (XLSX, XLS, ODS, CSV)
 - Word (DOCX, DOC)
+- Google Sheets (GSheet)
 
 ### Funzionalità Documenti
 
@@ -209,6 +366,9 @@ DocumentiIso/
 - **Visualizzazione Integrata Universale** - Preview diretta di PDF, XLSX, XLS, DOCX senza download
 - **Gestione Versioni** e revisioni
 - **Notifiche Scadenze** automatiche
+- **Supporto Ibrido** - Documenti Google Drive e locali nella stessa interfaccia
+- **Gestione Eliminazione** - Eliminazione sicura di documenti con conferma toast moderna
+- **Sistema di Conferma Moderno** - Toast eleganti per operazioni critiche invece di modali bloccanti
 
 ## 🔒 Sicurezza
 
@@ -308,3 +468,22 @@ Per supporto tecnico o domande:
 ---
 
 **DocumentiIso** - Gestione documentale intelligente e sicura
+
+## 🆕 Funzionalità Recenti
+
+### Sistema di Conferma Moderno
+- **Toast di Conferma**: Sostituzione modali con toast eleganti per operazioni critiche
+- **Eliminazione Sicura**: Gestione eliminazione documenti con conferma moderna
+- **UX Migliorata**: Interfaccia non bloccante e responsive
+
+### Gestione Documenti Locali
+- **Upload Cartelle**: Caricamento completo di cartelle di documenti
+- **Processamento Intelligente**: Estrazione automatica metadati
+- **Analisi Excel**: Estrazione scadenze da file Excel
+- **Modalità Ibrida**: Supporto simultaneo Google Drive e documenti locali
+
+### Sicurezza Avanzata
+- **Conferme Obbligatorie**: Per tutte le operazioni critiche
+- **Crittografia File**: Protezione documenti locali
+- **Audit Trail**: Tracciamento completo delle operazioni
+- **Controllo Accessi**: Gestione permessi granulare

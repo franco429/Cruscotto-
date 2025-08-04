@@ -327,14 +327,14 @@ export default function DocumentTable({
               Conferma eliminazione
             </AlertDialogTitle>
             <AlertDialogDescription className="text-left">
-              Sei sicuro di voler eliminare il documento{" "}
+              Sei sicuro di voler eliminare definitivamente il documento{" "}
               <span className="font-semibold text-foreground">
                 "{documentToDelete?.title}"
               </span>
               ?
               <br />
               <span className="text-sm text-muted-foreground">
-                Questa azione non può essere annullata e il documento verrà rimosso definitivamente.
+                Questa azione non può essere annullata. Il documento verrà eliminato permanentemente e non potrà essere recuperato.
               </span>
             </AlertDialogDescription>
           </AlertDialogHeader>

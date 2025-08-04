@@ -647,17 +647,8 @@ async function processFileWithErrorHandlingOptimized(
       ownerId: userId,
     });
 
-    // Gestione revisioni obsolete (solo se necessario)
-    const obsolete = await findObsoleteRevisions(
-      doc.path,
-      doc.title,
-      doc.revision,
-      clientId
-    );
-
-    if (obsolete.length > 0) {
-      await markObsoleteDocuments(obsolete, userId);
-    }
+    // Gestione revisioni obsolete - usa il nuovo metodo centralizzato
+    await mongoStorage.markObsoleteRevisionsForClient(clientId);
 
     logger.info(`Successfully processed document: ${file.name}`, {
       fileName: file.name,
