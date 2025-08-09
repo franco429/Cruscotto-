@@ -8,9 +8,17 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { Search, RefreshCw, Database, FileSpreadsheet } from "lucide-react";
-import { toast } from "react-hot-toast";
 import { apiRequest } from "../lib/queryClient";
-import { useRef } from "react";
+import { useState } from "react";
+import ModernFileUpload from "./modern-file-upload";
+import { useToast } from "../hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "./ui/dialog";
 
 interface ActionsBarProps {
   onFilterChange: (value: string) => void;
@@ -35,29 +43,40 @@ export default function ActionsBar({
   onSync,
   isSyncing,
 }: ActionsBarProps) {
+  const { toast } = useToast();
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
   const handleSearch = (value: string) => {
     onSearch(value);
   };
 
   const handleSyncNow = async () => {
     if (!driveFolderId) {
-      toast.error("Nessuna cartella Google Drive configurata");
+      toast({
+        title: "Errore",
+        description: "Nessuna cartella Google Drive configurata",
+        variant: "destructive",
+      });
       return;
     }
 
     if (isSyncing) {
-      toast.success("Sincronizzazione già in corso...");
+      toast({
+        title: "Info",
+        description: "Sincronizzazione già in corso...",
+      });
       return;
     }
 
     try {
       onSync();
     } catch (err: any) {
-      toast.error(
-        err?.message === "Failed to fetch"
+      toast({
+        title: "Errore",
+        description: err?.message === "Failed to fetch"
           ? "Impossibile raggiungere il server"
-          : err?.message || "Errore durante la sincronizzazione"
-      );
+          : err?.message || "Errore durante la sincronizzazione",
+        variant: "destructive",
+      });
     }
   };
 
@@ -68,52 +87,27 @@ export default function ActionsBar({
       const result = await response.json();
 
       if (result.success) {
-        toast.success("Backup creato con successo!");
+        toast({
+          title: "Successo",
+          description: "Backup creato con successo!",
+        });
       } else {
-        toast.error(`Errore: ${result.message || result.error}`);
+        toast({
+          title: "Errore",
+          description: `Errore: ${result.message || result.error}`,
+          variant: "destructive",
+        });
       }
     } catch (error) {
-      toast.error("Errore durante la creazione del backup");
+      toast({
+        title: "Errore",
+        description: "Errore durante la creazione del backup",
+        variant: "destructive",
+      });
     }
   };
 
-  //  Gestione aggiornamento documenti locali
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const handleUpdateLocalDocs = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleLocalFilesChange = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    const formData = new FormData();
-    Array.from(files).forEach((file) => {
-      formData.append("localFiles", file);
-    });
-    try {
-      const response = await apiRequest(
-        "POST",
-        "/api/documents/local-upload",
-        formData
-      );
-      if (response.ok) {
-        toast.success("Documenti locali aggiornati!");
-        if (onSyncComplete) onSyncComplete();
-      } else {
-        const errorData = await response.json();
-        toast.error(
-          errorData.message || "Errore aggiornamento documenti locali"
-        );
-      }
-    } catch (err) {
-      toast.error("Errore durante l'aggiornamento dei documenti locali");
-    }
-    // Reset input per permettere nuovo upload
-    e.target.value = "";
-  };
 
   return (
     <div className="flex flex-col gap-3 md:flex-row md:items-center mb-6 p-4 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
@@ -157,28 +151,72 @@ export default function ActionsBar({
             Backup
           </Button>
 
-          {/*  Aggiorna documenti locali */}
-          <Button
-            onClick={handleUpdateLocalDocs}
-            variant="outline"
-            className="flex items-center gap-2 w-full md:w-auto"
-            title="Aggiorna documenti locali"
-          >
-            <FileSpreadsheet className="h-4 w-4" />
-            Aggiorna documenti locali
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            // @ts-ignore
-            webkitdirectory="true"
-            // @ts-ignore
-            directory="true"
-            multiple
-            accept=".xlsx,.xls,.docx,.pdf,.ods,.csv"
-            style={{ display: "none" }}
-            onChange={handleLocalFilesChange}
-          />
+          {/*  Aggiorna documenti locali - Dialog moderno */}
+          <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                className="flex items-center gap-2 w-full md:w-auto"
+                title="Aggiorna documenti locali"
+              >
+                <FileSpreadsheet className="h-4 w-4" />
+                Aggiorna documenti locali
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Carica Documenti Locali</DialogTitle>
+              </DialogHeader>
+              <ModernFileUpload
+                onFilesSelected={async (files) => {
+                  const formData = new FormData();
+                  files.forEach((file: any) => {
+                    const fileNameForUpload = file.path || file.webkitRelativePath || file.name;
+                    formData.append("localFiles", file, fileNameForUpload);
+                  });
+                  try {
+                    const response = await apiRequest(
+                      "POST",
+                      "/api/documents/local-upload",
+                      formData
+                    );
+                    const result = await response.json().catch(() => null);
+                    if (response.ok) {
+                      // Evita di mostrare toast di "Successo" se il server segnala errori parziali (es. 207 o errors presenti)
+                      const hasPartialErrors = !!(result && Array.isArray(result.errors) && result.errors.length > 0);
+                      if (!hasPartialErrors) {
+                        toast({
+                          title: "Successo",
+                          description: (result && result.message) || "Documenti locali aggiornati!",
+                        });
+                      }
+                      if (onSyncComplete) onSyncComplete();
+                      setShowUploadDialog(false);
+                    } else {
+                      const errorData = result;
+                      toast({
+                        title: "Errore",
+                        description: errorData.message || "Errore aggiornamento documenti locali",
+                        variant: "destructive",
+                      });
+                    }
+                  } catch (err) {
+                    toast({
+                      title: "Errore",
+                      description: "Errore durante l'aggiornamento dei documenti locali",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+                onUploadComplete={() => {
+                  // Callback opzionale quando il caricamento è completato
+                }}
+                accept={[".xlsx", ".xls", ".docx", ".pdf", ".ods", ".csv"]}
+                maxFiles={1000}
+                disabled={false}
+              />
+            </DialogContent>
+          </Dialog>
 
           {/* Sync Button */}
           <Button

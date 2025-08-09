@@ -127,9 +127,18 @@ let memoryState: State = { toasts: [] };
 
 function dispatch(action: Action) {
   memoryState = reducer(memoryState, action);
-  listeners.forEach((listener) => {
-    listener(memoryState);
-  });
+  const notify = () => {
+    listeners.forEach((listener) => {
+      listener(memoryState);
+    });
+  };
+  if (typeof queueMicrotask === "function") {
+    queueMicrotask(notify);
+  } else if (typeof Promise !== "undefined") {
+    Promise.resolve().then(notify);
+  } else {
+    setTimeout(notify, 0);
+  }
 }
 
 type Toast = Omit<ToasterToast, "id">;
@@ -174,7 +183,7 @@ function useToast() {
         listeners.splice(index, 1);
       }
     };
-  }, [state]);
+  }, []);
 
   return {
     ...state,

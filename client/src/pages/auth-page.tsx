@@ -29,6 +29,7 @@ import {
 import AuthNavbar from "../components/auth-navbar";
 import Footer from "../components/footer";
 import LoadingSpinner from "../components/loading-spinner";
+import SimpleFileUpload from "../components/simple-file-upload";
 import {
   Form,
   FormControl,
@@ -444,31 +445,31 @@ export default function AuthPage() {
                           </FormItem>
                         )}
                       />
-                      {/*  Caricamento cartella locale */}
+                      {/*  Caricamento cartella locale semplice */}
                       <FormField
                         control={registerForm.control}
                         name="localFiles"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>
-                              Carica Cartella Locale (opzionale)
+                              Carica Documenti Locali (opzionale)
                             </FormLabel>
                             <FormControl>
-                              <input
-                                type="file"
-                                webkitdirectory="true"
-                                directory="true"
-                                multiple
-                                accept=".xlsx,.xls,.docx,.pdf,.ods,.csv"
-                                onChange={(e) => field.onChange(e.target.files)}
-                                className="block w-full text-sm text-slate-900 border border-slate-300 rounded-lg cursor-pointer bg-slate-50 dark:text-slate-200 dark:bg-slate-700 dark:border-slate-600"
+                              <SimpleFileUpload
+                                onFilesSelected={(files: any[]) => {
+                                  // Converti i file in FileList per compatibilità
+                                  const dataTransfer = new DataTransfer();
+                                  files.forEach((file: any) => dataTransfer.items.add(file));
+                                  field.onChange(dataTransfer.files);
+                                }}
+                                accept={[".xlsx", ".xls", ".docx", ".pdf", ".ods", ".csv"]}
+                                maxFiles={1000}
+                                disabled={registerMutation.isPending}
                               />
                             </FormControl>
                             <FormDescription>
-                              Puoi caricare una cartella dal tuo PC contenente
-                              documenti (xlsx, xls, docx, pdf, ods, csv). In
-                              alternativa, inserisci l'URL della cartella Google
-                              Drive qui sotto.
+                              Seleziona file o cartelle manualmente. Supporta la gerarchia completa delle cartelle. 
+                              In alternativa, inserisci l'URL della cartella Google Drive qui sotto.
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -557,39 +558,168 @@ export default function AuthPage() {
           </Card>
         </div>
 
-        {/* Colonna destra - Hero (invariata) */}
-        <div className="flex-1 bg-primary p-10 text-primary-foreground flex-col justify-center items-center space-y-6 lg:space-y-10 hidden lg:flex">
-          <div className="max-w-md text-center">
-            <h1 className="text-3xl font-bold mb-4">Gestione Documenti ISO</h1>
-            <p className="mb-6 text-lg opacity-90">
-              Gestisci, organizza e monitora i tuoi documenti ISO nel rispetto
-              delle normative
-            </p>
-            <div className="flex flex-col space-y-4">
-              <div className="flex items-start space-x-3">
-                <div className="bg-primary-foreground text-primary rounded-full p-1 mt-0.5">
-                  <FileText size={16} />
+        {/* Colonna destra - Hero condizionale */}
+        <div className="flex-1 bg-primary p-6 lg:p-10 text-primary-foreground hidden lg:flex">
+          {tabValue === "login" ? (
+            // Sezione destra per LOGIN (compatta)
+            <div className="flex flex-col justify-center items-center space-y-6 w-full max-w-md mx-auto">
+              {/* Header centrato */}
+              <div className="text-center w-full">
+                <h1 className="text-3xl lg:text-4xl font-bold mb-4 leading-tight">
+                  Gestione Documenti ISO
+                </h1>
+                <p className="text-base lg:text-lg opacity-90 mb-6 leading-relaxed">
+                  Gestisci, organizza e monitora i tuoi documenti ISO nel rispetto delle normative
+                </p>
+              </div>
+              
+              {/* Features semplificate */}
+              <div className="space-y-4 w-full">
+                <div className="flex items-center space-x-3 p-3 rounded-lg bg-primary-foreground/5 hover:bg-primary-foreground/10 transition-colors">
+                  <div className="bg-primary-foreground text-primary rounded-full p-2">
+                    <FileText size={18} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-base">Tracciamento Completo</h3>
+                    <p className="text-sm opacity-90">
+                      Mantieni traccia dello stato e delle revisioni dei documenti
+                    </p>
+                  </div>
                 </div>
-                <div className="text-left">
-                  <h3 className="font-medium">Tracciamento completo</h3>
-                  <p className="text-sm opacity-90">
-                    Mantieni traccia dello stato e delle revisioni dei documenti
-                  </p>
+                
+                <div className="flex items-center space-x-3 p-3 rounded-lg bg-primary-foreground/5 hover:bg-primary-foreground/10 transition-colors">
+                  <div className="bg-primary-foreground text-primary rounded-full p-2">
+                    <AlertCircle size={18} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-base">Avvisi Automatici</h3>
+                    <p className="text-sm opacity-90">
+                      Ricevi notifiche sui documenti in scadenza
+                    </p>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-start space-x-3">
-                <div className="bg-primary-foreground text-primary rounded-full p-1 mt-0.5">
-                  <AlertCircle size={16} />
-                </div>
-                <div className="text-left">
-                  <h3 className="font-medium">Avvisi automatici</h3>
-                  <p className="text-sm opacity-90">
-                    Ricevi notifiche sui documenti in scadenza
-                  </p>
+              
+              {/* Box informativo compatto */}
+              <div className="w-full p-4 bg-primary-foreground/10 rounded-lg border border-primary-foreground/20">
+                <h4 className="font-semibold text-lg mb-3 text-center">Vantaggi del Sistema</h4>
+                <div className="space-y-2 text-sm opacity-90">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-1.5 h-1.5 bg-primary-foreground rounded-full"></div>
+                    <span>Accesso sicuro e protetto</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-1.5 h-1.5 bg-primary-foreground rounded-full"></div>
+                    <span>Dashboard personalizzata</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-1.5 h-1.5 bg-primary-foreground rounded-full"></div>
+                    <span>Sincronizzazione Google Drive</span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          ) : (
+            // Sezione destra per REGISTRAZIONE (completamente ridisegnata)
+            <div className="flex flex-col justify-start items-center space-y-8 w-full max-w-2xl mx-auto pt-16">
+              {/* Header centrato */}
+              <div className="text-center w-full">
+                <h1 className="text-2xl lg:text-2xl xl:text-4xl font-bold mb-4 lg:mb-6 leading-tight">
+                  Inizia la tua Trasformazione Digitale
+                </h1>
+                <p className="text-lg lg:text-xl opacity-90 mb-8 leading-relaxed max-w-lg mx-auto">
+                  Unisciti alle aziende che hanno già scelto la gestione intelligente dei documenti ISO
+                </p>
+              </div>
+              
+              {/* Features grid responsive */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
+                <div className="flex flex-col items-center text-center space-y-3 p-4 rounded-lg bg-primary-foreground/5 hover:bg-primary-foreground/10 transition-colors">
+                  <div className="bg-primary-foreground text-primary rounded-full p-3">
+                    <FileText size={24} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">Tracciamento Completo</h3>
+                    <p className="text-sm opacity-90 leading-relaxed">
+                      Sistema di versioning avanzato per documenti e revisioni
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex flex-col items-center text-center space-y-3 p-4 rounded-lg bg-primary-foreground/5 hover:bg-primary-foreground/10 transition-colors">
+                  <div className="bg-primary-foreground text-primary rounded-full p-3">
+                    <AlertCircle size={24} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">Avvisi Automatici</h3>
+                    <p className="text-sm opacity-90 leading-relaxed">
+                      Notifiche tempestive su scadenze e aggiornamenti normativi
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex flex-col items-center text-center space-y-3 p-4 rounded-lg bg-primary-foreground/5 hover:bg-primary-foreground/10 transition-colors">
+                  <div className="bg-primary-foreground text-primary rounded-full p-3">
+                    <Building size={24} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">Gestione Aziendale</h3>
+                    <p className="text-sm opacity-90 leading-relaxed">
+                      Organizzazione per reparti con controlli di accesso granulari
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex flex-col items-center text-center space-y-3 p-4 rounded-lg bg-primary-foreground/5 hover:bg-primary-foreground/10 transition-colors">
+                  <div className="bg-primary-foreground text-primary rounded-full p-3">
+                    <Lock size={24} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">Sicurezza Avanzata</h3>
+                    <p className="text-sm opacity-90 leading-relaxed">
+                      Crittografia end-to-end e backup automatici per i tuoi dati
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Box finale migliorato */}
+              <div className="w-full max-w-lg  p-6 lg:p-8 bg-primary-foreground/10 rounded-xl border border-primary-foreground/20 backdrop-blur-sm pt-12 mt-10">
+                <h4 className="font-semibold text-xl mb-4 text-center">Perché scegliere il nostro sistema?</h4>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 text-sm opacity-90">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-primary-foreground rounded-full"></div>
+                    <span>Conformità automatica ISO</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-primary-foreground rounded-full"></div>
+                    <span>Integrazione Google Drive</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-primary-foreground rounded-full"></div>
+                    <span>Dashboard personalizzabili</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-primary-foreground rounded-full"></div>
+                    <span>Supporto tecnico 24/7</span>
+                  </div>
+                  <div className="flex items-center space-x-2 lg:col-span-2">
+                    <div className="w-2 h-2 bg-primary-foreground rounded-full"></div>
+                    <span>Aggiornamenti continui e nuove funzionalità</span>
+                  </div>
+                </div>
+              </div>
+              {/* Box aggiuntivo per riempire lo spazio sottostante */}
+              <div className="w-full max-w-lg p-6 lg:p-8 bg-primary-foreground/10 rounded-xl border border-primary-foreground/20 mt-6">
+                <h4 className="font-semibold text-lg mb-3 text-center">Cosa otterrai subito</h4>
+                <p className="text-sm opacity-90 leading-relaxed text-center">
+                  Attiva il tuo account e centralizza i documenti in un unico posto, monitora scadenze
+                  e revisioni e collabora con il team in sicurezza. Potrai configurare reparti,
+                  permessi e notifiche per adattare il sistema alle esigenze della tua azienda.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

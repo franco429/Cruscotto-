@@ -203,7 +203,16 @@ export default function DocumentTable({
                     className="hover:bg-slate-50 dark:hover:bg-slate-700"
                   >
                     <TableCell className="font-mono text-xs sm:text-sm text-slate-900 dark:text-white hidden xs:table-cell">
-                      {document.path}
+                      <div className="flex flex-col">
+                        <span className="truncate max-w-[200px]" title={document.path}>
+                          {document.path}
+                        </span>
+                        {document.path && document.path.includes('/') && (
+                          <span className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[200px]">
+                            📁 {document.path.split('/').slice(0, -1).join(' / ')}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
                       <div className="flex items-center">

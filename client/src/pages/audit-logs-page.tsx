@@ -91,6 +91,72 @@ export default function AuditLogsPage() {
     setCurrentPage(1);
   }, [searchQuery]);
 
+  // CSV export helpers
+  function csvEscape(value: unknown): string {
+    const s = value === null || value === undefined ? "" : String(value);
+    const escaped = s.replace(/"/g, '""');
+    return `"${escaped}"`;
+  }
+
+  function exportFilteredLogsToCsv(): void {
+    const rows = (filteredLogs ?? logs ?? []);
+    if (!rows || rows.length === 0) return;
+
+    const header = [
+      "Timestamp",
+      "Azione",
+      "Utente",
+      "DocumentoID",
+      "TitoloDocumento",
+      "Dettagli",
+    ];
+
+    const lines: string[] = [];
+    lines.push(header.map(csvEscape).join(","));
+
+    for (const log of rows) {
+      const timestamp = log.timestamp
+        ? format(new Date(log.timestamp), "dd/MM/yyyy HH:mm:ss")
+        : "";
+      const action = log.action ?? "";
+      const userId =
+        log.userId === null || log.userId === undefined
+          ? "Sistema"
+          : String(log.userId);
+      const documentId =
+        log.documentId !== null && log.documentId !== undefined
+          ? String(log.documentId)
+          : "";
+      const documentTitle = getDocumentTitleById(log.documentId);
+      const details = detailsToString(log.details);
+
+      const row = [
+        timestamp,
+        action,
+        userId,
+        documentId,
+        documentTitle,
+        details,
+      ].map((v) => csvEscape(v));
+      lines.push(row.join(","));
+    }
+
+    const csvContent = "\ufeff" + lines.join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const filename = `audit-logs_${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}.csv`;
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
   // Get action badge variant
   const getActionBadgeVariant = (action: string) => {
     switch (action.toLowerCase()) {
@@ -98,12 +164,22 @@ export default function AuditLogsPage() {
         return "default";
       case "update":
         return "default";
+      case "document-updated":
+        return "default";
       case "delete":
+        return "destructive";
+      case "document-deleted":
+        return "destructive";
+      case "user-deleted":
         return "destructive";
       case "restore":
         return "outline";
       case "login":
         return "secondary";
+      case "user-role-change":
+        return "secondary";
+      case "client-updated":
+        return "default";
       default:
         return "default";
     }
@@ -270,7 +346,13 @@ export default function AuditLogsPage() {
           {/* Export button */}
           {logs && logs.length > 0 && (
             <div className="mt-6 flex justify-end">
-              <Button variant="outline">Esporta log (.csv)</Button>
+              <Button
+                variant="outline"
+                onClick={exportFilteredLogsToCsv}
+                disabled={loadingLogs || loadingDocs}
+              >
+                Esporta log (.csv)
+              </Button>
             </div>
           )}
 
