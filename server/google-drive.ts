@@ -331,36 +331,56 @@ class FormulaEvaluator {
   }
 }
 
-// ===== EXCEL ANALYZER (UPDATED) =====
+// ===== EXCEL ANALYZER (OPTIMIZED) =====
 export async function analyzeExcelContent(
   filePath: string
 ): Promise<ExcelAnalysis> {
   const evaluator = new FormulaEvaluator();
+  const startTime = Date.now();
 
   try {
-    logger.info("Starting Excel analysis", { filePath });
+    logger.debug("Starting Excel analysis", { filePath });
 
+    // Check file size to determine strategy
+    const stats = await fs.promises.stat(filePath);
+    const fileSizeKB = stats.size / 1024;
+    
+    logger.debug("File size analysis", { filePath, fileSizeKB: Math.round(fileSizeKB) });
+
+    // For very large files (>50MB), use streaming approach
+    if (fileSizeKB > 50 * 1024) {
+      logger.info("Large file detected, using streaming approach", { filePath, fileSizeKB });
+      return await analyzeExcelContentStream(filePath, evaluator);
+    }
+
+    // Standard approach for smaller files with optimization
     const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.readFile(filePath);
+    
+    // Set options to optimize for speed - only read what we need
+    await workbook.xlsx.readFile(filePath, {
+      sharedStrings: 'cache', // Cache shared strings for performance
+      hyperlinks: 'ignore',   // Ignore hyperlinks to speed up
+      styles: 'ignore'        // Ignore styles for faster parsing
+    });
 
     const worksheet = workbook.getWorksheet(1);
     if (!worksheet) {
+      logger.warn("No worksheets found in Excel file", { filePath });
       return { alertStatus: "none", expiryDate: null };
     }
 
+    // Only read cell A1 for performance
     const cellA1 = worksheet.getCell("A1");
     let expiryDate: Date | null = null;
 
     // Priority 1: Evaluate formula if present
     if (cellA1.formula) {
-      logger.info(`Found formula: ${cellA1.formula}`, { filePath });
+      logger.debug(`Found formula: ${cellA1.formula}`, { filePath });
       const result = evaluator.evaluate(cellA1.formula);
 
       if (result.evaluated && result.value) {
         expiryDate = result.value;
-        logger.info(`Formula evaluated: ${expiryDate.toISOString()}`, {
-          filePath,
-        });
+        logger.debug(`Formula evaluated: ${expiryDate.toISOString()}`, { filePath });
       } else {
         logger.warn(`Formula evaluation failed: ${result.error}`, { filePath });
       }
@@ -373,17 +393,17 @@ export async function analyzeExcelContent(
         cellValue = (cellValue as ExcelJS.CellFormulaValue).result;
       }
       expiryDate = parseValueToUTCDate(cellValue);
-      logger.info("Using fallback cached value", {
-        cellValue,
-        expiryDate,
-        filePath,
-      });
+      logger.debug("Using fallback cached value", { cellValue, expiryDate, filePath });
     }
 
+    const analysisTime = Date.now() - startTime;
+    
     if (!expiryDate) {
-      logger.warn("No valid date found in A1", {
+      logger.debug("No valid date found in A1", {
         cellA1: cellA1.value,
         filePath,
+        analysisTimeMs: analysisTime,
+        fileSizeKB: Math.round(fileSizeKB)
       });
       return { alertStatus: "none", expiryDate: null };
     }
@@ -391,10 +411,165 @@ export async function analyzeExcelContent(
     // Calculate alert status
     const alertStatus = calculateAlertStatus(expiryDate);
 
-    logger.info("Analysis complete", { expiryDate, alertStatus, filePath });
+    logger.info("Excel analysis completed", { 
+      expiryDate: expiryDate.toISOString(), 
+      alertStatus, 
+      filePath,
+      analysisTimeMs: analysisTime,
+      fileSizeKB: Math.round(fileSizeKB)
+    });
     return { alertStatus, expiryDate };
   } catch (error) {
-    logger.error("Excel analysis failed", { filePath, error });
+    const analysisTime = Date.now() - startTime;
+    logger.error("Excel analysis failed", { 
+      filePath, 
+      error: error instanceof Error ? error.message : String(error),
+      analysisTimeMs: analysisTime
+    });
+    return { alertStatus: "none", expiryDate: null };
+  }
+}
+
+// Streaming approach for very large Excel files
+async function analyzeExcelContentStream(
+  filePath: string,
+  evaluator: FormulaEvaluator
+): Promise<ExcelAnalysis> {
+  const startTime = Date.now();
+  
+  try {
+    const workbook = new ExcelJS.stream.xlsx.WorkbookReader(filePath, {
+      sharedStrings: 'emit',
+      hyperlinks: 'ignore',
+      styles: 'ignore'
+    });
+
+    let expiryDate: Date | null = null;
+    let worksheetProcessed = false;
+
+    for await (const worksheetReader of workbook) {
+      if (worksheetProcessed) break; // Only process first worksheet
+      
+      let rowCount = 0;
+      for await (const row of worksheetReader) {
+        rowCount++;
+        
+        // Only process first row (row 1) for cell A1
+        if (rowCount === 1) {
+          const cellA1 = row.getCell(1); // Column A (index 1)
+          
+          // Check for formula first
+          if (cellA1.formula) {
+            logger.debug(`Found formula in streaming mode: ${cellA1.formula}`, { filePath });
+            const result = evaluator.evaluate(cellA1.formula);
+            
+            if (result.evaluated && result.value) {
+              expiryDate = result.value;
+              logger.debug(`Formula evaluated in streaming: ${expiryDate.toISOString()}`, { filePath });
+            }
+          }
+          
+          // Fallback to cell value
+          if (!expiryDate) {
+            let cellValue = cellA1.value;
+            if (typeof cellValue === "object" && cellValue && "result" in cellValue) {
+              cellValue = (cellValue as ExcelJS.CellFormulaValue).result;
+            }
+            expiryDate = parseValueToUTCDate(cellValue);
+            logger.debug("Using streaming cached value", { cellValue, expiryDate, filePath });
+          }
+          
+          worksheetProcessed = true;
+          break; // Exit row loop after processing A1
+        }
+      }
+    }
+
+    const analysisTime = Date.now() - startTime;
+    
+    if (!expiryDate) {
+      logger.debug("No expiry date found in streaming Excel analysis", { 
+        filePath, 
+        analysisTimeMs: analysisTime,
+        method: 'streaming'
+      });
+      return { alertStatus: "none", expiryDate: null };
+    }
+
+    const alertStatus = calculateAlertStatus(expiryDate);
+    logger.info("Streaming Excel analysis completed", {
+      filePath,
+      expiryDate: expiryDate.toISOString(),
+      alertStatus,
+      analysisTimeMs: analysisTime,
+      method: 'streaming'
+    });
+    return { alertStatus, expiryDate };
+    
+  } catch (error) {
+    const analysisTime = Date.now() - startTime;
+    logger.error("Streaming Excel analysis failed", {
+      filePath,
+      error: error instanceof Error ? error.message : String(error),
+      analysisTimeMs: analysisTime,
+      method: 'streaming'
+    });
+
+    // Fallback to standard method for corrupted or incompatible files
+    logger.info("Falling back to standard analysis method", { filePath });
+    return await analyzeExcelContentFallback(filePath, evaluator);
+  }
+}
+
+// Fallback method with minimal processing
+async function analyzeExcelContentFallback(
+  filePath: string,
+  evaluator: FormulaEvaluator
+): Promise<ExcelAnalysis> {
+  try {
+    const workbook = new ExcelJS.Workbook();
+    
+    // Use minimal options for fallback
+    await workbook.xlsx.readFile(filePath, {
+      sharedStrings: 'ignore',
+      hyperlinks: 'ignore',
+      styles: 'ignore'
+    });
+
+    const worksheet = workbook.getWorksheet(1);
+    if (!worksheet) {
+      return { alertStatus: "none", expiryDate: null };
+    }
+
+    // Quick read of A1 only
+    const cellA1 = worksheet.getCell("A1");
+    let cellValue = cellA1.value;
+    
+    if (typeof cellValue === "object" && cellValue && "result" in cellValue) {
+      cellValue = (cellValue as ExcelJS.CellFormulaValue).result;
+    }
+    
+    const expiryDate = parseValueToUTCDate(cellValue);
+    
+    if (!expiryDate) {
+      return { alertStatus: "none", expiryDate: null };
+    }
+
+    const alertStatus = calculateAlertStatus(expiryDate);
+    logger.info("Fallback Excel analysis completed", {
+      filePath,
+      expiryDate: expiryDate.toISOString(),
+      alertStatus,
+      method: 'fallback'
+    });
+    return { alertStatus, expiryDate };
+    
+  } catch (error) {
+    logger.error("Fallback Excel analysis also failed", {
+      filePath,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    
     return { alertStatus: "none", expiryDate: null };
   }
 }

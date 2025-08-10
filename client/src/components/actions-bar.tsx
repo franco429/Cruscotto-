@@ -219,49 +219,105 @@ export default function ActionsBar({
                   let totalErrors: string[] = [];
 
                   try {
-                    for (let i = 0; i < batches.length; i++) {
-                      const batch = batches[i];
-                      const formData = new FormData();
-                      batch.forEach((file: any) => {
-                        const fileNameForUpload = file.path || file.webkitRelativePath || file.name;
-                        formData.append("localFiles", file, fileNameForUpload);
-                      });
+                    // Upload asincrono ottimizzato
+                    const formData = new FormData();
+                    files.forEach((file: any) => {
+                      const fileNameForUpload = file.path || file.webkitRelativePath || file.name;
+                      formData.append("localFiles", file, fileNameForUpload);
+                    });
 
-                      const response = await apiRequest("POST", "/api/documents/local-upload", formData);
-                      const result = await response.json().catch(() => null);
+                    // Avvia upload asincrono
+                    const response = await apiRequest("POST", "/api/documents/local-upload", formData);
+                    const result = await response.json();
 
-                      if (!response.ok) {
-                        const msg = (result && result.message) || `Errore batch ${i + 1}/${batches.length}`;
-                        totalErrors.push(msg);
-                        continue;
-                      }
-
-                      const successCount = Array.isArray(result?.documents) ? result.documents.length : 0;
-                      totalSuccess += successCount;
-                      if (Array.isArray(result?.errors) && result.errors.length > 0) {
-                        totalErrors = totalErrors.concat(result.errors as string[]);
-                      }
+                    if (!response.ok) {
+                      throw new Error(result?.message || "Errore durante l'upload");
                     }
 
-                    if (totalErrors.length === 0) {
+                    const { uploadId, totalFiles } = result;
+
+                    // Mostra toast di avvio con progress tracking
+                    const progressToast = toast({
+                      title: "Upload in corso",
+                      description: `Elaborazione di ${totalFiles} file in background...`,
+                      duration: Infinity,
+                    });
+
+                    // Polling dello stato upload
+                    const pollUploadStatus = async () => {
+                      try {
+                        const statusResponse = await apiRequest("GET", `/api/documents/upload-status/${uploadId}`);
+                        const status = await statusResponse.json();
+
+                        const progressPercent = Math.round((status.processedFiles + status.failedFiles) / status.totalFiles * 100);
+                        
+                        // Aggiorna descrizione del toast
+                        progressToast.update({
+                          id: progressToast.id,
+                          title: "Upload in corso",
+                          description: `Progresso: ${progressPercent}% (${status.processedFiles + status.failedFiles}/${status.totalFiles})`,
+                          duration: Infinity,
+                        });
+
+                        if (status.status === 'completed') {
+                          progressToast.dismiss();
+                          
+                          if (status.errors.length === 0) {
+                            toast({
+                              title: "Successo",
+                              description: `${status.processedFiles} documenti caricati con successo`,
+                            });
+                          } else {
+                            toast({
+                              title: "Completato con errori",
+                              description: `${status.processedFiles} caricati, ${status.failedFiles} errori.`,
+                              variant: "destructive",
+                            });
+                          }
+
+                          if (onSyncComplete) onSyncComplete();
+                          return true; // Stop polling
+                        } else if (status.status === 'failed') {
+                          progressToast.dismiss();
+                          toast({
+                            title: "Errore",
+                            description: "Upload fallito. Controlla i log per dettagli.",
+                            variant: "destructive",
+                          });
+                          return true; // Stop polling
+                        }
+
+                        return false; // Continue polling
+                      } catch (error) {
+                        console.error("Error polling upload status:", error);
+                        return false; // Continue polling
+                      }
+                    };
+
+                    // Avvia polling ogni 2 secondi
+                    const pollInterval = setInterval(async () => {
+                      const shouldStop = await pollUploadStatus();
+                      if (shouldStop) {
+                        clearInterval(pollInterval);
+                      }
+                    }, 2000);
+
+                    // Timeout di sicurezza (10 minuti)
+                    setTimeout(() => {
+                      clearInterval(pollInterval);
+                      progressToast.dismiss();
                       toast({
-                        title: "Successo",
-                        description: `${totalSuccess} documenti caricati con successo`,
-                      });
-                    } else {
-                      toast({
-                        title: "Completato con errori",
-                        description: `${totalSuccess} caricati, ${totalErrors.length} errori.`,
+                        title: "Timeout",
+                        description: "Upload in corso da troppo tempo. Controlla i risultati manualmente.",
                         variant: "destructive",
                       });
-                    }
+                    }, 600000);
 
-                    if (onSyncComplete) onSyncComplete();
                     setShowUploadDialog(false);
                   } catch (err: any) {
                     toast({
                       title: "Errore",
-                      description: err?.message || "Errore durante l'aggiornamento dei documenti locali",
+                      description: err?.message || "Errore durante l'avvio dell'upload",
                       variant: "destructive",
                     });
                   }

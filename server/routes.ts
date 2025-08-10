@@ -328,6 +328,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
       await mongoStorage.createLog({
         userId: user.legacyId,
         action: "admin-registration",
+        documentId: null,
         details: {
           message: `Nuova azienda '${client.name}' e admin '${user.email}' registrati.`,
           clientId: client.legacyId,
@@ -2265,7 +2266,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
     }
   });
 
-  // Upload documenti locali (cartella)
+  // Upload documenti locali (cartella) - Versione ottimizzata
   app.post(
     "/api/documents/local-upload",
     isAdmin,
@@ -2304,159 +2305,448 @@ export async function registerRoutes(app: Express): Promise<Express> {
           fileNames: files.map(f => f.originalname),
         });
 
-        const processedDocs = [];
-        const errors = [];
-
-        for (const file of files) {
-          try {
-            logger.debug("Processing file", {
-              fileName: file.originalname,
-              fileSize: file.size,
-              filePath: file.path,
-              userId,
-              clientId,
-            });
-
-            // Gestione gerarchia cartelle per file locali
-            let filePath = file.originalname;
-            
-            // Se il file ha un webkitRelativePath (cartella selezionata), lo usiamo per mantenere la gerarchia
-            if ((file as any).webkitRelativePath) {
-              filePath = (file as any).webkitRelativePath;
-              logger.debug("Using webkitRelativePath for hierarchy", {
-                originalName: file.originalname,
-                webkitRelativePath: (file as any).webkitRelativePath,
-                userId,
-                clientId,
-              });
-            }
-
-            // Usa la logica già esistente per processare i file (estrai metadati, scadenze, revisioni)
-            const docData = await processDocumentFile(
-              filePath, // Usa il path completo per mantenere la gerarchia
-              "",
-              file.path
-            );
-
-            if (!docData) {
-              logger.warn("Failed to process document file", {
-                fileName: file.originalname,
-                filePath: filePath,
-                userId,
-                clientId,
-              });
-              errors.push(`Impossibile processare il file: ${file.originalname}`);
-              continue;
-            }
-
-            // Associa client e owner
-            docData.clientId = clientId;
-            docData.ownerId = userId;
-            // Salva anche il nome fisico reale del file caricato
-            docData.filePath = file.filename;
-
-            logger.debug("Document data processed", {
-              fileName: file.originalname,
-              title: docData.title,
-              path: docData.path,
-              revision: docData.revision,
-              fileType: docData.fileType,
-              userId,
-              clientId,
-            });
-
-            // Salva il documento solo se NON esiste già la stessa combinazione path+title+revision
-            const existing = await mongoStorage.getDocumentByPathAndTitleAndRevision(
-              docData.path,
-              docData.title,
-              docData.revision,
-              clientId
-            );
-
-            let savedDoc;
-            if (existing) {
-              logger.info("Skipping identical document (same path/title/revision)", {
-                documentId: existing.legacyId,
-                fileName: file.originalname,
-                path: docData.path,
-                title: docData.title,
-                revision: docData.revision,
-                userId,
-                clientId,
-              });
-              // Non sostituiamo i documenti identici
-              savedDoc = existing;
-            } else {
-              logger.info("Creating new document", {
-                fileName: file.originalname,
-                userId,
-                clientId,
-              });
-              savedDoc = await mongoStorage.createDocument(docData);
-            }
-
-            processedDocs.push(savedDoc);
-
-            logger.info("File processed successfully", {
-              fileName: file.originalname,
-              documentId: savedDoc.legacyId,
-              userId,
-              clientId,
-            });
-
-          } catch (fileError) {
-            logger.error("Error processing individual file", {
-              fileName: file.originalname,
-              error: fileError instanceof Error ? fileError.message : String(fileError),
-              userId,
-              clientId,
-            });
-            errors.push(`Errore nel processare ${file.originalname}: ${fileError instanceof Error ? fileError.message : 'Errore sconosciuto'}`);
-          }
-        }
-
-        // Gestione revisioni obsolete dopo aver processato tutti i documenti
-        if (processedDocs.length > 0) {
-          await mongoStorage.markObsoleteRevisionsForClient(clientId);
-        }
-
-        logger.info("Local upload completed", {
-          userId,
-          clientId,
-          processed: processedDocs.length,
-          errors: errors.length,
+        // Genera un ID univoco per questo upload batch
+        const uploadId = uuidv4();
+        
+        // Risposta immediata al client con ID di tracking
+        res.json({
+          success: true,
+          uploadId,
+          message: `Upload avviato per ${files.length} file. L'elaborazione continua in background.`,
+          totalFiles: files.length
         });
 
-        if (errors.length > 0) {
-          return res.status(207).json({
-            success: true,
-            documents: processedDocs,
-            errors: errors,
-            message: `Upload completato con ${errors.length} errori`,
-          });
-        }
-
-        res.json({ 
-          success: true, 
-          documents: processedDocs,
-          message: `${processedDocs.length} documenti caricati con successo`,
-        });
+        // Elaborazione asincrona in background
+        processFilesInBackground(files, clientId, userId, uploadId);
 
       } catch (error) {
         logger.error("Error during local document upload", {
           error: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined,
-          userId: req.user?.legacyId,
           clientId: req.user?.clientId,
+          userId: req.user?.legacyId,
         });
 
-        res.status(500).json({ 
+        res.status(500).json({
           message: "Errore durante l'upload dei documenti locali",
-          error: error instanceof Error ? error.message : "Errore sconosciuto",
         });
       }
     }
   );
+
+  // Nuovo endpoint per verificare lo stato dell'upload
+  app.get("/api/documents/upload-status/:uploadId", isAdmin, async (req, res) => {
+    try {
+      const { uploadId } = req.params;
+      const status = await getUploadStatus(uploadId);
+      res.json(status);
+    } catch (error) {
+      logger.error("Error getting upload status", {
+        uploadId: req.params.uploadId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      res.status(500).json({ message: "Errore nel recupero dello stato" });
+    }
+  });
+
+// Funzione per elaborazione asincrona dei file
+async function processFilesInBackground(
+  files: Express.Multer.File[], 
+  clientId: number, 
+  userId: number, 
+  uploadId: string
+) {
+  const uploadStatus = {
+    uploadId,
+    totalFiles: files.length,
+    processedFiles: 0,
+    failedFiles: 0,
+    errors: [] as string[],
+    processedDocs: [] as any[],
+    status: 'processing' as 'processing' | 'completed' | 'failed',
+    startTime: new Date(),
+    endTime: null as Date | null
+  };
+
+  // Salva lo stato iniziale
+  await saveUploadStatus(uploadId, uploadStatus);
+
+  try {
+    logger.info("Starting background file processing", {
+      uploadId,
+      userId,
+      clientId,
+      fileCount: files.length
+    });
+
+    // Elaborazione parallela con limite di concorrenza
+    const BATCH_SIZE = 5; // Processa 5 file alla volta
+    const batches = [];
+    
+    for (let i = 0; i < files.length; i += BATCH_SIZE) {
+      batches.push(files.slice(i, i + BATCH_SIZE));
+    }
+
+    for (const batch of batches) {
+      const batchPromises = batch.map(file => 
+        processIndividualFile(file, clientId, userId, uploadId)
+      );
+
+      const batchResults = await Promise.allSettled(batchPromises);
+      
+      // Aggiorna stato per ogni file del batch
+      for (const result of batchResults) {
+        if (result.status === 'fulfilled') {
+          if (result.value.success) {
+            uploadStatus.processedFiles++;
+            if (result.value.document) {
+              uploadStatus.processedDocs.push(result.value.document);
+            }
+          } else {
+            uploadStatus.failedFiles++;
+            uploadStatus.errors.push(result.value.error || 'Errore sconosciuto');
+          }
+        } else {
+          uploadStatus.failedFiles++;
+          uploadStatus.errors.push(`Errore critico: ${result.reason}`);
+        }
+      }
+
+      // Aggiorna stato intermedio
+      await saveUploadStatus(uploadId, uploadStatus);
+
+      // Pausa breve tra i batch per non sovraccaricare il sistema
+      if (batches.indexOf(batch) < batches.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+
+    // Gestione revisioni obsolete dopo aver processato tutti i documenti
+    if (uploadStatus.processedDocs.length > 0) {
+      await mongoStorage.markObsoleteRevisionsForClient(clientId);
+    }
+
+    uploadStatus.status = 'completed';
+    uploadStatus.endTime = new Date();
+
+    logger.info("Background file processing completed", {
+      uploadId,
+      userId,
+      clientId,
+      processed: uploadStatus.processedFiles,
+      failed: uploadStatus.failedFiles,
+      errors: uploadStatus.errors.length
+    });
+
+  } catch (error) {
+    uploadStatus.status = 'failed';
+    uploadStatus.endTime = new Date();
+    uploadStatus.errors.push(`Errore critico: ${error instanceof Error ? error.message : String(error)}`);
+    
+    logger.error("Background file processing failed", {
+      uploadId,
+      userId,
+      clientId,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
+  }
+
+  // Salva stato finale
+  await saveUploadStatus(uploadId, uploadStatus);
+}
+
+// Funzione per processare un singolo file con timeout intelligente
+async function processIndividualFile(
+  file: Express.Multer.File,
+  clientId: number,
+  userId: number,
+  uploadId: string
+): Promise<{ success: boolean; document?: any; error?: string }> {
+  // Timeout dinamico basato sulla dimensione del file
+  const fileSizeKB = file.size / 1024;
+  let timeoutMs = 30000; // 30 secondi base
+  
+  // Aumenta timeout per file grandi
+  if (fileSizeKB > 10 * 1024) { // >10MB
+    timeoutMs = 120000; // 2 minuti
+  } else if (fileSizeKB > 5 * 1024) { // >5MB
+    timeoutMs = 60000; // 1 minuto
+  }
+  
+  logger.debug("File processing timeout calculated", {
+    fileName: file.originalname,
+    fileSizeKB: Math.round(fileSizeKB),
+    timeoutMs,
+    uploadId
+  });
+  
+  const timeoutPromise = new Promise<{ success: boolean; error: string }>((_, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`Timeout (${timeoutMs/1000}s) processing file: ${file.originalname}`));
+    }, timeoutMs);
+    
+    // Cleanup timer reference to prevent memory leaks
+    timer.unref?.();
+  });
+  
+  try {
+    return await Promise.race([
+      processFileWithTimeout(file, clientId, userId),
+      timeoutPromise
+    ]);
+  } catch (error) {
+    logger.error("File processing failed with error", {
+      fileName: file.originalname,
+      error: error instanceof Error ? error.message : String(error),
+      uploadId,
+      fileSizeKB: Math.round(fileSizeKB)
+    });
+    
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+
+async function processFileWithTimeout(
+  file: Express.Multer.File,
+  clientId: number,
+  userId: number
+): Promise<{ success: boolean; document?: any; error?: string }> {
+  const startTime = Date.now();
+  let retryCount = 0;
+  const maxRetries = 2;
+  
+  const attemptProcess = async (): Promise<{ success: boolean; document?: any; error?: string }> => {
+    try {
+      logger.debug("Processing file attempt", {
+        fileName: file.originalname,
+        fileSize: file.size,
+        filePath: file.path,
+        userId,
+        clientId,
+        attempt: retryCount + 1,
+        maxRetries: maxRetries + 1
+      });
+
+      // Gestione gerarchia cartelle per file locali
+      let filePath = file.originalname;
+      
+      // Se il file ha un webkitRelativePath (cartella selezionata), lo usiamo per mantenere la gerarchia
+      if ((file as any).webkitRelativePath) {
+        filePath = (file as any).webkitRelativePath;
+        logger.debug("Using webkitRelativePath for hierarchy", {
+          originalName: file.originalname,
+          webkitRelativePath: (file as any).webkitRelativePath,
+          userId,
+          clientId,
+        });
+      }
+
+      // Verifica che il file esista fisicamente prima di processarlo
+      if (!fs.existsSync(file.path)) {
+        throw new Error(`File fisico non trovato: ${file.path}`);
+      }
+
+      // Usa la logica già esistente per processare i file (estrai metadati, scadenze, revisioni)
+      const docData = await processDocumentFile(
+        filePath, // Usa il path completo per mantenere la gerarchia
+        "",
+        file.path
+      );
+
+      if (!docData) {
+        throw new Error(`Impossibile processare i metadati del file: ${file.originalname}`);
+      }
+
+      // Associa client e owner
+      docData.clientId = clientId;
+      docData.ownerId = userId;
+      // Per file locali, googleFileId è null e usiamo il path per riferimento fisico
+      docData.googleFileId = null;
+      // Salva il nome fisico del file nel path per file locali
+      if (!docData.driveUrl) {
+        docData.encryptedCachePath = file.filename; // Usa questo campo per il nome fisico
+      }
+
+      logger.debug("Document data processed", {
+        fileName: file.originalname,
+        title: docData.title,
+        path: docData.path,
+        revision: docData.revision,
+        fileType: docData.fileType,
+        userId,
+        clientId,
+      });
+
+      // Verifica duplicati con retry in caso di errore DB
+      let existing;
+      let dbRetries = 0;
+      const maxDbRetries = 3;
+      
+      while (dbRetries < maxDbRetries) {
+        try {
+          existing = await mongoStorage.getDocumentByPathAndTitleAndRevision(
+            docData.path,
+            docData.title,
+            docData.revision,
+            clientId
+          );
+          break; // Success, exit retry loop
+        } catch (dbError) {
+          dbRetries++;
+          if (dbRetries >= maxDbRetries) {
+            throw new Error(`Database error after ${maxDbRetries} retries: ${dbError instanceof Error ? dbError.message : String(dbError)}`);
+          }
+          
+          logger.warn("Database operation retry", {
+            fileName: file.originalname,
+            dbRetries,
+            maxDbRetries,
+            error: dbError instanceof Error ? dbError.message : String(dbError)
+          });
+          
+          // Exponential backoff
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, dbRetries) * 100));
+        }
+      }
+
+      let savedDoc: any;
+      if (existing) {
+        logger.info("Skipping identical document (same path/title/revision)", {
+          documentId: existing.legacyId,
+          fileName: file.originalname,
+          path: docData.path,
+          title: docData.title,
+          revision: docData.revision,
+          userId,
+          clientId,
+        });
+        savedDoc = existing;
+      } else {
+        // Retry document creation with exponential backoff
+        dbRetries = 0;
+        while (dbRetries < maxDbRetries) {
+          try {
+            logger.info("Creating new document", {
+              fileName: file.originalname,
+              userId,
+              clientId,
+              attempt: dbRetries + 1
+            });
+            savedDoc = await mongoStorage.createDocument(docData);
+            break; // Success, exit retry loop
+          } catch (dbError) {
+            dbRetries++;
+            if (dbRetries >= maxDbRetries) {
+              throw new Error(`Document creation failed after ${maxDbRetries} retries: ${dbError instanceof Error ? dbError.message : String(dbError)}`);
+            }
+            
+            logger.warn("Document creation retry", {
+              fileName: file.originalname,
+              dbRetries,
+              maxDbRetries,
+              error: dbError instanceof Error ? dbError.message : String(dbError)
+            });
+            
+            // Exponential backoff
+            await new Promise(resolve => setTimeout(resolve, Math.pow(2, dbRetries) * 200));
+          }
+        }
+      }
+
+      if (!savedDoc) {
+        throw new Error(`Failed to create or retrieve document for file: ${file.originalname}`);
+      }
+
+      const processingTime = Date.now() - startTime;
+      logger.info("File processed successfully", {
+        fileName: file.originalname,
+        documentId: savedDoc.legacyId,
+        userId,
+        clientId,
+        processingTimeMs: processingTime,
+        attempts: retryCount + 1
+      });
+
+      return { success: true, document: savedDoc };
+
+    } catch (error) {
+      const processingTime = Date.now() - startTime;
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      // Determina se l'errore è recuperabile
+      const isRetryableError = (
+        errorMessage.includes('ENOENT') ||
+        errorMessage.includes('EACCES') ||
+        errorMessage.includes('EMFILE') ||
+        errorMessage.includes('timeout') ||
+        errorMessage.includes('connection') ||
+        errorMessage.includes('network') ||
+        errorMessage.includes('Database error')
+      );
+      
+      if (isRetryableError && retryCount < maxRetries) {
+        retryCount++;
+        const delayMs = Math.pow(2, retryCount) * 1000; // Exponential backoff: 2s, 4s, 8s
+        
+        logger.warn("Retryable error encountered, will retry", {
+          fileName: file.originalname,
+          error: errorMessage,
+          retryCount,
+          maxRetries,
+          delayMs,
+          processingTimeMs: processingTime
+        });
+        
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+        return attemptProcess(); // Recursive retry
+      }
+      
+      logger.error("Error processing file (no more retries)", {
+        fileName: file.originalname,
+        error: errorMessage,
+        userId,
+        clientId,
+        processingTimeMs: processingTime,
+        totalAttempts: retryCount + 1
+      });
+      
+      return {
+        success: false,
+        error: `Errore nel processare ${file.originalname}: ${errorMessage}`
+      };
+    }
+  };
+  
+  return attemptProcess();
+}
+
+// Sistema di gestione stato upload in memoria (in produzione si potrebbe usare Redis)
+const uploadStatuses = new Map<string, any>();
+
+async function saveUploadStatus(uploadId: string, status: any) {
+  uploadStatuses.set(uploadId, { ...status, lastUpdate: new Date() });
+  
+  // Cleanup automatico degli stati vecchi (>1 ora)
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  for (const [id, data] of uploadStatuses.entries()) {
+    if (data.lastUpdate < oneHourAgo) {
+      uploadStatuses.delete(id);
+    }
+  }
+}
+
+async function getUploadStatus(uploadId: string) {
+  const status = uploadStatuses.get(uploadId);
+  if (!status) {
+    throw new Error(`Upload status not found for ID: ${uploadId}`);
+  }
+  return status;
+}
 
   app.get("/api/documents/:id/preview", isAuthenticated, async (req, res) => {
     try {
@@ -2473,10 +2763,10 @@ export async function registerRoutes(app: Express): Promise<Express> {
           .json({ message: "Anteprima non disponibile per file Google Drive" });
       }
 
-      // Path file originale (robusto: path o filePath)
+      // Path file originale (robusto: path o encryptedCachePath per file locali)
       let originalPath = path.join(uploadsDir, document.path);
-      if (!fs.existsSync(originalPath) && document.filePath) {
-        const altPath = path.join(uploadsDir, document.filePath);
+      if (!fs.existsSync(originalPath) && document.encryptedCachePath) {
+        const altPath = path.join(uploadsDir, document.encryptedCachePath);
         if (fs.existsSync(altPath)) {
           originalPath = altPath;
         } else {
@@ -2487,7 +2777,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
       }
 
       // Determina il content-type corretto
-      const mimeTypes = {
+      const mimeTypes: Record<string, string> = {
         pdf: 'application/pdf',
         doc: 'application/msword',
         docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
