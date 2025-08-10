@@ -8,3 +8,15 @@ server/backups
 server/backup-worker.cjs
 logs
 tools
+
+# File di upload temporanei
+server/uploads/*
+server/server/uploads/*
+!server/uploads/.gitkeep
+!server/server/uploads/.gitkeep
+!server/uploads/previews/
+!server/server/uploads/previews/
+
+# File di test local-opener
+local-opener/dist/*
+!local-opener/dist/.gitkeep
