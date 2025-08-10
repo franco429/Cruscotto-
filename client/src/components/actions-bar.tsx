@@ -169,41 +169,99 @@ export default function ActionsBar({
               </DialogHeader>
               <ModernFileUpload
                 onFilesSelected={async (files) => {
-                  const formData = new FormData();
-                  files.forEach((file: any) => {
-                    const fileNameForUpload = file.path || file.webkitRelativePath || file.name;
-                    formData.append("localFiles", file, fileNameForUpload);
-                  });
-                  try {
-                    const response = await apiRequest(
-                      "POST",
-                      "/api/documents/local-upload",
-                      formData
-                    );
-                    const result = await response.json().catch(() => null);
-                    if (response.ok) {
-                      // Evita di mostrare toast di "Successo" se il server segnala errori parziali (es. 207 o errors presenti)
-                      const hasPartialErrors = !!(result && Array.isArray(result.errors) && result.errors.length > 0);
-                      if (!hasPartialErrors) {
-                        toast({
-                          title: "Successo",
-                          description: (result && result.message) || "Documenti locali aggiornati!",
-                        });
+                  // Esegui l'upload in batch per evitare limiti dei proxy/CDN (es. 100MB Cloudflare)
+                  // - Max per file: 100MB (coerente con backend)
+                  // - Max per batch: ~90MB (margine di sicurezza)
+                  const MAX_FILE_BYTES = 100 * 1024 * 1024;
+                  const MAX_BATCH_BYTES = 90 * 1024 * 1024;
+
+                  // Filtra (o segnala) file troppo grandi
+                  const tooLarge = files.filter((f: any) => f.size > MAX_FILE_BYTES);
+                  if (tooLarge.length > 0) {
+                    toast({
+                      title: "File troppo grandi",
+                      description: `Alcuni file superano 100MB e sono stati esclusi (${tooLarge.length}).`,
+                      variant: "destructive",
+                    });
+                  }
+
+                  const validFiles = files.filter((f: any) => f.size <= MAX_FILE_BYTES);
+
+                  // Partiziona i file in batch per dimensione totale
+                  const batches: any[][] = [];
+                  let current: any[] = [];
+                  let currentBytes = 0;
+                  for (const file of validFiles) {
+                    if (file.size > MAX_BATCH_BYTES) {
+                      // File singolo che sta sotto i 100MB ma supera i 90MB: invia da solo
+                      if (current.length > 0) {
+                        batches.push(current);
+                        current = [];
+                        currentBytes = 0;
                       }
-                      if (onSyncComplete) onSyncComplete();
-                      setShowUploadDialog(false);
+                      batches.push([file]);
+                      continue;
+                    }
+                    if (currentBytes + file.size > MAX_BATCH_BYTES) {
+                      batches.push(current);
+                      current = [file];
+                      currentBytes = file.size;
                     } else {
-                      const errorData = result;
+                      current.push(file);
+                      currentBytes += file.size;
+                    }
+                  }
+                  if (current.length > 0) {
+                    batches.push(current);
+                  }
+
+                  let totalSuccess = 0;
+                  let totalErrors: string[] = [];
+
+                  try {
+                    for (let i = 0; i < batches.length; i++) {
+                      const batch = batches[i];
+                      const formData = new FormData();
+                      batch.forEach((file: any) => {
+                        const fileNameForUpload = file.path || file.webkitRelativePath || file.name;
+                        formData.append("localFiles", file, fileNameForUpload);
+                      });
+
+                      const response = await apiRequest("POST", "/api/documents/local-upload", formData);
+                      const result = await response.json().catch(() => null);
+
+                      if (!response.ok) {
+                        const msg = (result && result.message) || `Errore batch ${i + 1}/${batches.length}`;
+                        totalErrors.push(msg);
+                        continue;
+                      }
+
+                      const successCount = Array.isArray(result?.documents) ? result.documents.length : 0;
+                      totalSuccess += successCount;
+                      if (Array.isArray(result?.errors) && result.errors.length > 0) {
+                        totalErrors = totalErrors.concat(result.errors as string[]);
+                      }
+                    }
+
+                    if (totalErrors.length === 0) {
                       toast({
-                        title: "Errore",
-                        description: errorData.message || "Errore aggiornamento documenti locali",
+                        title: "Successo",
+                        description: `${totalSuccess} documenti caricati con successo`,
+                      });
+                    } else {
+                      toast({
+                        title: "Completato con errori",
+                        description: `${totalSuccess} caricati, ${totalErrors.length} errori.`,
                         variant: "destructive",
                       });
                     }
-                  } catch (err) {
+
+                    if (onSyncComplete) onSyncComplete();
+                    setShowUploadDialog(false);
+                  } catch (err: any) {
                     toast({
                       title: "Errore",
-                      description: "Errore durante l'aggiornamento dei documenti locali",
+                      description: err?.message || "Errore durante l'aggiornamento dei documenti locali",
                       variant: "destructive",
                     });
                   }

@@ -157,27 +157,44 @@ const fileNamePattern =
   /^(\d+(?:\.\d+)*)_([\p{L}\p{N} .,'’()-]+?)_Rev\.(\d+)_([0-9]{4}-[0-9]{2}-[0-9]{2})\.(\w+)$/u;
 
 export function parseISOPath(filePath: string): string | null {
-  const match = filePath.match(fileNamePattern);
-  return match ? match[1] : null;
+  // Se il filePath contiene separatori di cartella, estrai il nome del file
+  const fileName = filePath.split('/').pop() || filePath;
+  
+  const match = fileName.match(fileNamePattern);
+  if (!match) return null;
+  
+  const isoNumber = match[1];
+  
+  // Se il filePath contiene cartelle, mantieni la struttura gerarchica
+  if (filePath.includes('/')) {
+    const folderPath = filePath.substring(0, filePath.lastIndexOf('/'));
+    return `${folderPath}/${isoNumber}`;
+  }
+  
+  return isoNumber;
 }
 
 export function parseTitle(filePath: string): string | null {
-  const match = filePath.match(fileNamePattern);
+  const fileName = filePath.split('/').pop() || filePath;
+  const match = fileName.match(fileNamePattern);
   return match ? match[2].trim() : null;
 }
 
 export function parseRevision(filePath: string): string | null {
-  const match = filePath.match(fileNamePattern);
+  const fileName = filePath.split('/').pop() || filePath;
+  const match = fileName.match(fileNamePattern);
   return match ? `Rev.${match[3]}` : null;
 }
 
 export function parseDate(filePath: string): string | null {
-  const match = filePath.match(fileNamePattern);
+  const fileName = filePath.split('/').pop() || filePath;
+  const match = fileName.match(fileNamePattern);
   return match ? match[4] : null;
 }
 
 export function parseFileType(filePath: string): string | null {
-  const match = filePath.match(fileNamePattern);
+  const fileName = filePath.split('/').pop() || filePath;
+  const match = fileName.match(fileNamePattern);
   return match ? match[5].toLowerCase() : null;
 }
 

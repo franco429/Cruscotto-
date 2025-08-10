@@ -57,6 +57,7 @@ SMTP_PASSWORD=your_password
 # Security
 SESSION_SECRET=your_session_secret
 CSRF_SECRET=your_csrf_secret
+ENCRYPTION_KEY=your-strong-32chars-min-key
 
 # URL di base del server (obbligatoria)
 SERVER_BASE_URL=http://localhost:5000
@@ -311,6 +312,77 @@ Il sistema supporta il caricamento e la gestione di documenti locali, offrendo u
 3. **Salvataggio Sicuro**: I file vengono salvati nel server con crittografia
 4. **Aggiornamento Database**: Metadati e informazioni vengono memorizzati in MongoDB
 
+#### Implementazione tecnica (Backend + Frontend)
+
+- Endpoint upload cartella locale (solo Admin):
+  - Metodo: POST
+  - URL: `/api/documents/local-upload`
+  - Autenticazione: richiesta; ruoli: `admin` o `superadmin`
+  - Campo form: `localFiles` (multiplo). La UI preserva la gerarchia usando `webkitRelativePath`
+  - Limiti e sicurezza:
+    - Dimensione max file: 100MB
+    - Max file per richiesta: 2000
+    - Tipi consentiti: PDF, DOC, DOCX, XLS, XLSX, ODS, CSV, immagini (JPG/PNG), TXT
+    - Validazione MIME e gestione errori di upload con risposte chiare (400/207)
+  - Comportamento: per ogni file
+    - Estrae metadati dal nome file (percorso ISO, titolo, revisione, tipo)
+    - Se Excel/Sheet locale, analizza `A1` per data scadenza e calcola `alertStatus`
+    - Evita duplicati basati su combinazione `(path, title, revision, clientId)`
+    - Al termine marca come obsolete le revisioni inferiori dello stesso documento
+
+- Endpoint elenco e gestione documenti:
+  - GET `/api/documents` (autenticato)
+  - GET `/api/documents/obsolete` (admin)
+  - GET `/api/documents/:id` (autenticato)
+  - PUT `/api/documents/:legacyId` (admin) — aggiorna metadati
+  - DELETE `/api/documents/:legacyId` (admin) — eliminazione definitiva
+  - POST `/api/documents/:legacyId/restore` (admin) — ripristino singolo obsoleto
+  - POST `/api/documents/restore-all-obsolete` (admin) — ripristino di massa
+
+- Endpoint preview e download (locali):
+  - GET `/api/documents/:id/preview` (autenticato) — apre inline i file locali supportati
+  - GET `/api/documents/:id/download` (autenticato) — scarica file locali; i file Drive reindirizzano al link Drive
+
+- Endpoint scadenze e stato allerta:
+  - POST `/api/excel/update-expiry-dates` (admin) — aggiorna scadenze per Excel/Sheets sincronizzati da Drive
+  - POST `/api/documents/update-alert-status` (admin) — ricalcola dinamicamente gli `alertStatus` partendo da `expiryDate`
+
+- Crittografia e integrità (opzionale, lato admin):
+  - POST `/api/documents/:id/encrypt` — calcola hash, cifra il file in cache (richiede `ENCRYPTION_KEY` in produzione)
+  - GET `/api/documents/:id/verify` — verifica l'integrità confrontando l'hash
+
+#### Convenzioni nome file (parsing automatico)
+
+- Pattern atteso: `ISO_PATH_Titolo_Rev.REVISIONE_YYYY-MM-DD.EXT`
+  - Esempio: `10.2.3_Manuale Qualità_Rev.4_2024-12-31.pdf`
+  - Estrazioni:
+    - `path`: `10.2.3` (o `cartella/subcartella/10.2.3` se presente gerarchia)
+    - `title`: `Manuale Qualità`
+    - `revision`: `Rev.4`
+    - `fileType`: `pdf|docx|xlsx|...`
+    - `expiryDate` e `alertStatus` per Excel/Sheets se `A1` contiene data o formula supportata (es. `=TODAY()+30`, `=DATE(2025,12,31)`)
+
+Note: i file che non rispettano il pattern vengono ignorati nella creazione del documento.
+
+#### Flusso UI (Frontend)
+
+- Registrazione Admin (`/auth`):
+  - Campo “Carica Documenti Locali (opzionale)” con `SimpleFileUpload`
+  - I file inviati durante la registrazione sono processati e associati al nuovo client
+
+- Dashboard Admin → “Aggiorna documenti locali” (Actions Bar):
+  - Dialog con `ModernFileUpload` (drag & drop o selezione cartella)
+  - Invia `FormData` a `/api/documents/local-upload` preservando `webkitRelativePath`
+  - Toast moderni per conferma, avanzamento e risultato
+
+#### Storage e sicurezza
+
+- Posizione storage file: `server/uploads/`
+- Campi documento rilevanti (DB): `path`, `title`, `revision`, `fileType`, `alertStatus`, `expiryDate`, `filePath` (locali), `driveUrl` (Drive), `googleFileId` (Drive)
+- Duplicati: evitati per `(path,title,revision,clientId)`
+- Obsoleti: post-processing per marcare revisioni precedenti come obsolete
+- ENCRYPTION_KEY obbligatoria in produzione (altrimenti il server non avvia); usare una chiave forte (≥ 32 caratteri)
+
 #### Tipi di File Supportati
 
 - **Excel**: XLSX, XLS, ODS, CSV
@@ -364,6 +436,7 @@ Il sistema utilizza **toast di conferma eleganti** invece di modali tradizionali
 - **Ricerca Avanzata** per titolo, contenuto, tipo
 - **Filtri** per stato, scadenza, tipo file
 - **Visualizzazione Integrata Universale** - Preview diretta di PDF, XLSX, XLS, DOCX senza download
+- **Apertura Locale Diretta** - Apri i documenti con l'applicazione predefinita del sistema (vedere [local-opener-setup.md](docs/local-opener-setup.md))
 - **Gestione Versioni** e revisioni
 - **Notifiche Scadenze** automatiche
 - **Supporto Ibrido** - Documenti Google Drive e locali nella stessa interfaccia

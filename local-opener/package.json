@@ -1,0 +1,35 @@
+{
+  "name": "local-opener",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local companion service to open documents directly on the OS",
+  "main": "index.js",
+  "bin": "index.js",
+  "pkg": {
+    "assets": [
+      "assets/**/*"
+    ],
+    "targets": [
+      "node18-win-x64"
+    ],
+    "outputPath": "dist"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "build": "node build-windows.js",
+    "build:portable": "npm run build && node create-portable.js",
+    "build:installer": "npm run build && node check-inno-setup.js",
+    "build:installer-force": "npm run build && cd installer && iscc setup.iss"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1"
+  }
+}
+
+
+
+

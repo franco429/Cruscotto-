@@ -1,0 +1,13 @@
+{
+  "roots": [
+    "C:\\"
+  ],
+  "company": {
+    "name": "La tua azienda",
+    "code": ""
+  },
+  "server": {
+    "port": 3001,
+    "host": "localhost"
+  }
+}

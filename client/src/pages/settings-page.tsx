@@ -22,10 +22,11 @@ import {
   TabsList,
   TabsTrigger,
 } from "../components/ui/tabs";
-import { RefreshCw, Loader2, Eye, EyeOff } from "lucide-react";
+import { RefreshCw, Loader2, Eye, EyeOff, FolderOpen } from "lucide-react";
 import { Separator } from "../components/ui/separator";
 // Rimossi import non più necessari
 import { apiRequest } from "../lib/queryClient";
+import LocalOpenerConfig from "../components/local-opener-config";
 
 // La funzionalità di debug dell'autenticazione è stata rimossa
 
@@ -440,6 +441,22 @@ export default function SettingsPage() {
 
             <TabsContent value="application">
               <div className="grid gap-6">
+                {/* Local Opener Configuration */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <FolderOpen className="h-5 w-5" />
+                      Apertura File Locali
+                    </CardTitle>
+                    <CardDescription>
+                      Configura il servizio per aprire i documenti direttamente dal tuo PC
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <LocalOpenerConfig />
+                  </CardContent>
+                </Card>
+
                 {/* Google Drive Integration */}
                 <Card>
                   <CardHeader>

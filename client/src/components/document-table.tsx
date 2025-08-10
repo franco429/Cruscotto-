@@ -28,7 +28,9 @@ import {
 import { format } from "date-fns";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "../hooks/use-toast";
+import { ToastAction } from "../components/ui/toast";
 import { apiRequest } from "../lib/queryClient";
+import { openLocalDocument } from "../lib/local-opener";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -248,7 +250,33 @@ export default function DocumentTable({
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => onPreview(document)}
+                          onClick={async () => {
+                            // Per documenti locali, prova apertura diretta via servizio locale
+                            if (!document.driveUrl) {
+                              const res = await openLocalDocument(document);
+                              if (!res.ok) {
+                                // Se l'apertura locale fallisce, offri il download come fallback
+                                toast({
+                                  title: "Servizio locale non disponibile",
+                                  description: "Il servizio di apertura locale non è attivo. Vuoi scaricare il file invece?",
+                                  action: (
+                                    <ToastAction
+                                      altText="Scarica file"
+                                      onClick={() => {
+                                        // Scarica il file dal backend
+                                        window.open(`/api/documents/${document.legacyId}/download`, '_blank');
+                                      }}
+                                    >
+                                      Scarica
+                                    </ToastAction>
+                                  ),
+                                });
+                              }
+                              return;
+                            }
+                            // Per documenti remoti (Drive), mantieni anteprima browser
+                            onPreview(document);
+                          }}
                           title="Visualizza"
                           className="h-7 w-7 sm:h-8 sm:w-8 p-0"
                         >

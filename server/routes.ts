@@ -97,8 +97,8 @@ const upload = multer({
   storage: multerStorage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB max
-    files: 10 // Max 10 file per richiesta
+    fileSize: 100 * 1024 * 1024, // 100MB max
+    files: 2000 // Consenti upload in blocco di molteplici file (cartelle)
   }
 });
 
@@ -107,7 +107,7 @@ const handleMulterError = (err: any, req: Request, res: Response, next: NextFunc
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({
-        message: 'File troppo grande. Dimensione massima: 10MB',
+        message: 'File troppo grande. Dimensione massima: 100MB',
         code: 'FILE_TOO_LARGE'
       });
     }
@@ -448,9 +448,12 @@ export async function registerRoutes(app: Express): Promise<Express> {
       if (req.user && document) {
         await mongoStorage.createLog({
           userId: req.user.legacyId,
-          action: "update",
+          action: "document-updated",
           documentId: document.legacyId,
-          details: { message: `Document updated: ${document.title}` },
+          details: {
+            message: `Document updated: ${document.title}`,
+            clientId: document.clientId,
+          },
         });
       }
 
@@ -482,10 +485,11 @@ export async function registerRoutes(app: Express): Promise<Express> {
       if (req.user) {
         await mongoStorage.createLog({
           userId: req.user.legacyId,
-          action: "delete",
+          action: "document-deleted",
           documentId: id,
           details: {
             message: `Document permanently deleted: ${existingDoc.title}`,
+            clientId: existingDoc.clientId,
           },
         });
       }
@@ -648,6 +652,22 @@ export async function registerRoutes(app: Express): Promise<Express> {
         lockoutUntil: null,
       });
 
+      // Log: creazione nuovo utente
+      if (req.user) {
+        await mongoStorage.createLog({
+          userId: req.user.legacyId, // attore: admin che crea l'utente
+          action: "user-created",
+          documentId: null,
+          details: {
+            message: `Nuovo utente creato: ${newUser.email}`,
+            createdUserId: newUser.legacyId,
+            createdUserEmail: newUser.email,
+            clientId: adminClientId,
+            timestamp: new Date().toISOString(),
+          },
+        });
+      }
+
       const { password: _, ...safeUser } = newUser;
       res.status(201).json(safeUser);
     } catch (error) {
@@ -797,8 +817,10 @@ export async function registerRoutes(app: Express): Promise<Express> {
         await mongoStorage.createLog({
           userId: req.user.legacyId,
           action: "user-role-change",
+          documentId: null,
           details: {
             message: `Ruolo utente ${userId} cambiato in ${role}`,
+            clientId: req.user.clientId,
             timestamp: new Date().toISOString(),
           },
         });
@@ -850,8 +872,10 @@ export async function registerRoutes(app: Express): Promise<Express> {
         await mongoStorage.createLog({
           userId: req.user.legacyId,
           action: "user-deleted",
+          documentId: null,
           details: {
             message: `Utente ${userId} (${userToDelete.email}) eliminato`,
+            clientId: req.user.clientId,
             timestamp: new Date().toISOString(),
           },
         });
@@ -2293,9 +2317,23 @@ export async function registerRoutes(app: Express): Promise<Express> {
               clientId,
             });
 
+            // Gestione gerarchia cartelle per file locali
+            let filePath = file.originalname;
+            
+            // Se il file ha un webkitRelativePath (cartella selezionata), lo usiamo per mantenere la gerarchia
+            if ((file as any).webkitRelativePath) {
+              filePath = (file as any).webkitRelativePath;
+              logger.debug("Using webkitRelativePath for hierarchy", {
+                originalName: file.originalname,
+                webkitRelativePath: (file as any).webkitRelativePath,
+                userId,
+                clientId,
+              });
+            }
+
             // Usa la logica già esistente per processare i file (estrai metadati, scadenze, revisioni)
             const docData = await processDocumentFile(
-              file.originalname,
+              filePath, // Usa il path completo per mantenere la gerarchia
               "",
               file.path
             );
@@ -2303,6 +2341,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
             if (!docData) {
               logger.warn("Failed to process document file", {
                 fileName: file.originalname,
+                filePath: filePath,
                 userId,
                 clientId,
               });
@@ -2326,7 +2365,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
               clientId,
             });
 
-            // Salva o aggiorna il documento (se già esiste per path+title+revision, aggiorna)
+            // Salva il documento solo se NON esiste già la stessa combinazione path+title+revision
             const existing = await mongoStorage.getDocumentByPathAndTitleAndRevision(
               docData.path,
               docData.title,
@@ -2336,13 +2375,17 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
             let savedDoc;
             if (existing) {
-              logger.info("Updating existing document", {
+              logger.info("Skipping identical document (same path/title/revision)", {
                 documentId: existing.legacyId,
                 fileName: file.originalname,
+                path: docData.path,
+                title: docData.title,
+                revision: docData.revision,
                 userId,
                 clientId,
               });
-              savedDoc = await mongoStorage.updateDocument(existing.legacyId, docData);
+              // Non sostituiamo i documenti identici
+              savedDoc = existing;
             } else {
               logger.info("Creating new document", {
                 fileName: file.originalname,
