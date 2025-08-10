@@ -10,8 +10,16 @@ if (!fs.existsSync('dist')) {
   fs.mkdirSync('dist');
 }
 
-// Build con pkg
-const pkgCmd = `pkg . --targets node18-win-x64 --output dist/local-opener.exe`;
+// Rileva l'architettura del sistema per build ottimizzato
+const arch = process.arch;
+const isArm = arch === 'arm64';
+const target = isArm ? 'node20-win-arm64' : 'node20-win-x64';
+
+console.log(`📡 Detected architecture: ${arch}`);
+console.log(`🎯 Building for target: ${target}`);
+
+// Build con pkg - supporto per architetture moderne
+const pkgCmd = `pkg . --targets ${target} --output dist/local-opener.exe`;
 
 exec(pkgCmd, (error, stdout, stderr) => {
   if (error) {

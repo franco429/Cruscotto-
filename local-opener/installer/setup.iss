@@ -26,6 +26,17 @@ Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayIcon={app}\{#MyAppExeName}
+; Configurazione per compatibilità Windows universale
+MinVersion=6.1sp1
+ArchitecturesAllowed=x86 x64 arm64
+ArchitecturesInstallIn64BitMode=x64 arm64
+; Installazione intelligente basata su architettura
+AllowNoIcons=yes
+; Segnala come compatibile con versioni moderne di Windows
+AppReadmeFile={app}\README.txt
+; Migliora compatibilità con sistemi legacy
+CreateUninstallRegKey=yes
+UsePreviousAppDir=no
 
 [Languages]
 Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
@@ -36,8 +47,15 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "autostart"; Description: "Avvia automaticamente all'accensione del PC"; GroupDescription: "Opzioni di avvio:"; Flags: checked
 
 [Files]
-Source: "..\dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+; Installa l'eseguibile appropriato basato sull'architettura
+Source: "..\dist\local-opener-x86.exe"; DestDir: "{app}"; DestName: "{#MyAppExeName}"; Flags: ignoreversion; Check: not IsX64 and not IsARM64
+Source: "..\dist\local-opener-x64.exe"; DestDir: "{app}"; DestName: "{#MyAppExeName}"; Flags: ignoreversion; Check: IsX64 and not IsARM64  
+Source: "..\dist\local-opener-arm64.exe"; DestDir: "{app}"; DestName: "{#MyAppExeName}"; Flags: ignoreversion; Check: IsARM64
+; Fallback: se nessuno dei precedenti, usa x64 come default
+Source: "..\dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion; Check: not FileExists(ExpandConstant('{app}\{#MyAppExeName}'))
+; Assets e file di supporto
 Source: "..\assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\assets\README.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "nssm.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
@@ -61,7 +79,24 @@ Filename: "{app}\nssm.exe"; Parameters: "remove {#MyServiceName} confirm"; Flags
 var
   FolderPage: TInputDirWizardPage;
   CompanyPage: TInputQueryWizardPage;
+
+// Funzione per rilevare architettura ARM64
+function IsARM64: Boolean;
+var
+  Architecture: String;
+begin
+  Result := False;
+  if RegQueryStringValue(HKEY_LOCAL_MACHINE, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'PROCESSOR_ARCHITECTURE', Architecture) then
+    Result := (Architecture = 'ARM64');
   
+  // Fallback check
+  if not Result then
+  begin
+    if RegQueryStringValue(HKEY_LOCAL_MACHINE, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'PROCESSOR_ARCHITEW6432', Architecture) then
+      Result := (Architecture = 'ARM64');
+  end;
+end;
+
 procedure InitializeWizard;
 begin
   // Pagina per selezione cartelle documenti ISO

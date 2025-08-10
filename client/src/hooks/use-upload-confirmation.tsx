@@ -74,7 +74,7 @@ export function useUploadConfirmation() {
             </div>
           </div>
         ),
-        duration: 30000, // 30secondi per dare tempo di decidere
+        duration: 15000, // 15 secondi per decisioni più rapide
       });
     },
     [toast]

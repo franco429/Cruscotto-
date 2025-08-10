@@ -240,17 +240,28 @@ export default function LocalOpenerConfig() {
               )}
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {!status.isRunning && (
-                <Button asChild variant="default">
-                  <a
-                    href="/downloads/cruscotto-local-opener-setup.exe"
-                    download
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Scarica Installer
-                  </a>
-                </Button>
+                <>
+                  <Button asChild variant="default">
+                    <a
+                      href="/downloads/cruscotto-local-opener-setup.exe"
+                      download="cruscotto-local-opener-setup.exe"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Installer Universale
+                    </a>
+                  </Button>
+                  <Button asChild variant="outline" size="sm">
+                    <a
+                      href="/downloads/cruscotto-local-opener-portable.zip"
+                      download="cruscotto-local-opener-portable.zip"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Versione Portable
+                    </a>
+                  </Button>
+                </>
               )}
               <Button
                 variant="outline"
@@ -328,14 +339,25 @@ export default function LocalOpenerConfig() {
         <CardContent>
           <div className="space-y-3 text-sm">
             <div>
-              <p className="font-medium">1. Installa Local Opener</p>
-              <p className="text-muted-foreground">
-                Scarica e installa il servizio Local Opener sul tuo PC
-              </p>
+              <p className="font-medium">1. Scegli la versione adatta</p>
+              <div className="ml-4 space-y-1 text-muted-foreground">
+                <p><strong>Installer Universale:</strong> Per installazione permanente con servizio Windows (raccomandato)</p>
+                <p><strong>Versione Portable:</strong> Per esecuzione diretta senza installazione</p>
+              </div>
             </div>
             <Separator />
             <div>
-              <p className="font-medium">2. Configura le cartelle</p>
+              <p className="font-medium">2. Compatibilità Sistema</p>
+              <div className="ml-4 space-y-1 text-muted-foreground">
+                <p>✅ Windows 10 (versione 1903+) / Windows 11</p>
+                <p>✅ Architetture: Intel/AMD x64, ARM64</p>
+                <p>✅ Supporto automatico rilevamento architettura</p>
+                <p>⚠️ Richiede privilegi amministratore per l'installer</p>
+              </div>
+            </div>
+            <Separator />
+            <div>
+              <p className="font-medium">3. Configura le cartelle</p>
               <p className="text-muted-foreground">
                 Aggiungi le cartelle dove sono salvati i documenti ISO (es. Google
                 Drive locale, cartelle di rete, ecc.)
@@ -343,11 +365,21 @@ export default function LocalOpenerConfig() {
             </div>
             <Separator />
             <div>
-              <p className="font-medium">3. Testa il funzionamento</p>
+              <p className="font-medium">4. Testa il funzionamento</p>
               <p className="text-muted-foreground">
                 Usa il pulsante "Testa Apertura File" per verificare che tutto
                 funzioni correttamente
               </p>
+            </div>
+            <Separator />
+            <div>
+              <p className="font-medium">🔧 Problemi di compatibilità?</p>
+              <div className="ml-4 space-y-1 text-muted-foreground">
+                <p>• Se l'installer non funziona, prova la versione portable</p>
+                <p>• Disabilita temporaneamente l'antivirus durante l'installazione</p>
+                <p>• Esegui come amministratore se richiesto</p>
+                <p>• Verifica che Windows Defender non blocchi l'esecuzione</p>
+              </div>
             </div>
           </div>
         </CardContent>

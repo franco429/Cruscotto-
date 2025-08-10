@@ -10,16 +10,23 @@
       "assets/**/*"
     ],
     "targets": [
-      "node18-win-x64"
+      "node20-win-x64",
+      "node20-win-arm64",
+      "node20-win-x86"
     ],
     "outputPath": "dist"
   },
   "scripts": {
     "start": "node index.js",
     "build": "node build-windows.js",
+    "build:universal": "node build-universal.js",
+    "build:compatible": "node build-compatible.js",
+    "build:complete": "node build-all-versions.js",
     "build:portable": "npm run build && node create-portable.js",
-    "build:installer": "npm run build && node check-inno-setup.js",
-    "build:installer-force": "npm run build && cd installer && iscc setup.iss"
+    "build:portable-zip": "npm run build:universal && node create-portable-zip.js",
+    "build:installer": "npm run build:universal && node check-inno-setup.js",
+    "build:installer-force": "npm run build:universal && cd installer && iscc setup.iss",
+    "build:all": "npm run build:compatible"
   },
   "dependencies": {
     "cors": "^2.8.5",

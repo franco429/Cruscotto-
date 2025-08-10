@@ -109,9 +109,9 @@ export default function ModernFileUpload({
               showUploadComplete(confirmedFiles.length);
               return 100;
             }
-            return prevProg + 10;
+            return prevProg + 5; // Ridotto da 10% a 5% per progresso più fluido
           });
-        }, 100);
+        }, 50); // Ridotto da 100ms a 50ms per feedback più veloce
       },
       onCancel: () => {
         setUploadProgress(0);

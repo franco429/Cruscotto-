@@ -1,6 +1,20 @@
 # Cruscotto Local Opener
 
-Servizio locale per aprire documenti direttamente dal PC senza download/preview browser.
+Servizio locale per aprire documenti direttamente dal PC con **compatibilità universale Windows**.
+
+## 🎯 Compatibilità Sistema
+
+### Versioni Windows Supportate
+- ✅ **Windows 7 SP1+** (con aggiornamenti)
+- ✅ **Windows 8/8.1**
+- ✅ **Windows 10** (tutte le versioni)
+- ✅ **Windows 11** (tutte le versioni)  
+- ✅ **Windows Server 2008 R2+**
+
+### Architetture Supportate
+- ✅ **x86 (32-bit)** - sistemi legacy
+- ✅ **x64 (64-bit)** - standard moderno
+- ✅ **ARM64** - dispositivi Windows ARM
 
 ## Funzionalità
 
@@ -10,12 +24,14 @@ Servizio locale per aprire documenti direttamente dal PC senza download/preview 
 - ✅ Matching intelligente dei file (fuzzy match)
 - ✅ Avvio automatico come servizio Windows
 - ✅ Wizard di configurazione nell'installer
+- ✅ **Rilevamento automatico architettura sistema**
+- ✅ **Versione portable per massima compatibilità**
 
 ## Build e Installazione
 
 ### Prerequisiti
 
-1. Node.js 18+
+1. **Node.js 20+** (aggiornato per compatibilità)
 2. PowerShell (per scaricare NSSM)
 3. ⚠️ Inno Setup 6.x (opzionale, solo per installer completo)
 
@@ -25,30 +41,39 @@ Servizio locale per aprire documenti direttamente dal PC senza download/preview 
 # 1. Installa dipendenze
 cd local-opener
 npm install
-npm install --save-dev pkg
 
-# 2. Scarica NSSM
+# 2. Scarica NSSM (necessario per servizio Windows)
 cd installer
 powershell -ExecutionPolicy Bypass -File download-nssm.ps1
 cd ..
 
-# 3. Build eseguibile
+# 3. BUILD COMPLETO UNIVERSALE (Raccomandato)
+npm run build:all
+# → Crea tutte le versioni: x86, x64, ARM64, portable e installer
+
+# 4. OPZIONI BUILD SPECIFICHE:
+
+# Build rapido (solo architettura corrente)
 npm run build
 
-# 4. OPZIONI DI DISTRIBUZIONE:
+# Build universale (x64 + ARM64)
+npm run build:universal
 
-# Opzione A: Versione Portable (Raccomandato)
-npm run build:portable
-# → Crea dist/portable/ con tutto il necessario
+# Solo versione portable
+npm run build:portable-zip
 
-# Opzione B: Installer completo (richiede Inno Setup)
+# Solo installer (richiede Inno Setup)
 npm run build:installer
-# → Rileva automaticamente se Inno Setup è disponibile
 
-# Opzione C: Solo eseguibile
-npm run build
-# → Crea solo dist/local-opener.exe
+# Build completo con debug
+npm run build:complete
 ```
+
+### 🎯 Quale comando usare?
+
+- **`npm run build:all`** ← **RACCOMANDATO** per massima compatibilità
+- **`npm run build:universal`** ← Per sistemi moderni (x64/ARM64)
+- **`npm run build`** ← Solo per test rapidi
 
 ### Output
 

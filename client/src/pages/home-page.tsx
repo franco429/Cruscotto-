@@ -262,7 +262,7 @@ export default function HomePage() {
         processed,
         currentBatch
       }));
-    }, 200); // Aggiorna ogni 200ms
+    }, 100); // Ridotto da 200ms a 100ms per progresso più veloce
   };
 
   const handleRetrySync = () => {
