@@ -13,6 +13,7 @@ import {
 } from "../lib/queryClient";
 import { useToast } from "./use-toast";
 import { z } from "zod";
+import { checkAndPromptLocalOpener } from "../lib/local-opener";
 
 type AuthContextType = {
   user: User | null;
@@ -166,6 +167,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: `Bentornato, ${data.email}!`,
         duration: 2000,
       });
+
+      // Avvia controllo automatico Local Opener dopo login
+      setTimeout(() => {
+        checkAndPromptLocalOpener();
+      }, 3000); // Attendi 3 secondi per permettere UI di stabilizzarsi
     },
     onError: (error: Error) => {
       toast({
