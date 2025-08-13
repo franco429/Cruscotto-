@@ -2,7 +2,7 @@
 import { Express, Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
-import { logger } from './logger';
+import logger from './logger';
 
 interface LocalOpenerTelemetryData {
   session: {

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { googleDriveService } from "../services/google-drive";
 import { UserModel, ClientModel } from "../../models/mongoose-models";
-import { logger } from "../lib/logger";
+import logger from "../../logger";
 
 const router = Router();
 
