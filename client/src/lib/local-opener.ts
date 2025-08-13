@@ -136,6 +136,7 @@ export async function checkAndPromptLocalOpener(): Promise<void> {
     const link = document.createElement('a');
     link.href = '/downloads/debug-local-opener.bat';
     link.download = 'debug-local-opener.bat';
+    link.setAttribute('target', '_blank');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

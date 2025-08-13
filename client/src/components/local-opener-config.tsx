@@ -271,6 +271,28 @@ export default function LocalOpenerConfig() {
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Ricontrolla
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const link = document.createElement('a');
+                  link.href = '/downloads/debug-local-opener.bat';
+                  link.download = 'debug-local-opener.bat';
+                  link.setAttribute('target', '_blank');
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  
+                  toast({
+                    title: "📋 Script Debug Scaricato",
+                    description: "Esegui debug-local-opener.bat per diagnosticare problemi",
+                    duration: 5000,
+                  });
+                }}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Debug Script
+              </Button>
             </div>
           </div>
         </CardContent>
