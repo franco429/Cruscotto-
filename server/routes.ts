@@ -265,7 +265,12 @@ const adminRegistrationSchema = z.object({
   companyCode: z.string().min(1, "Il codice aziendale è obbligatorio"),
 });
 
+import { registerLocalOpenerRoutes } from './local-opener-routes';
+
 export async function registerRoutes(app: Express): Promise<Express> {
+  
+  // Registra routes per Local Opener
+  registerLocalOpenerRoutes(app);
   app.post("/api/register/admin", upload.any(), handleMulterError, async (req, res) => {
     try {
       // I campi arrivano sempre come stringa da FormData, quindi normalizzo

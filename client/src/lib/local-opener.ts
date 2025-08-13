@@ -97,6 +97,9 @@ export async function checkAndPromptLocalOpener(): Promise<void> {
     return;
   }
 
+  // Il cliente carica sempre documenti durante la registrazione,
+  // quindi proponi sempre Local Opener se il servizio non è disponibile
+
   // Verifica se l'utente ha già un prompt persistente dismissed
   const persistentKey = 'localOpenerNeverAskAgain';
   if (localStorage.getItem(persistentKey) === 'true') {
@@ -126,6 +129,22 @@ export async function checkAndPromptLocalOpener(): Promise<void> {
 
     // Segna come promesso per questa sessione
     sessionStorage.setItem(sessionKey, 'true');
+  };
+
+  // Helper per download script debug
+  const downloadDebugScript = () => {
+    const link = document.createElement('a');
+    link.href = '/downloads/debug-local-opener.bat';
+    link.download = 'debug-local-opener.bat';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "📋 Script Debug Scaricato",
+      description: "Esegui debug-local-opener.bat per diagnosticare problemi con Local Opener",
+      duration: 5000,
+    });
   };
 
   // Importa ToastAction in modo dinamico per evitare problemi di tipizzazione
@@ -189,6 +208,8 @@ export async function checkAndPromptLocalOpener(): Promise<void> {
     }
   }, 17000);
 }
+
+
 
 
 

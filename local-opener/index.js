@@ -10,6 +10,10 @@ const path = require("path");
 const os = require("os");
 const { exec } = require("child_process");
 
+// Importa moduli di telemetria e auto-updater
+const LocalOpenerTelemetry = require("./telemetry");
+const LocalOpenerUpdater = require("./auto-updater");
+
 const PORT = 17654;
 
 // Persistent config (multi-root support)
@@ -41,6 +45,14 @@ function writeConfig(cfg) {
 }
 
 let CONFIG = readConfig();
+
+// Inizializza telemetria e auto-updater
+const telemetry = new LocalOpenerTelemetry();
+const updater = new LocalOpenerUpdater();
+
+// Avvia servizi ausiliari
+telemetry.initialize();
+updater.initialize();
 
 function discoverDefaultRoots() {
   const roots = new Set(CONFIG.roots || []);
@@ -393,8 +405,24 @@ function findCandidateFile({ logicalPath, candidates }) {
 }
 
 app.get("/health", (_req, res) => {
+  // Registra controllo di salute per telemetria
+  const isHealthy = true;
+  const googleDriveDetected = CONFIG.roots.some(root => 
+    root.toLowerCase().includes('google drive') || 
+    root.toLowerCase().includes('my drive') || 
+    root.toLowerCase().includes('il mio drive')
+  );
+  
+  telemetry.recordServiceHealth(isHealthy, CONFIG.roots.length, googleDriveDetected);
+  
   // Assicurati che i percorsi siano serializzati correttamente
-  res.json({ ok: true, roots: CONFIG.roots || [] });
+  res.json({ 
+    ok: true, 
+    roots: CONFIG.roots || [],
+    version: "1.0.0",
+    telemetry: telemetry.getMetricsSummary(),
+    lastUpdateCheck: updater.getLastCheckTime ? updater.getLastCheckTime() : null
+  });
 });
 
 // Config endpoints to manage roots
@@ -417,6 +445,9 @@ app.post("/config", (req, res) => {
   if (!CONFIG.roots.includes(root)) {
     CONFIG.roots.push(root);
     writeConfig(CONFIG);
+    
+    // Registra cambio configurazione per telemetria
+    telemetry.recordConfigurationChange('add_root', { rootPath: root });
   }
   res.json({ roots: CONFIG.roots });
 });
@@ -432,11 +463,15 @@ app.delete("/config", (req, res) => {
 });
 
 app.post("/open", (req, res) => {
+  const startTime = Date.now();
   const { title, revision, fileType, logicalPath, candidates } = req.body || {};
 
   if (!Array.isArray(candidates) || candidates.length === 0) {
+    telemetry.recordFileOpenAttempt(null, false, Date.now() - startTime, new Error("Nessun candidato fornito"));
     return res.status(400).json({ success: false, message: "Nessun candidato fornito" });
   }
+
+  const document = { title, revision, fileType, logicalPath, candidates };
 
   const filePath = (() => {
     for (const root of CONFIG.roots) {
@@ -447,7 +482,10 @@ app.post("/open", (req, res) => {
     }
     return null;
   })();
+  
   if (!filePath) {
+    const responseTime = Date.now() - startTime;
+    telemetry.recordFileOpenAttempt(document, false, responseTime, new Error("File non trovato nel percorso locale"));
     return res.status(404).json({ success: false, message: "File non trovato nel percorso locale" });
   }
 
@@ -455,10 +493,15 @@ app.post("/open", (req, res) => {
   // Note: 'start' is a shell built-in; we invoke through cmd.exe /c
   const quoted = `"${filePath.replace(/"/g, '\\"')}"`;
   exec(`cmd /c start "" ${quoted}`, (err) => {
+    const responseTime = Date.now() - startTime;
+    
     if (err) {
+      telemetry.recordFileOpenAttempt(document, false, responseTime, err);
       return res.status(500).json({ success: false, message: `Errore apertura: ${err.message}` });
     }
-    res.json({ success: true });
+    
+    telemetry.recordFileOpenAttempt(document, true, responseTime);
+    res.json({ success: true, filePath: filePath });
   });
 });
 

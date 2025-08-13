@@ -4,9 +4,10 @@
 
 ### 🔍 **Diagnosi Automatica**
 
-1. **Scarica** il file di debug: `debug-local-opener.bat`
-2. **Esegui** cliccando due volte
-3. **Leggi** i risultati per identificare il problema
+1. **Scarica** il file di debug: [debug-local-opener.bat](/downloads/debug-local-opener.bat)
+2. **Esegui** cliccando due volte (oppure dal Prompt comandi)
+3. **Leggi** i risultati colorati per identificare il problema
+4. **Condividi** l'output con il supporto tecnico se necessario
 
 ---
 

@@ -187,7 +187,12 @@ export default function AuthPage() {
       });
       registerMutation.mutate(formData as any);
     } else {
-      registerMutation.mutate(values);
+      // Assicurati che driveFolderUrl sia una stringa vuota se undefined
+      const cleanedValues = {
+        ...values,
+        driveFolderUrl: values.driveFolderUrl || ""
+      };
+      registerMutation.mutate(cleanedValues as any);
     }
   };
 
@@ -452,7 +457,7 @@ export default function AuthPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>
-                              Carica Documenti Locali (opzionale)
+                              Carica Documenti per Configurazione Iniziale (opzionale)
                             </FormLabel>
                             <FormControl>
                               <SimpleFileUpload
@@ -468,8 +473,9 @@ export default function AuthPage() {
                               />
                             </FormControl>
                             <FormDescription>
-                              Seleziona file o cartelle manualmente. Supporta la gerarchia completa delle cartelle. 
-                              In alternativa, inserisci l'URL della cartella Google Drive qui sotto.
+                              📋 <strong>WORKFLOW:</strong> I documenti saranno caricati sul server. 
+                              Dopo la registrazione, dalla dashboard potrai <strong>"Aggiorna documenti locali"</strong> 
+                              e installare il <strong>Local Opener</strong> per aprire i file direttamente dal tuo Google Drive locale.
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
