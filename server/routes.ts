@@ -2346,14 +2346,35 @@ export async function registerRoutes(app: Express): Promise<Express> {
   app.get("/api/documents/upload-status/:uploadId", isAdmin, async (req, res) => {
     try {
       const { uploadId } = req.params;
+      
+      if (!uploadId || typeof uploadId !== 'string') {
+        return res.status(400).json({ 
+          message: "ID upload non valido",
+          code: "INVALID_UPLOAD_ID" 
+        });
+      }
+      
       const status = await getUploadStatus(uploadId);
+      
+      if (!status) {
+        return res.status(404).json({ 
+          message: "Stato upload non trovato o scaduto",
+          code: "UPLOAD_STATUS_NOT_FOUND",
+          uploadId 
+        });
+      }
+      
       res.json(status);
     } catch (error) {
       logger.error("Error getting upload status", {
         uploadId: req.params.uploadId,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
       });
-      res.status(500).json({ message: "Errore nel recupero dello stato" });
+      res.status(500).json({ 
+        message: "Errore nel recupero dello stato",
+        code: "UPLOAD_STATUS_ERROR" 
+      });
     }
   });
 
@@ -2864,4 +2885,90 @@ async function getUploadStatus(uploadId: string) {
   });
 
   return app;
+}
+
+// ===== GESTIONE STATO UPLOAD =====
+// Cache in memoria per stato upload (con TTL per pulizia automatica)
+interface UploadStatus {
+  uploadId: string;
+  totalFiles: number;
+  processedFiles: number;
+  failedFiles: number;
+  errors: string[];
+  processedDocs: any[];
+  status: 'processing' | 'completed' | 'failed';
+  startTime: Date;
+  endTime: Date | null;
+  ttl: number; // timestamp per cleanup automatico
+}
+
+const uploadStatusCache = new Map<string, UploadStatus>();
+
+// Cleanup automatico ogni 5 minuti (rimuove stati > 1 ora)
+setInterval(() => {
+  const now = Date.now();
+  for (const [uploadId, status] of uploadStatusCache.entries()) {
+    if (now > status.ttl) {
+      uploadStatusCache.delete(uploadId);
+      logger.debug("Cleanup expired upload status", { uploadId });
+    }
+  }
+}, 5 * 60 * 1000); // 5 minuti
+
+// Salva stato upload
+async function saveUploadStatus(uploadId: string, status: Omit<UploadStatus, 'ttl'>): Promise<void> {
+  try {
+    const statusWithTTL: UploadStatus = {
+      ...status,
+      ttl: Date.now() + (60 * 60 * 1000) // TTL 1 ora
+    };
+    
+    uploadStatusCache.set(uploadId, statusWithTTL);
+    
+    logger.debug("Upload status saved", {
+      uploadId,
+      status: status.status,
+      processed: status.processedFiles,
+      total: status.totalFiles
+    });
+  } catch (error) {
+    logger.error("Failed to save upload status", {
+      uploadId,
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+}
+
+// Recupera stato upload
+async function getUploadStatus(uploadId: string): Promise<UploadStatus | null> {
+  try {
+    const status = uploadStatusCache.get(uploadId);
+    
+    if (!status) {
+      logger.warn("Upload status not found", { uploadId });
+      return null;
+    }
+    
+    // Controlla se è scaduto
+    if (Date.now() > status.ttl) {
+      uploadStatusCache.delete(uploadId);
+      logger.warn("Upload status expired", { uploadId });
+      return null;
+    }
+    
+    logger.debug("Upload status retrieved", {
+      uploadId,
+      status: status.status,
+      processed: status.processedFiles,
+      total: status.totalFiles
+    });
+    
+    return status;
+  } catch (error) {
+    logger.error("Failed to get upload status", {
+      uploadId,
+      error: error instanceof Error ? error.message : String(error)
+    });
+    return null;
+  }
 }

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development tsx index.ts",
     "build": "npm run build-worker && npx esbuild index.ts backup-service.ts --platform=node --packages=external --bundle --format=esm --outdir=dist && npm run verify-build",
-    "start": "NODE_ENV=production node --max-old-space-size=2048 --max-semi-space-size=512 dist/index.js",
+    "start": "cross-env NODE_ENV=production node --max-old-space-size=2048 --max-semi-space-size=512 dist/index.js",
     "check-env": "tsx verify-env.ts",
     "verify:env": "tsx verify-env.ts",
     "test-email": "node test-email.js",
