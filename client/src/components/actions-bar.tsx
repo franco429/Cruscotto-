@@ -243,11 +243,44 @@ export default function ActionsBar({
                       duration: Infinity,
                     });
 
-                    // Polling dello stato upload
+                    // Polling dello stato upload con gestione errori robusta
+                    let pollAttempts = 0;
+                    let maxPollAttempts = 15; // Massimo 15 tentativi (30 secondi)
+                    
                     const pollUploadStatus = async () => {
                       try {
+                        pollAttempts++;
                         const statusResponse = await apiRequest("GET", `/api/documents/upload-status/${uploadId}`);
+                        
+                        // Se riceviamo errore 500, fermiamo immediatamente il polling
+                        if (!statusResponse.ok) {
+                          if (statusResponse.status === 500) {
+                            progressToast.dismiss();
+                            toast({
+                              title: "Errore server",
+                              description: "Errore interno del server. L'upload potrebbe essere ancora in corso.",
+                              variant: "destructive",
+                            });
+                            return true; // Stop polling
+                          }
+                          
+                          // Per altri errori, ritenta ma con limite
+                          if (pollAttempts >= maxPollAttempts) {
+                            progressToast.dismiss();
+                            toast({
+                              title: "Timeout polling",
+                              description: "Impossibile verificare lo stato dell'upload. Controlla manualmente.",
+                              variant: "destructive",
+                            });
+                            return true; // Stop polling
+                          }
+                          return false; // Continue polling
+                        }
+
                         const status = await statusResponse.json();
+
+                        // Reset counter on successful response
+                        pollAttempts = 0;
 
                         const progressPercent = Math.round((status.processedFiles + status.failedFiles) / status.totalFiles * 100);
                         
@@ -290,6 +323,19 @@ export default function ActionsBar({
                         return false; // Continue polling
                       } catch (error) {
                         console.error("Error polling upload status:", error);
+                        pollAttempts++;
+                        
+                        // Se abbiamo troppi errori consecutivi, fermiamo il polling
+                        if (pollAttempts >= maxPollAttempts) {
+                          progressToast.dismiss();
+                          toast({
+                            title: "Errore di rete",
+                            description: "Troppe richieste fallite. Controlla la connessione e riprova.",
+                            variant: "destructive",
+                          });
+                          return true; // Stop polling
+                        }
+                        
                         return false; // Continue polling
                       }
                     };

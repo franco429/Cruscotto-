@@ -2755,27 +2755,7 @@ async function processFileWithTimeout(
 }
 
 // Sistema di gestione stato upload in memoria (in produzione si potrebbe usare Redis)
-const uploadStatuses = new Map<string, any>();
 
-async function saveUploadStatus(uploadId: string, status: any) {
-  uploadStatuses.set(uploadId, { ...status, lastUpdate: new Date() });
-  
-  // Cleanup automatico degli stati vecchi (>1 ora)
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-  for (const [id, data] of uploadStatuses.entries()) {
-    if (data.lastUpdate < oneHourAgo) {
-      uploadStatuses.delete(id);
-    }
-  }
-}
-
-async function getUploadStatus(uploadId: string) {
-  const status = uploadStatuses.get(uploadId);
-  if (!status) {
-    throw new Error(`Upload status not found for ID: ${uploadId}`);
-  }
-  return status;
-}
 
   app.get("/api/documents/:id/preview", isAuthenticated, async (req, res) => {
     try {
@@ -2904,24 +2884,68 @@ interface UploadStatus {
 
 const uploadStatusCache = new Map<string, UploadStatus>();
 
-// Cleanup automatico ogni 5 minuti (rimuove stati > 1 ora)
+// Cleanup automatico più aggressivo ogni 2 minuti
 setInterval(() => {
   const now = Date.now();
+  let cleaned = 0;
+  
   for (const [uploadId, status] of uploadStatusCache.entries()) {
     if (now > status.ttl) {
       uploadStatusCache.delete(uploadId);
-      logger.debug("Cleanup expired upload status", { uploadId });
+      cleaned++;
     }
   }
-}, 5 * 60 * 1000); // 5 minuti
+  
+  // Log della pulizia per monitoring
+  if (cleaned > 0) {
+    logger.info("Upload status cache cleanup", { 
+      cleaned, 
+      remaining: uploadStatusCache.size,
+      memoryUsage: process.memoryUsage()
+    });
+  }
+  
+  // Forza garbage collection se la cache è troppo grande
+  if (uploadStatusCache.size > 100) {
+    logger.warn("Upload status cache is large", { 
+      size: uploadStatusCache.size,
+      memoryUsage: process.memoryUsage()
+    });
+    
+    // Rimuovi i più vecchi se superiamo i 100 elementi
+    const entries = Array.from(uploadStatusCache.entries());
+    entries.sort((a, b) => a[1].ttl - b[1].ttl);
+    
+    // Mantieni solo i 50 più recenti
+    if (entries.length > 50) {
+      for (let i = 0; i < entries.length - 50; i++) {
+        uploadStatusCache.delete(entries[i][0]);
+      }
+      logger.info("Forced cleanup of old upload statuses", { 
+        removed: entries.length - 50,
+        remaining: uploadStatusCache.size
+      });
+    }
+  }
+}, 2 * 60 * 1000); // 2 minuti invece di 5
 
-// Salva stato upload
+// Salva stato upload con ottimizzazione memoria
 async function saveUploadStatus(uploadId: string, status: Omit<UploadStatus, 'ttl'>): Promise<void> {
   try {
+    // TTL ridotto a 30 minuti invece di 1 ora per ridurre uso memoria
     const statusWithTTL: UploadStatus = {
       ...status,
-      ttl: Date.now() + (60 * 60 * 1000) // TTL 1 ora
+      ttl: Date.now() + (30 * 60 * 1000) // TTL 30 minuti
     };
+    
+    // Limita la dimensione degli array di errori per evitare memory leak
+    if (statusWithTTL.errors && statusWithTTL.errors.length > 100) {
+      statusWithTTL.errors = statusWithTTL.errors.slice(0, 100);
+      logger.warn("Truncated errors array to prevent memory issues", { 
+        uploadId, 
+        originalLength: status.errors?.length 
+      });
+    }
     
     uploadStatusCache.set(uploadId, statusWithTTL);
     
@@ -2929,7 +2953,8 @@ async function saveUploadStatus(uploadId: string, status: Omit<UploadStatus, 'tt
       uploadId,
       status: status.status,
       processed: status.processedFiles,
-      total: status.totalFiles
+      total: status.totalFiles,
+      cacheSize: uploadStatusCache.size
     });
   } catch (error) {
     logger.error("Failed to save upload status", {
