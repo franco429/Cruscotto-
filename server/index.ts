@@ -19,6 +19,42 @@ if (process.env.NODE_ENV === "production") {
 
 logger.info("Avvio server...");
 
+// Monitoraggio memoria per prevenire out of memory
+const memoryMonitor = setInterval(() => {
+  const used = process.memoryUsage();
+  const memoryMB = Math.round(used.heapUsed / 1024 / 1024);
+  const totalMB = Math.round(used.heapTotal / 1024 / 1024);
+  
+  logger.info("Memory usage", {
+    heapUsed: `${memoryMB} MB`,
+    heapTotal: `${totalMB} MB`,
+    external: `${Math.round(used.external / 1024 / 1024)} MB`,
+    rss: `${Math.round(used.rss / 1024 / 1024)} MB`
+  });
+  
+  // Warning se la memoria si avvicina ai limiti
+  if (memoryMB > 1500) { // >1.5GB
+    logger.warn("High memory usage detected", { memoryMB, totalMB });
+  }
+  
+  // Forza garbage collection se disponibile
+  if (global.gc && memoryMB > 1000) {
+    global.gc();
+    logger.info("Forced garbage collection");
+  }
+}, 60000); // Ogni minuto
+
+// Cleanup al termine del processo
+process.on('SIGTERM', () => {
+  clearInterval(memoryMonitor);
+  logger.info("Memory monitor stopped");
+});
+
+process.on('SIGINT', () => {
+  clearInterval(memoryMonitor);
+  logger.info("Memory monitor stopped");
+});
+
 const app = express();
 
 //  CORS config
@@ -41,8 +77,14 @@ app.use(
   })
 );
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+// Limiti più conservativi per l'ambiente Render
+app.use(express.json({
+  limit: '10mb' // Ridotto da default per evitare timeout
+}));
+app.use(express.urlencoded({ 
+  extended: false,
+  limit: '10mb' // Ridotto da default per evitare timeout
+}));
 
 //  Sicurezza: Helmet va applicato presto
 const { setupSecurity } = await import("./security");
@@ -55,6 +97,29 @@ setupAuth(app);
 //  Protezione CSRF dopo le sessioni
 const { setupCSRF } = await import("./security");
 setupCSRF(app);
+
+//  Timeout middleware per Render (25 secondi - sotto il limite di 30s di Render)
+app.use((req, res, next) => {
+  // Timeout più aggressivo per upload di file
+  const timeoutMs = req.path.includes('/upload') ? 25000 : 20000;
+  
+  req.setTimeout(timeoutMs, () => {
+    if (!res.headersSent) {
+      logger.warn("Request timeout on Render", {
+        url: req.url,
+        method: req.method,
+        timeoutMs,
+        userAgent: req.get("User-Agent"),
+      });
+      res.status(408).json({
+        message: "Richiesta scaduta. Riprova con meno file o file più piccoli.",
+        code: "REQUEST_TIMEOUT"
+      });
+    }
+  });
+  
+  next();
+});
 
 //  Logging API strutturato
 app.use((req, res, next) => {

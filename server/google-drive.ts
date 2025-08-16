@@ -22,15 +22,16 @@ import { appEvents } from "./app-events";
 
 const syncIntervals: Record<number, NodeJS.Timeout> = {};
 
-// Configurazione per retry e fallback
+// Configurazione ottimizzata per Render con timeout ridotti
 const SYNC_CONFIG = {
-  maxRetries: 3,
-  retryDelay: 1000, // 1 secondo
-  maxRetryDelay: 30000, // 30 secondi
-  timeout: 30000, // 30 secondi per operazioni Google Drive
-  batchSize: 20, // Aumentato da 10 a 20 per velocizzare
-  maxConcurrent: 5, // Processamento parallelo con limitazione
+  maxRetries: 2, // Ridotto da 3 a 2 per evitare timeout Render
+  retryDelay: 500, // Ridotto da 1s a 500ms
+  maxRetryDelay: 15000, // Ridotto da 30s a 15s per ambiente Render
+  timeout: 20000, // Ridotto da 30s a 20s per operazioni Google Drive
+  batchSize: 10, // Ridotto da 20 a 10 per evitare memory issues su Render
+  maxConcurrent: 2, // Ridotto da 5 a 2 per stabilità su Render
   skipExcelAnalysis: false, // Flag per saltare analisi Excel se necessario
+  renderOptimized: true, // Flag per ottimizzazioni specifiche Render
 } as const;
 
 // Tipi per la gestione errori
@@ -347,8 +348,8 @@ export async function analyzeExcelContent(
     
     logger.debug("File size analysis", { filePath, fileSizeKB: Math.round(fileSizeKB) });
 
-    // For very large files (>50MB), use streaming approach
-    if (fileSizeKB > 50 * 1024) {
+    // For very large files (>25MB), use streaming approach
+    if (fileSizeKB > 25 * 1024) {
       logger.info("Large file detected, using streaming approach", { filePath, fileSizeKB });
       return await analyzeExcelContentStream(filePath, evaluator);
     }
@@ -598,6 +599,9 @@ export async function analyzeExcelContentOptimized(
   let tempFilePath: string | null = null;
   let metadata: any = null;
 
+  // Timeout specifico per Render environment
+  const RENDER_TIMEOUT = 15000; // 15 secondi max per analisi Excel
+
   try {
     // Prova a ottenere i metadati del file
     metadata = await drive.files.get({
@@ -646,8 +650,13 @@ export async function analyzeExcelContentOptimized(
     // Scarica il file (Excel nativo o Google Sheets esportato)
     await googleDriveDownloadFile(drive, fileId, tempFilePath);
 
-    // Analizza il contenuto del file
-    const analysis = await analyzeExcelContent(tempFilePath);
+    // Analizza il contenuto del file con timeout per Render
+    const analysis = await Promise.race([
+      analyzeExcelContent(tempFilePath),
+      new Promise<ExcelAnalysis>((_, reject) => 
+        setTimeout(() => reject(new Error('Excel analysis timeout on Render')), RENDER_TIMEOUT)
+      )
+    ]);
 
     logger.info("File analysis completed successfully", {
       fileId,
@@ -681,6 +690,15 @@ export async function analyzeExcelContentOptimized(
               ? cleanupError.message
               : String(cleanupError),
         });
+      }
+    }
+    
+    // Forza garbage collection per ottimizzare memoria su Render
+    if (global.gc && SYNC_CONFIG.renderOptimized) {
+      try {
+        global.gc();
+      } catch (gcError) {
+        // Ignora errori GC
       }
     }
   }

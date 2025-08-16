@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: cruscotto-backend
+    env: node
+    plan: starter
+    buildCommand: cd server && npm install && npm run build
+    startCommand: cd server && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_OPTIONS
+        value: "--max-old-space-size=2048 --max-semi-space-size=512"
+      - key: PORT
+        value: 10000
+    healthCheckPath: /api/health
+    autoDeploy: true
+    scaling:
+      minInstances: 1
+      maxInstances: 3
+      targetMemoryUtilizationPercent: 70
+      targetCPUUtilizationPercent: 70
+    resources:
+      cpu: 1x
+      memory: 2GB
+      disk: 10GB
+

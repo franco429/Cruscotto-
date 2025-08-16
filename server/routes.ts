@@ -97,8 +97,11 @@ const upload = multer({
   storage: multerStorage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100MB max
-    files: 2000 // Consenti upload in blocco di molteplici file (cartelle)
+    fileSize: 10 * 1024 * 1024, // Ridotto a 10MB per evitare timeout Render
+    files: 20, // Ridotto a 20 file per richiesta per evitare timeout
+    fieldSize: 1024 * 1024, // Ridotto a 1MB per i campi
+    fieldNameSize: 100, // Limite per i nomi dei campi
+    headerPairs: 2000 // Limite per le coppie header
   }
 });
 
@@ -107,13 +110,13 @@ const handleMulterError = (err: any, req: Request, res: Response, next: NextFunc
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({
-        message: 'File troppo grande. Dimensione massima: 100MB',
+        message: 'File troppo grande. Dimensione massima: 10MB per file',
         code: 'FILE_TOO_LARGE'
       });
     }
     if (err.code === 'LIMIT_FILE_COUNT') {
       return res.status(400).json({
-        message: 'Troppi file. Massimo 10 file per richiesta',
+        message: 'Troppi file. Massimo 20 file per richiesta per evitare timeout',
         code: 'TOO_MANY_FILES'
       });
     }
@@ -2354,7 +2357,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
     }
   });
 
-// Funzione per elaborazione asincrona dei file
+// Funzione per elaborazione asincrona dei file con gestione memoria ottimizzata
 async function processFilesInBackground(
   files: Express.Multer.File[], 
   clientId: number, 
@@ -2385,7 +2388,7 @@ async function processFilesInBackground(
     });
 
     // Elaborazione parallela con limite di concorrenza
-    const BATCH_SIZE = 5; // Processa 5 file alla volta
+    const BATCH_SIZE = 2; // Ridotto da 5 a 2 file alla volta per ridurre il carico di memoria
     const batches = [];
     
     for (let i = 0; i < files.length; i += BATCH_SIZE) {
@@ -2470,13 +2473,13 @@ async function processIndividualFile(
 ): Promise<{ success: boolean; document?: any; error?: string }> {
   // Timeout dinamico basato sulla dimensione del file
   const fileSizeKB = file.size / 1024;
-  let timeoutMs = 30000; // 30 secondi base
+  let timeoutMs = 15000; // Ridotto da 30 secondi a 15 secondi base
   
-  // Aumenta timeout per file grandi
+  // Aumenta timeout per file grandi ma con limiti più conservativi
   if (fileSizeKB > 10 * 1024) { // >10MB
-    timeoutMs = 120000; // 2 minuti
+    timeoutMs = 60000; // Ridotto da 2 minuti a 1 minuto
   } else if (fileSizeKB > 5 * 1024) { // >5MB
-    timeoutMs = 60000; // 1 minuto
+    timeoutMs = 30000; // Ridotto da 1 minuto a 30 secondi
   }
   
   logger.debug("File processing timeout calculated", {
@@ -2837,6 +2840,27 @@ async function getUploadStatus(uploadId: string) {
         error: error instanceof Error ? error.message : "Errore sconosciuto"
       });
     }
+  });
+
+  // Health check endpoint per Render
+  app.get("/api/health", (req, res) => {
+    const used = process.memoryUsage();
+    const memoryMB = Math.round(used.heapUsed / 1024 / 1024);
+    const totalMB = Math.round(used.heapTotal / 1024 / 1024);
+    
+    res.json({
+      status: "healthy",
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      memory: {
+        heapUsed: `${memoryMB} MB`,
+        heapTotal: `${totalMB} MB`,
+        external: `${Math.round(used.external / 1024 / 1024)} MB`,
+        rss: `${Math.round(used.rss / 1024 / 1024)} MB`
+      },
+      environment: process.env.NODE_ENV,
+      version: process.version
+    });
   });
 
   return app;
