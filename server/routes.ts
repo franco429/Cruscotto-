@@ -97,8 +97,8 @@ const upload = multer({
   storage: multerStorage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024, // Ridotto a 10MB per evitare timeout Render
-    files: 20, // Ridotto a 20 file per richiesta per evitare timeout
+    fileSize: 10 * 1024 * 1024, // 10MB ottimale per Render. Per file grandi: usa Google Drive sync
+    files: 25, // Ottimizzato: 25 file max per performance e stabilità ottimali su Render
     fieldSize: 1024 * 1024, // Ridotto a 1MB per i campi
     fieldNameSize: 100, // Limite per i nomi dei campi
     headerPairs: 2000 // Limite per le coppie header
@@ -2306,11 +2306,27 @@ export async function registerRoutes(app: Express): Promise<Express> {
           return res.status(400).json({ message: "Nessun file caricato" });
         }
 
+        // Controlli aggiuntivi per upload numerosi
+        const totalSizeMB = files.reduce((sum, f) => sum + f.size, 0) / (1024 * 1024);
+        
+        // Info per batch ottimali
+        if (files.length > 20) {
+          logger.info("Optimal batch size upload", {
+            userId,
+            clientId,
+            fileCount: files.length,
+            totalSizeMB: Math.round(totalSizeMB),
+            batchOptimization: files.length === 25 ? "Perfect batch size for Render stability" : "Good batch size"
+          });
+        }
+
         logger.info("Processing uploaded files", {
           userId,
           clientId,
           fileCount: files.length,
-          fileNames: files.map(f => f.originalname),
+          totalSizeMB: Math.round(totalSizeMB),
+          avgFileSizeMB: Math.round(totalSizeMB / files.length * 100) / 100,
+          fileNames: files.length <= 10 ? files.map(f => f.originalname) : `${files.slice(0, 5).map(f => f.originalname).join(', ')}... and ${files.length - 5} more`,
         });
 
         // Genera un ID univoco per questo upload batch
@@ -2408,8 +2424,18 @@ async function processFilesInBackground(
       fileCount: files.length
     });
 
-    // Elaborazione parallela con limite di concorrenza
-    const BATCH_SIZE = 2; // Ridotto da 5 a 2 file alla volta per ridurre il carico di memoria
+    // Elaborazione parallela ottimizzata per batch da 25 file
+    const avgFileSize = files.reduce((sum, f) => sum + f.size, 0) / files.length / (1024 * 1024); // MB
+    
+    // Ottimizzazione specifica per batch da 25 file su Render
+    let BATCH_SIZE;
+    if (avgFileSize <= 2) {
+      BATCH_SIZE = 5; // File molto piccoli: 5 in parallelo per batch da 25
+    } else if (avgFileSize <= 3) {
+      BATCH_SIZE = 4; // File piccoli: 4 in parallelo  
+    } else {
+      BATCH_SIZE = 3; // File più grandi: 3 in parallelo per sicurezza
+    }
     const batches = [];
     
     for (let i = 0; i < files.length; i += BATCH_SIZE) {
@@ -2444,9 +2470,19 @@ async function processFilesInBackground(
       // Aggiorna stato intermedio
       await saveUploadStatus(uploadId, uploadStatus);
 
-      // Pausa breve tra i batch per non sovraccaricare il sistema
+      // Pausa ottimizzata per batch da 25 file
       if (batches.indexOf(batch) < batches.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Pausa calibrata per batch ottimali da 25 file su Render
+        let pauseDuration;
+        if (avgFileSize <= 2) {
+          pauseDuration = 30; // File molto piccoli: pausa minima
+        } else if (avgFileSize <= 3) {
+          pauseDuration = 50; // File piccoli: pausa standard
+        } else {
+          pauseDuration = 75; // File più grandi: pausa più lunga
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, pauseDuration));
       }
     }
 

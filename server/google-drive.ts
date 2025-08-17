@@ -335,7 +335,7 @@ class FormulaEvaluator {
 // ===== EXCEL ANALYZER (STREAMING-ONLY) =====
 // Hard limits for Render environment to prevent OOM
 const EXCEL_LIMITS = {
-  MAX_FILE_SIZE_MB: 10,     // Ridotto da 25MB a 10MB per Render
+  MAX_FILE_SIZE_MB: 10,     // 10MB ottimale per stabilità Render. File grandi: usa Google Drive
   MAX_ROWS_TO_READ: 50,     // Hard cap per evitare "excess formatting"
   RENDER_TIMEOUT_MS: 8000,  // Ridotto da 15s a 8s per fail-fast
 } as const;
