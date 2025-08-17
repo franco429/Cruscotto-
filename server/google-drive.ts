@@ -332,7 +332,14 @@ class FormulaEvaluator {
   }
 }
 
-// ===== EXCEL ANALYZER (OPTIMIZED) =====
+// ===== EXCEL ANALYZER (STREAMING-ONLY) =====
+// Hard limits for Render environment to prevent OOM
+const EXCEL_LIMITS = {
+  MAX_FILE_SIZE_MB: 10,     // Ridotto da 25MB a 10MB per Render
+  MAX_ROWS_TO_READ: 50,     // Hard cap per evitare "excess formatting"
+  RENDER_TIMEOUT_MS: 8000,  // Ridotto da 15s a 8s per fail-fast
+} as const;
+
 export async function analyzeExcelContent(
   filePath: string
 ): Promise<ExcelAnalysis> {
@@ -340,86 +347,27 @@ export async function analyzeExcelContent(
   const startTime = Date.now();
 
   try {
-    logger.debug("Starting Excel analysis", { filePath });
+    logger.debug("Starting Excel streaming analysis", { filePath });
 
-    // Check file size to determine strategy
+    // Check file size with stricter limits
     const stats = await fs.promises.stat(filePath);
-    const fileSizeKB = stats.size / 1024;
+    const fileSizeMB = stats.size / (1024 * 1024);
     
-    logger.debug("File size analysis", { filePath, fileSizeKB: Math.round(fileSizeKB) });
+    logger.debug("File size analysis", { filePath, fileSizeMB: Math.round(fileSizeMB * 100) / 100 });
 
-    // For very large files (>25MB), use streaming approach
-    if (fileSizeKB > 25 * 1024) {
-      logger.info("Large file detected, using streaming approach", { filePath, fileSizeKB });
-      return await analyzeExcelContentStream(filePath, evaluator);
-    }
-
-    // Standard approach for smaller files with optimization
-    const workbook = new ExcelJS.Workbook();
-    
-    // Set options to optimize for speed - only read what we need
-    await workbook.xlsx.readFile(filePath, {
-      sharedStrings: 'cache', // Cache shared strings for performance
-      hyperlinks: 'ignore',   // Ignore hyperlinks to speed up
-      styles: 'ignore'        // Ignore styles for faster parsing
-    });
-
-    const worksheet = workbook.getWorksheet(1);
-    if (!worksheet) {
-      logger.warn("No worksheets found in Excel file", { filePath });
-      return { alertStatus: "none", expiryDate: null };
-    }
-
-    // Only read cell A1 for performance
-    const cellA1 = worksheet.getCell("A1");
-    let expiryDate: Date | null = null;
-
-    // Priority 1: Evaluate formula if present
-    if (cellA1.formula) {
-      logger.debug(`Found formula: ${cellA1.formula}`, { filePath });
-      const result = evaluator.evaluate(cellA1.formula);
-
-      if (result.evaluated && result.value) {
-        expiryDate = result.value;
-        logger.debug(`Formula evaluated: ${expiryDate.toISOString()}`, { filePath });
-      } else {
-        logger.warn(`Formula evaluation failed: ${result.error}`, { filePath });
-      }
-    }
-
-    // Priority 2: Fallback to cached result
-    if (!expiryDate) {
-      let cellValue = cellA1.value;
-      if (typeof cellValue === "object" && cellValue && "result" in cellValue) {
-        cellValue = (cellValue as ExcelJS.CellFormulaValue).result;
-      }
-      expiryDate = parseValueToUTCDate(cellValue);
-      logger.debug("Using fallback cached value", { cellValue, expiryDate, filePath });
-    }
-
-    const analysisTime = Date.now() - startTime;
-    
-    if (!expiryDate) {
-      logger.debug("No valid date found in A1", {
-        cellA1: cellA1.value,
-        filePath,
-        analysisTimeMs: analysisTime,
-        fileSizeKB: Math.round(fileSizeKB)
+    // Strict file size limit for Render
+    if (fileSizeMB > EXCEL_LIMITS.MAX_FILE_SIZE_MB) {
+      logger.warn("Excel file too large for analysis", { 
+        filePath, 
+        fileSizeMB, 
+        maxSizeMB: EXCEL_LIMITS.MAX_FILE_SIZE_MB 
       });
-      return { alertStatus: "none", expiryDate: null };
+      throw new Error(`File troppo grande (${Math.round(fileSizeMB)}MB). Limite massimo: ${EXCEL_LIMITS.MAX_FILE_SIZE_MB}MB. Considera di pulire il file da formattazioni eccessive.`);
     }
 
-    // Calculate alert status
-    const alertStatus = calculateAlertStatus(expiryDate);
-
-    logger.info("Excel analysis completed", { 
-      expiryDate: expiryDate.toISOString(), 
-      alertStatus, 
-      filePath,
-      analysisTimeMs: analysisTime,
-      fileSizeKB: Math.round(fileSizeKB)
-    });
-    return { alertStatus, expiryDate };
+    // ALWAYS use streaming approach - no more document mode
+    return await analyzeExcelContentStreamOptimized(filePath, evaluator);
+    
   } catch (error) {
     const analysisTime = Date.now() - startTime;
     logger.error("Excel analysis failed", { 
@@ -427,72 +375,118 @@ export async function analyzeExcelContent(
       error: error instanceof Error ? error.message : String(error),
       analysisTimeMs: analysisTime
     });
-    return { alertStatus: "none", expiryDate: null };
+    throw error; // Re-throw per gestire meglio gli errori upstream
   }
 }
 
-// Streaming approach for very large Excel files
-async function analyzeExcelContentStream(
+// Optimized streaming approach with strict limits for Render
+async function analyzeExcelContentStreamOptimized(
   filePath: string,
   evaluator: FormulaEvaluator
 ): Promise<ExcelAnalysis> {
   const startTime = Date.now();
   
   try {
-    const workbook = new ExcelJS.stream.xlsx.WorkbookReader(filePath, {
-      sharedStrings: 'emit',
+    // Use fs.createReadStream for better memory control
+    const stream = fs.createReadStream(filePath);
+    
+    const workbook = new ExcelJS.stream.xlsx.WorkbookReader(stream, {
+      worksheets: 'emit',
+      sharedStrings: 'ignore',    // CHANGED: ignore invece di emit per meno RAM
       hyperlinks: 'ignore',
       styles: 'ignore'
     });
 
     let expiryDate: Date | null = null;
     let worksheetProcessed = false;
+    let totalRowsRead = 0;
+    let excessFormattingDetected = false;
 
-    for await (const worksheetReader of workbook) {
-      if (worksheetProcessed) break; // Only process first worksheet
-      
-      let rowCount = 0;
-      for await (const row of worksheetReader) {
-        rowCount++;
+    // Timeout wrapper per fail-fast su Render
+    const analysisPromise = (async () => {
+      for await (const worksheetReader of workbook) {
+        if (worksheetProcessed) break; // Only process first worksheet
         
-        // Only process first row (row 1) for cell A1
-        if (rowCount === 1) {
-          const cellA1 = row.getCell(1); // Column A (index 1)
+        // In ExcelJS v4.4+ il reader può emettere array di righe
+        for await (const rowOrRows of worksheetReader) {
+          const rows = Array.isArray(rowOrRows) ? rowOrRows : [rowOrRows];
           
-          // Check for formula first
-          if (cellA1.formula) {
-            logger.debug(`Found formula in streaming mode: ${cellA1.formula}`, { filePath });
-            const result = evaluator.evaluate(cellA1.formula);
+          for (const row of rows) {
+            totalRowsRead++;
             
-            if (result.evaluated && result.value) {
-              expiryDate = result.value;
-              logger.debug(`Formula evaluated in streaming: ${expiryDate.toISOString()}`, { filePath });
+            // Hard cap per evitare "excess formatting" sheets
+            if (totalRowsRead > EXCEL_LIMITS.MAX_ROWS_TO_READ) {
+              excessFormattingDetected = true;
+              logger.warn("Excel file has excessive rows (possible excess formatting)", {
+                filePath,
+                totalRowsRead,
+                maxRows: EXCEL_LIMITS.MAX_ROWS_TO_READ
+              });
+              break;
+            }
+            
+            // Only process first row (row 1) for cell A1
+            if (totalRowsRead === 1) {
+              const cellA1 = row.getCell ? row.getCell(1) : row.values?.[1]; // Compatibility con diverse API
+              
+              if (cellA1) {
+                // Check for formula first
+                if (cellA1.formula) {
+                  logger.debug(`Found formula in streaming mode: ${cellA1.formula}`, { filePath });
+                  const result = evaluator.evaluate(cellA1.formula);
+                  
+                  if (result.evaluated && result.value) {
+                    expiryDate = result.value;
+                    logger.debug(`Formula evaluated in streaming: ${expiryDate.toISOString()}`, { filePath });
+                  }
+                }
+                
+                // Fallback to cell value
+                if (!expiryDate) {
+                  let cellValue = cellA1.value ?? cellA1;
+                  if (typeof cellValue === "object" && cellValue && "result" in cellValue) {
+                    cellValue = (cellValue as ExcelJS.CellFormulaValue).result;
+                  }
+                  expiryDate = parseValueToUTCDate(cellValue);
+                  logger.debug("Using streaming cached value", { cellValue, expiryDate, filePath });
+                }
+              }
+              
+              worksheetProcessed = true;
+              break; // Exit after processing A1
             }
           }
           
-          // Fallback to cell value
-          if (!expiryDate) {
-            let cellValue = cellA1.value;
-            if (typeof cellValue === "object" && cellValue && "result" in cellValue) {
-              cellValue = (cellValue as ExcelJS.CellFormulaValue).result;
-            }
-            expiryDate = parseValueToUTCDate(cellValue);
-            logger.debug("Using streaming cached value", { cellValue, expiryDate, filePath });
-          }
-          
-          worksheetProcessed = true;
-          break; // Exit row loop after processing A1
+          if (worksheetProcessed || excessFormattingDetected) break;
         }
+        
+        if (worksheetProcessed || excessFormattingDetected) break;
       }
-    }
+    })();
+
+    // Race condition per timeout su Render
+    const result = await Promise.race([
+      analysisPromise,
+      new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Excel analysis timeout on Render')), EXCEL_LIMITS.RENDER_TIMEOUT_MS)
+      )
+    ]);
 
     const analysisTime = Date.now() - startTime;
+    
+    // Chiudi esplicitamente lo stream
+    stream.destroy();
+    
+    if (excessFormattingDetected) {
+      throw new Error(`File Excel con formattazione eccessiva (${totalRowsRead}+ righe). Pulisci il file: Excel → Cerca e Seleziona → Vai a Speciale → Celle vuote → Elimina righe/colonne.`);
+    }
     
     if (!expiryDate) {
       logger.debug("No expiry date found in streaming Excel analysis", { 
         filePath, 
         analysisTimeMs: analysisTime,
-        method: 'streaming'
+        totalRowsRead,
+        method: 'streaming-optimized'
       });
       return { alertStatus: "none", expiryDate: null };
     }
@@ -503,77 +497,26 @@ async function analyzeExcelContentStream(
       expiryDate: expiryDate.toISOString(),
       alertStatus,
       analysisTimeMs: analysisTime,
-      method: 'streaming'
+      totalRowsRead,
+      method: 'streaming-optimized'
     });
     return { alertStatus, expiryDate };
     
   } catch (error) {
     const analysisTime = Date.now() - startTime;
-    logger.error("Streaming Excel analysis failed", {
+    logger.error("Optimized streaming Excel analysis failed", {
       filePath,
       error: error instanceof Error ? error.message : String(error),
       analysisTimeMs: analysisTime,
-      method: 'streaming'
+      method: 'streaming-optimized'
     });
-
-    // Fallback to standard method for corrupted or incompatible files
-    logger.info("Falling back to standard analysis method", { filePath });
-    return await analyzeExcelContentFallback(filePath, evaluator);
+    
+    // Non fare più fallback alla modalità document - fail fast
+    throw error;
   }
 }
 
-// Fallback method with minimal processing
-async function analyzeExcelContentFallback(
-  filePath: string,
-  evaluator: FormulaEvaluator
-): Promise<ExcelAnalysis> {
-  try {
-    const workbook = new ExcelJS.Workbook();
-    
-    // Use minimal options for fallback
-    await workbook.xlsx.readFile(filePath, {
-      sharedStrings: 'ignore',
-      hyperlinks: 'ignore',
-      styles: 'ignore'
-    });
-
-    const worksheet = workbook.getWorksheet(1);
-    if (!worksheet) {
-      return { alertStatus: "none", expiryDate: null };
-    }
-
-    // Quick read of A1 only
-    const cellA1 = worksheet.getCell("A1");
-    let cellValue = cellA1.value;
-    
-    if (typeof cellValue === "object" && cellValue && "result" in cellValue) {
-      cellValue = (cellValue as ExcelJS.CellFormulaValue).result;
-    }
-    
-    const expiryDate = parseValueToUTCDate(cellValue);
-    
-    if (!expiryDate) {
-      return { alertStatus: "none", expiryDate: null };
-    }
-
-    const alertStatus = calculateAlertStatus(expiryDate);
-    logger.info("Fallback Excel analysis completed", {
-      filePath,
-      expiryDate: expiryDate.toISOString(),
-      alertStatus,
-      method: 'fallback'
-    });
-    return { alertStatus, expiryDate };
-    
-  } catch (error) {
-    logger.error("Fallback Excel analysis also failed", {
-      filePath,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    
-    return { alertStatus: "none", expiryDate: null };
-  }
-}
+// REMOVED: analyzeExcelContentFallback - no more document mode fallback for memory safety
 
 // ===== ALERT STATUS CALCULATOR =====
 function calculateAlertStatus(expiryDate: Date): Alert {
@@ -599,8 +542,8 @@ export async function analyzeExcelContentOptimized(
   let tempFilePath: string | null = null;
   let metadata: any = null;
 
-  // Timeout specifico per Render environment
-  const RENDER_TIMEOUT = 15000; // 15 secondi max per analisi Excel
+  // Use new optimized timeout from EXCEL_LIMITS
+  const RENDER_TIMEOUT = EXCEL_LIMITS.RENDER_TIMEOUT_MS;
 
   try {
     // Prova a ottenere i metadati del file
@@ -650,13 +593,8 @@ export async function analyzeExcelContentOptimized(
     // Scarica il file (Excel nativo o Google Sheets esportato)
     await googleDriveDownloadFile(drive, fileId, tempFilePath);
 
-    // Analizza il contenuto del file con timeout per Render
-    const analysis = await Promise.race([
-      analyzeExcelContent(tempFilePath),
-      new Promise<ExcelAnalysis>((_, reject) => 
-        setTimeout(() => reject(new Error('Excel analysis timeout on Render')), RENDER_TIMEOUT)
-      )
-    ]);
+    // Analizza il contenuto del file (timeout già gestito internamente)
+    const analysis = await analyzeExcelContent(tempFilePath);
 
     logger.info("File analysis completed successfully", {
       fileId,
