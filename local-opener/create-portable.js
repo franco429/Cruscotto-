@@ -49,31 +49,82 @@ if (fs.existsSync(nssmPath)) {
   console.log('✅ NSSM copiato');
 }
 
-// Crea script di installazione come servizio
+// Crea script di installazione come servizio AVANZATO
 const installServiceScript = `@echo off
-echo Installazione Cruscotto Local Opener come servizio Windows...
+chcp 65001 >nul
+setlocal enabledelayedexpansion
+echo 🚀 INSTALLAZIONE CRUSCOTTO LOCAL OPENER COME SERVIZIO WINDOWS
+echo ====================================================================
 echo.
 
 if not exist nssm.exe (
-    echo ERRORE: nssm.exe non trovato!
-    echo Scarica NSSM da https://nssm.cc/download
+    echo ❌ ERRORE: nssm.exe non trovato!
+    echo 💡 Scarica NSSM da https://nssm.cc/download
     pause
     exit /b 1
 )
 
-echo Installo il servizio...
-nssm.exe install CruscottoLocalOpener "%~dp0local-opener.exe"
-nssm.exe set CruscottoLocalOpener AppDirectory "%~dp0"
-nssm.exe set CruscottoLocalOpener DisplayName "Cruscotto Local Opener Service"
-nssm.exe set CruscottoLocalOpener Description "Servizio per aprire documenti locali da Cruscotto SGI"
-nssm.exe set CruscottoLocalOpener Start SERVICE_AUTO_START
+set SERVICE_NAME=CruscottoLocalOpener
 
-echo Avvio il servizio...
-nssm.exe start CruscottoLocalOpener
+echo 🛑 Arresto servizio esistente (se presente)...
+nssm.exe stop !SERVICE_NAME! >nul 2>&1
+nssm.exe remove !SERVICE_NAME! confirm >nul 2>&1
+
+echo 🔧 Installazione servizio con configurazione avanzata...
+nssm.exe install !SERVICE_NAME! "%~dp0local-opener.exe"
+nssm.exe set !SERVICE_NAME! AppDirectory "%~dp0"
+nssm.exe set !SERVICE_NAME! DisplayName "Cruscotto Local Opener Service"
+nssm.exe set !SERVICE_NAME! Description "Servizio per aprire documenti locali da Cruscotto SGI - Avvio automatico all'accensione PC"
+
+echo ⚙️  Configurazione avvio automatico...
+nssm.exe set !SERVICE_NAME! Start SERVICE_AUTO_START
+nssm.exe set !SERVICE_NAME! Type SERVICE_WIN32_OWN_PROCESS
+nssm.exe set !SERVICE_NAME! DelayedAutoStart 1
+
+echo 🔄 Configurazione resilienza e restart automatico...
+nssm.exe set !SERVICE_NAME! AppExit Default Restart
+nssm.exe set !SERVICE_NAME! AppRestartDelay 10000
+nssm.exe set !SERVICE_NAME! AppThrottle 5000
+nssm.exe set !SERVICE_NAME! AppStopMethodConsole 15000
+
+echo 🔐 Configurazione sicurezza...
+nssm.exe set !SERVICE_NAME! ObjectName LocalSystem
+
+echo 📝 Configurazione logging...
+md "%APPDATA%\\.local-opener" >nul 2>&1
+nssm.exe set !SERVICE_NAME! AppStdout "%APPDATA%\\.local-opener\\service.log"
+nssm.exe set !SERVICE_NAME! AppStderr "%APPDATA%\\.local-opener\\service-error.log"
+nssm.exe set !SERVICE_NAME! AppRotateFiles 1
+nssm.exe set !SERVICE_NAME! AppRotateSeconds 86400
+
+echo 🌐 Configurazione firewall Windows...
+netsh advfirewall firewall delete rule name="Local Opener" >nul 2>&1
+netsh advfirewall firewall add rule name="Local Opener" dir=in action=allow protocol=TCP localport=17654 >nul 2>&1
+
+echo 🚀 Avvio servizio...
+nssm.exe start !SERVICE_NAME!
 
 echo.
-echo ✅ Servizio installato e avviato con successo!
-echo Il Local Opener è ora attivo e si avvierà automaticamente all'accensione del PC.
+echo ⏳ Attendo 5 secondi per verifica avvio...
+timeout /t 5 >nul
+
+echo 🔍 Verifica stato servizio...
+sc query !SERVICE_NAME! | findstr /i "RUNNING" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo ✅ SUCCESSO! Servizio installato e avviato correttamente
+    echo 🎉 Il Local Opener si avvierà automaticamente ad ogni accensione del PC
+) else (
+    echo ⚠️  Servizio installato ma potrebbe non essere avviato
+    echo 💡 Riavvia il PC o esegui: sc start !SERVICE_NAME!
+)
+
+echo.
+echo 📊 STATO INSTALLAZIONE:
+echo ================================
+echo 🌐 URL servizio: http://127.0.0.1:17654
+echo 📁 Log servizio: %APPDATA%\\.local-opener\\service.log
+echo 🔧 Manager servizi: services.msc
+echo 📋 Diagnostica: diagnostica-servizio.bat
 echo.
 pause
 `;
@@ -151,16 +202,20 @@ Per assistenza, visita: https://cruscotto-sgi.onrender.com
 
 fs.writeFileSync(path.join(portableDir, 'README.txt'), readmeContent);
 
-// Crea configurazione di esempio
+// Crea configurazione di esempio CORRETTA
 const exampleConfig = {
-  "roots": ["C:\\"],
+  "roots": [
+    "C:\\Users\\NomeUtente\\Google Drive",
+    "G:\\Il mio Drive", 
+    "H:\\Il mio Drive",
+    "\\\\SERVER\\Share\\Documenti"
+  ],
   "company": {
-    "name": "La tua azienda",
-    "code": ""
-  },
-  "server": {
-    "port": 3001,
-    "host": "localhost"
+    "name": "Nome Azienda SpA",
+    "code": "AZIENDA123",
+    "installedAt": "2024-01-15 14:30:00",
+    "version": "1.0.0",
+    "silentInstall": false
   }
 };
 
@@ -168,6 +223,83 @@ fs.writeFileSync(
   path.join(portableDir, 'config-esempio.json'), 
   JSON.stringify(exampleConfig, null, 2)
 );
+
+// Copia lo script di diagnostica (se esiste)
+const diagnosticaPath = path.join(__dirname, 'diagnostica-servizio.bat');
+if (fs.existsSync(diagnosticaPath)) {
+  fs.copyFileSync(diagnosticaPath, path.join(portableDir, 'diagnostica-servizio.bat'));
+  console.log('✅ Script diagnostica copiato');
+} else {
+  // Crea script di diagnostica integrato
+  const diagnosticaScript = `@echo off
+chcp 65001 >nul
+setlocal enabledelayedexpansion
+
+echo ====================================================================
+echo 🔧 DIAGNOSTICA CRUSCOTTO LOCAL OPENER - SERVIZIO WINDOWS
+echo ====================================================================
+echo.
+
+set SERVICE_NAME=CruscottoLocalOpener
+set PORT=17654
+set URL=http://127.0.0.1:%PORT%
+
+echo 📋 VERIFICA STATO SERVIZIO...
+echo ====================================================================
+
+:: Controlla se il servizio è installato
+sc query "%SERVICE_NAME%" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo ✅ Servizio installato: %SERVICE_NAME%
+    
+    :: Verifica se è configurato per avvio automatico
+    sc qc "%SERVICE_NAME%" | findstr /i "AUTO_START" >nul 2>&1
+    if %errorlevel% equ 0 (
+        echo ✅ Configurato per avvio automatico
+    ) else (
+        echo ⚠️  NON configurato per avvio automatico
+        echo 💡 Comando per risolvere: sc config "%SERVICE_NAME%" start= auto
+    )
+    
+    :: Verifica se è in esecuzione
+    sc query "%SERVICE_NAME%" | findstr /i "RUNNING" >nul 2>&1
+    if %errorlevel% equ 0 (
+        echo ✅ Servizio in esecuzione
+    ) else (
+        echo ❌ Servizio NON in esecuzione
+        echo 💡 Comando per avviare: sc start "%SERVICE_NAME%"
+    )
+    
+) else (
+    echo ❌ Servizio NON installato: %SERVICE_NAME%
+    echo 💡 Esegui l'installer: installa-servizio.bat
+)
+
+echo.
+echo 🌐 VERIFICA CONNESSIONE...
+echo ====================================================================
+
+:: Test connessione HTTP
+echo 🔗 Test connessione %URL%...
+powershell -Command "try { $response = Invoke-WebRequest -Uri '%URL%/health' -TimeoutSec 5 -UseBasicParsing; Write-Host '✅ Connessione HTTP riuscita' } catch { Write-Host '❌ Connessione HTTP fallita:' $_.Exception.Message }" 2>nul
+
+echo.
+echo 🔧 COMANDI UTILI...
+echo ====================================================================
+echo 🔄 Riavvia servizio:      sc stop "%SERVICE_NAME%" ^&^& sc start "%SERVICE_NAME%"
+echo 🚀 Avvia servizio:        sc start "%SERVICE_NAME%"
+echo 🛑 Ferma servizio:        sc stop "%SERVICE_NAME%"
+echo ⚙️  Configura auto-start:  sc config "%SERVICE_NAME%" start= auto
+echo 🖥️  Manager servizi:      services.msc
+echo 🌐 Test manuale:         start http://127.0.0.1:17654
+
+echo.
+echo ✅ Diagnostica completata! Premi un tasto per uscire...
+pause >nul`;
+
+  fs.writeFileSync(path.join(portableDir, 'diagnostica-servizio.bat'), diagnosticaScript);
+  console.log('✅ Script diagnostica creato');
+}
 
 console.log('');
 console.log('✅ Versione portable creata con successo!');
@@ -179,6 +311,7 @@ console.log('   ├── nssm.exe');
 console.log('   ├── installa-servizio.bat');
 console.log('   ├── disinstalla-servizio.bat');
 console.log('   ├── avvia-manualmente.bat');
+console.log('   ├── diagnostica-servizio.bat');
 console.log('   ├── README.txt');
 console.log('   ├── config-esempio.json');
 console.log('   └── assets/');

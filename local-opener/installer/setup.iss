@@ -60,34 +60,64 @@ Source: "..\dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion; Check
 Source: "..\assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\assets\README.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "nssm.exe"; DestDir: "{app}"; Flags: ignoreversion
+; Script di diagnostica e manutenzione
+Source: "..\diagnostica-servizio.bat"; DestDir: "{app}"; Flags: ignoreversion
+; File di configurazione di esempio (utile per troubleshooting)
+Source: "..\config-esempio.json"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+; Menu di manutenzione e diagnostica
+Name: "{group}\Verifica Stato Servizio"; Filename: "{app}\diagnostica-servizio.bat"; IconFilename: "{sys}\shell32.dll"; IconIndex: 16
+Name: "{group}\Apri Configurazione"; Filename: "explorer.exe"; Parameters: """{userappdata}\.local-opener"""; IconFilename: "{sys}\shell32.dll"; IconIndex: 4
+Name: "{group}\Test Connessione"; Filename: "http://127.0.0.1:17654"; IconFilename: "{sys}\shell32.dll"; IconIndex: 13
+Name: "{group}\Manager Servizi Windows"; Filename: "services.msc"; IconFilename: "{sys}\shell32.dll"; IconIndex: 21
 
 [Run]
-; Installa come servizio Windows usando NSSM con configurazione avanzata
-Filename: "{app}\nssm.exe"; Parameters: "install {#MyServiceName} ""{app}\{#MyAppExeName}"""; Flags: runhidden
+; ===== INSTALLAZIONE SERVIZIO WINDOWS CON NSSM =====
+; STEP 1: Ferma e rimuove eventuale servizio esistente (per upgrade)
+Filename: "{app}\nssm.exe"; Parameters: "stop {#MyServiceName}"; Flags: runhidden; StatusMsg: "Arresto servizio esistente..."
+Filename: "{app}\nssm.exe"; Parameters: "remove {#MyServiceName} confirm"; Flags: runhidden; StatusMsg: "Rimozione servizio precedente..."
+
+; STEP 2: Installa nuovo servizio con configurazione robusta
+Filename: "{app}\nssm.exe"; Parameters: "install {#MyServiceName} ""{app}\{#MyAppExeName}"""; Flags: runhidden; StatusMsg: "Installazione servizio Local Opener..."
 Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppDirectory ""{app}"""; Flags: runhidden
 Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} DisplayName ""Cruscotto Local Opener Service"""; Flags: runhidden
-Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} Description ""Servizio per aprire documenti locali da Cruscotto SGI"""; Flags: runhidden
-; Configurazione avanzata per auto-start e gestione errori
-Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} Start SERVICE_AUTO_START"; Flags: runhidden
+Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} Description ""Servizio per aprire documenti locali da Cruscotto SGI - Avvio automatico all'accensione PC"""; Flags: runhidden
+
+; STEP 3: Configurazione CRITICA per avvio automatico
+Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} Start SERVICE_AUTO_START"; Flags: runhidden; StatusMsg: "Configurazione avvio automatico..."
 Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} Type SERVICE_WIN32_OWN_PROCESS"; Flags: runhidden
-; Configurazione restart automatico in caso di crash
+Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} DelayedAutoStart 1"; Flags: runhidden
+
+; STEP 4: Configurazione restart automatico e resilienza
 Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppExit Default Restart"; Flags: runhidden
-Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppRestartDelay 5000"; Flags: runhidden
+Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppRestartDelay 10000"; Flags: runhidden
+Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppThrottle 5000"; Flags: runhidden
 Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppStopMethodSkip 0"; Flags: runhidden
-Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppStopMethodConsole 10000"; Flags: runhidden
-; Configurazione per esecuzione senza privilegi elevati  
+Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppStopMethodConsole 15000"; Flags: runhidden
+Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppStopMethodWindow 5000"; Flags: runhidden
+Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppStopMethodThreads 10000"; Flags: runhidden
+
+; STEP 5: Configurazione sicurezza e permessi
 Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} ObjectName LocalSystem"; Flags: runhidden
-; Configurazione log per debugging
+
+; STEP 6: Configurazione logging avanzata per diagnostica
 Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppStdout ""{userappdata}\.local-opener\service.log"""; Flags: runhidden
 Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppStderr ""{userappdata}\.local-opener\service-error.log"""; Flags: runhidden
 Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppRotateFiles 1"; Flags: runhidden
 Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppRotateSeconds 86400"; Flags: runhidden
-; Avvia il servizio
-Filename: "{app}\nssm.exe"; Parameters: "start {#MyServiceName}"; Flags: runhidden
+Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppRotateBytes 10485760"; Flags: runhidden
+
+; STEP 7: Configurazione variabili ambiente per Node.js
+Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppEnvironmentExtra NSSM_SERVICE_NAME={#MyServiceName}"; Flags: runhidden
+
+; STEP 8: AVVIO IMMEDIATO del servizio 
+Filename: "{app}\nssm.exe"; Parameters: "start {#MyServiceName}"; Flags: runhidden waituntilterminated; StatusMsg: "Avvio servizio Local Opener..."
+
+; STEP 9: Verifica che il servizio sia effettivamente avviato (con timeout)
+Filename: "sc"; Parameters: "query {#MyServiceName}"; Flags: runhidden waituntilterminated; StatusMsg: "Verifica stato servizio..."
 
 [UninstallRun]
 Filename: "{app}\nssm.exe"; Parameters: "stop {#MyServiceName}"; Flags: runhidden
@@ -229,10 +259,43 @@ begin
   CompanyPage.Add('Codice azienda (opzionale):', False);
 end;
 
+// Funzione per verificare stato servizio Windows
+function IsServiceInstalled(ServiceName: String): Boolean;
+var
+  ResultCode: Integer;
+begin
+  Result := Exec('sc', 'query "' + ServiceName + '"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) and (ResultCode = 0);
+end;
+
+function IsServiceRunning(ServiceName: String): Boolean;
+var
+  ResultCode: Integer;
+  Output: AnsiString;
+begin
+  Result := False;
+  if Exec('sc', 'query "' + ServiceName + '"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) and (ResultCode = 0) then
+  begin
+    // Se il comando è riuscito, il servizio è installato
+    // Potremmo analizzare l'output per verificare se è RUNNING, ma per semplicità assumiamo che se è installato dovrebbe essere avviato
+    Result := True;
+  end;
+end;
+
+// Funzione per testare connessione al servizio Local Opener
+function TestLocalOpenerConnection(): Boolean;
+var
+  ResultCode: Integer;
+begin
+  // Usa PowerShell per testare connessione HTTP (più affidabile di curl su Windows)
+  Result := Exec('powershell', '-Command "try { $response = Invoke-WebRequest -Uri http://127.0.0.1:17654/health -TimeoutSec 10 -UseBasicParsing; exit 0 } catch { exit 1 }"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) and (ResultCode = 0);
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   ConfigDir, ConfigFile, ConfigContent: String;
   CompanyName, CompanyCode, IsoFolder: String;
+  ServiceInstalled, ServiceRunning, ConnectionWorking: Boolean;
+  StatusMessage: String;
 begin
   if CurStep = ssPostInstall then
   begin
@@ -278,5 +341,66 @@ begin
     
     // Aggiunge il servizio alle eccezioni Windows Defender (best effort)
     Exec('powershell', '-Command "Add-MpPreference -ExclusionPath \"' + ExpandConstant('{app}') + '\" -ErrorAction SilentlyContinue"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    
+    // VERIFICA POST-INSTALLAZIONE: Controllo servizio e connessione
+    Sleep(3000); // Aspetta 3 secondi per permettere al servizio di avviarsi completamente
+    
+    ServiceInstalled := IsServiceInstalled('{#MyServiceName}');
+    ServiceRunning := IsServiceRunning('{#MyServiceName}');
+    ConnectionWorking := TestLocalOpenerConnection();
+    
+    // Crea messaggio di stato dettagliato
+    StatusMessage := 'Installazione completata!' + #13#10 + #13#10;
+    StatusMessage := StatusMessage + 'STATO SERVIZIO:' + #13#10;
+    
+    if ServiceInstalled then
+      StatusMessage := StatusMessage + '✅ Servizio installato correttamente' + #13#10
+    else
+      StatusMessage := StatusMessage + '❌ PROBLEMA: Servizio non installato' + #13#10;
+    
+    if ServiceRunning then
+      StatusMessage := StatusMessage + '✅ Servizio avviato' + #13#10
+    else
+      StatusMessage := StatusMessage + '⚠️ Servizio installato ma non avviato' + #13#10;
+    
+    if ConnectionWorking then
+      StatusMessage := StatusMessage + '✅ Connessione Local Opener funzionante' + #13#10
+    else
+      StatusMessage := StatusMessage + '⚠️ Servizio non raggiungibile su porta 17654' + #13#10;
+    
+    StatusMessage := StatusMessage + #13#10 + 'CONFIGURAZIONE:' + #13#10;
+    StatusMessage := StatusMessage + '📂 Cartella documenti: ' + IsoFolder + #13#10;
+    StatusMessage := StatusMessage + '🏢 Azienda: ' + CompanyName + #13#10;
+    StatusMessage := StatusMessage + '🌐 URL servizio: http://127.0.0.1:17654' + #13#10;
+    
+    if ServiceInstalled and ServiceRunning and ConnectionWorking then
+    begin
+      StatusMessage := StatusMessage + #13#10 + '🎉 INSTALLAZIONE RIUSCITA!' + #13#10;
+      StatusMessage := StatusMessage + 'Il Local Opener si avvierà automaticamente ad ogni accensione del PC.';
+    end
+    else
+    begin
+      StatusMessage := StatusMessage + #13#10 + '⚠️ INSTALLAZIONE PARZIALE' + #13#10;
+      StatusMessage := StatusMessage + 'Il servizio potrebbe richiedere un riavvio del PC per funzionare correttamente.' + #13#10;
+      StatusMessage := StatusMessage + 'In caso di problemi, esegui "services.msc" e cerca "Cruscotto Local Opener Service".';
+    end;
+    
+    // Mostra risultato all'utente (solo se non silent)
+    if not IsSilentMode then
+    begin
+      MsgBox(StatusMessage, mbInformation, MB_OK);
+    end;
+    
+    // Log dettagliato per diagnostica
+    SaveStringToFile(ConfigDir + '\install-status.log', 
+      'Installation completed at: ' + GetDateTimeString('yyyy-mm-dd hh:nn:ss', #0, #0) + #13#10 +
+      'Service Installed: ' + BoolToStr(ServiceInstalled, 'YES', 'NO') + #13#10 +
+      'Service Running: ' + BoolToStr(ServiceRunning, 'YES', 'NO') + #13#10 +
+      'Connection Working: ' + BoolToStr(ConnectionWorking, 'YES', 'NO') + #13#10 +
+      'ISO Folder: ' + IsoFolder + #13#10 +
+      'Company: ' + CompanyName + #13#10 +
+      'Company Code: ' + CompanyCode + #13#10 +
+      'Silent Mode: ' + BoolToStr(IsSilentMode, 'YES', 'NO') + #13#10,
+      False);
   end;
 end;

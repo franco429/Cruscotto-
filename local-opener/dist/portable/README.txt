@@ -1,30 +1,28 @@
-CRUSCOTTO LOCAL OPENER - VERSIONE COMPATIBILE
-============================================
+# Cruscotto Local Opener - Versione Portable
 
-🎯 MASSIMA COMPATIBILITÀ WINDOWS
-Questa versione è ottimizzata per funzionare su TUTTI i sistemi Windows.
+## Cosa è incluso
+- local-opener.exe: L'applicazione principale
+- nssm.exe: Utility per installare come servizio Windows
+- assets/: Risorse dell'applicazione (icone, ecc.)
 
-📋 CONTENUTO PACCHETTO
-✅ local-opener-x64.exe (Windows moderni)
-❌ x86 non disponibile  
-❌ legacy non disponibile
-✅ start.bat (launcher automatico)
+## Come usare
 
-🚀 ISTRUZIONI SEMPLICI
-1. Estrai TUTTI i file in una cartella
-2. Esegui "start.bat" come AMMINISTRATORE
-3. Il sistema sceglierà automaticamente la versione giusta
-4. Torna al browser Cruscotto
+### Opzione 1: Installazione come Servizio (Raccomandato)
+1. Esegui "installa-servizio.bat" come Amministratore
+2. Il servizio si avvierà automaticamente e all'accensione del PC
+3. Per disinstallare, esegui "disinstalla-servizio.bat" come Amministratore
 
-⚠️ IMPORTANTE
-- Esegui SEMPRE come amministratore
-- Aggiungi eccezione antivirus se richiesto
-- La porta 17654 deve essere libera
+### Opzione 2: Avvio Manuale
+1. Esegui "avvia-manualmente.bat"
+2. Il servizio rimarrà attivo finché non chiudi la finestra
 
-🔧 SE start.bat NON FUNZIONA
-Prova in questo ordine:
-1. local-opener-x64.exe (Windows 10/11)
-2. local-opener-x86.exe (Windows 7/8) 
-3. local-opener-x64-legacy.exe (ultimo tentativo)
+## Configurazione
+Il Local Opener si configura automaticamente al primo avvio.
+I file di configurazione sono salvati in: %APPDATA%\.local-opener\
 
-📞 SUPPORTO: https://cruscotto-sgi.onrender.com
+## Supporto
+Per assistenza, visita: https://cruscotto-sgi.onrender.com
+
+## Requisiti
+- Windows 10/11
+- Connessione internet per la comunicazione con Cruscotto SGI
