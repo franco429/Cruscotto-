@@ -66,12 +66,27 @@ Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
-; Installa come servizio Windows usando NSSM
+; Installa come servizio Windows usando NSSM con configurazione avanzata
 Filename: "{app}\nssm.exe"; Parameters: "install {#MyServiceName} ""{app}\{#MyAppExeName}"""; Flags: runhidden
 Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppDirectory ""{app}"""; Flags: runhidden
 Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} DisplayName ""Cruscotto Local Opener Service"""; Flags: runhidden
 Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} Description ""Servizio per aprire documenti locali da Cruscotto SGI"""; Flags: runhidden
+; Configurazione avanzata per auto-start e gestione errori
 Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} Start SERVICE_AUTO_START"; Flags: runhidden
+Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} Type SERVICE_WIN32_OWN_PROCESS"; Flags: runhidden
+; Configurazione restart automatico in caso di crash
+Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppExit Default Restart"; Flags: runhidden
+Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppRestartDelay 5000"; Flags: runhidden
+Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppStopMethodSkip 0"; Flags: runhidden
+Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppStopMethodConsole 10000"; Flags: runhidden
+; Configurazione per esecuzione senza privilegi elevati  
+Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} ObjectName LocalSystem"; Flags: runhidden
+; Configurazione log per debugging
+Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppStdout ""{userappdata}\.local-opener\service.log"""; Flags: runhidden
+Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppStderr ""{userappdata}\.local-opener\service-error.log"""; Flags: runhidden
+Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppRotateFiles 1"; Flags: runhidden
+Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppRotateSeconds 86400"; Flags: runhidden
+; Avvia il servizio
 Filename: "{app}\nssm.exe"; Parameters: "start {#MyServiceName}"; Flags: runhidden
 
 [UninstallRun]
@@ -257,5 +272,11 @@ begin
     
     // Configura Windows Firewall per permettere comunicazione localhost
     Exec('netsh', 'advfirewall firewall add rule name="Local Opener" dir=in action=allow protocol=TCP localport=17654', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    
+    // Configura regola firewall aggiuntiva per sicurezza
+    Exec('netsh', 'advfirewall firewall add rule name="Local Opener Out" dir=out action=allow protocol=TCP localport=17654', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    
+    // Aggiunge il servizio alle eccezioni Windows Defender (best effort)
+    Exec('powershell', '-Command "Add-MpPreference -ExclusionPath \"' + ExpandConstant('{app}') + '\" -ErrorAction SilentlyContinue"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   end;
 end;

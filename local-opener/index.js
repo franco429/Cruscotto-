@@ -59,64 +59,106 @@ function discoverDefaultRoots() {
   const addIfDir = (p) => {
     try {
       if (p && fs.existsSync(p) && fs.statSync(p).isDirectory()) {
-        roots.add(path.resolve(p));
+        // Verifica che la cartella sia realmente accessibile
+        try {
+          fs.readdirSync(p, { withFileTypes: true });
+          roots.add(path.resolve(p));
+          console.log(`[local-opener] ✅ Cartella Google Drive trovata e accessibile: ${p}`);
+        } catch (accessError) {
+          console.log(`[local-opener] ⚠️ Cartella trovata ma non accessibile: ${p}`);
+        }
       }
     } catch {}
   };
 
-  const platform = process.platform; // 'win32' | 'darwin' | 'linux'
+  const platform = process.platform;
   const home = os.homedir();
 
   if (platform === 'win32') {
-    // Windows – Mirror (cartella fisica)
-    addIfDir(path.join(home, 'Google Drive'));
+    console.log(`[local-opener] 🔍 Ricerca cartelle Google Drive su Windows...`);
+    
+    // Windows – Mirror (cartelle fisiche) - Tutti i pattern possibili
+    const mirrorPaths = [
+      path.join(home, 'Google Drive'),
+      path.join(home, 'GoogleDrive'),
+      path.join(home, 'Documents', 'Google Drive'),
+      path.join(home, 'Desktop', 'Google Drive'),
+      path.join('C:', 'Users', os.userInfo().username, 'Google Drive'),
+      path.join('C:', 'Users', 'Public', 'Google Drive')
+    ];
+    
+    mirrorPaths.forEach(addIfDir);
 
-    // Windows – Stream (Drive montato con lettera variabile). Scansiona C:..Z: (inclusa C: per completezza)
+    // Windows – Stream (Drive montato con lettere variabili). Scansione completa C-Z
     const letters = 'CDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
     for (const L of letters) {
       const root = `${L}:\\`;
       try {
         if (!fs.existsSync(root)) continue;
-        // Verifica pattern comuni per tutti i tipi di Google Drive
-        const myDriveIT = path.join(root, 'Il mio Drive');
-        const myDriveEN = path.join(root, 'My Drive');
-        const sharedIT = path.join(root, 'Drive condivisi');
-        const sharedEN = path.join(root, 'Shared drives');
-        const teamDrives = path.join(root, 'Team Drives');
         
-        // Aggiungi anche la root stessa se contiene sottocartelle Google Drive-like
+        // Pattern di ricerca più completi per tutte le versioni di Google Drive
+        const googleDrivePatterns = [
+          'Il mio Drive',      // Italiano Google Drive Stream
+          'My Drive',          // Inglese Google Drive Stream  
+          'Drive condivisi',   // Italiano Shared Drives
+          'Shared drives',     // Inglese Shared Drives
+          'Team Drives',       // Legacy Team Drives
+          'Google Drive',      // Cartelle fisiche
+          'GoogleDrive'        // Nuove installazioni Google Drive Desktop
+        ];
+        
         let hasGoogleDriveContent = false;
         
-        if (
-          (fs.existsSync(myDriveIT) && fs.statSync(myDriveIT).isDirectory()) ||
-          (fs.existsSync(myDriveEN) && fs.statSync(myDriveEN).isDirectory()) ||
-          (fs.existsSync(sharedIT) && fs.statSync(sharedIT).isDirectory()) ||
-          (fs.existsSync(sharedEN) && fs.statSync(sharedEN).isDirectory()) ||
-          (fs.existsSync(teamDrives) && fs.statSync(teamDrives).isDirectory())
-        ) {
-          hasGoogleDriveContent = true;
-          addIfDir(myDriveIT);
-          addIfDir(myDriveEN);
-          addIfDir(sharedIT);
-          addIfDir(sharedEN);
-          addIfDir(teamDrives);
+        // Controlla ogni pattern
+        for (const pattern of googleDrivePatterns) {
+          const fullPath = path.join(root, pattern);
+          if (fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()) {
+            hasGoogleDriveContent = true;
+            addIfDir(fullPath);
+          }
         }
         
-        // Se la lettera ha contenuto Google Drive, aggiungi anche la root della lettera
+        // Se la lettera contiene cartelle Google Drive, aggiungi anche la root
         if (hasGoogleDriveContent) {
           addIfDir(root);
         }
+        
+        // Ricerca ricorsiva di primo livello per pattern nascosti
+        try {
+          const entries = fs.readdirSync(root, { withFileTypes: true });
+          for (const entry of entries) {
+            if (entry.isDirectory()) {
+              const entryName = entry.name.toLowerCase();
+              if (entryName.includes('google') && entryName.includes('drive')) {
+                const fullPath = path.join(root, entry.name);
+                addIfDir(fullPath);
+              }
+            }
+          }
+        } catch {}
+        
       } catch {}
     }
+    
+    // Aggiunta: controllo variabili ambiente per percorsi personalizzati
+    if (process.env.GOOGLE_DRIVE_PATH) {
+      addIfDir(process.env.GOOGLE_DRIVE_PATH);
+    }
+    
   } else if (platform === 'darwin') {
-    // macOS – Stream (volume montato)
+    // macOS – Supporto completo
     addIfDir('/Volumes/GoogleDrive');
     addIfDir('/Volumes/GoogleDrive-1');
-    // macOS – Mirror (cartella fisica)
+    addIfDir('/Volumes/Google Drive');
     addIfDir(path.join(home, 'Google Drive'));
+    addIfDir(path.join(home, 'GoogleDrive'));
   }
 
-  return Array.from(roots);
+  const rootsArray = Array.from(roots);
+  console.log(`[local-opener] 📂 Cartelle Google Drive configurate: ${rootsArray.length}`);
+  rootsArray.forEach(root => console.log(`[local-opener]   - ${root}`));
+  
+  return rootsArray;
 }
 
 // Merge auto-discovered roots on startup
@@ -505,20 +547,84 @@ app.post("/open", (req, res) => {
   });
 });
 
+// Configurazione avanzata del server per stabilità
 const server = app.listen(PORT, '127.0.0.1', () => {
-  console.log(`[local-opener] Listening on http://127.0.0.1:${PORT} with roots=${CONFIG.roots.join(", ")}`);
+  console.log(`[local-opener] ✅ Servizio avviato con successo!`);
+  console.log(`[local-opener] 🌐 Listening on http://127.0.0.1:${PORT}`);
+  console.log(`[local-opener] 📂 Cartelle configurate: ${CONFIG.roots.length}`);
+  CONFIG.roots.forEach(root => console.log(`[local-opener]   - ${root}`));
+  console.log(`[local-opener] 💻 Sistema: ${process.platform} ${process.arch}`);
+  console.log(`[local-opener] 🔄 PID: ${process.pid}`);
+  
+  // Registra avvio servizio per telemetria
+  telemetry.recordServiceStartup(true);
 });
 
+// Gestione migliorata degli errori del server
 server.on('error', (err) => {
-  console.error('[local-opener] Server error:', err?.message || err);
+  if (err.code === 'EADDRINUSE') {
+    console.error(`[local-opener] ❌ ERRORE: Porta ${PORT} già in uso. Altro Local Opener attivo?`);
+    console.error(`[local-opener] 💡 Soluzione: Termina altri processi Local Opener o riavvia il PC`);
+    telemetry.recordServiceStartup(false, err);
+    process.exit(1);
+  } else if (err.code === 'EACCES') {
+    console.error(`[local-opener] ❌ ERRORE: Accesso negato alla porta ${PORT}`);
+    console.error(`[local-opener] 💡 Soluzione: Esegui come amministratore o usa una porta diversa`);
+    telemetry.recordServiceStartup(false, err);
+    process.exit(1);
+  } else {
+    console.error('[local-opener] ❌ Errore server:', err?.message || err);
+    telemetry.recordServiceStartup(false, err);
+  }
 });
 
+// Gestione migliorata eccezioni non catturate
 process.on('uncaughtException', (err) => {
-  console.error('[local-opener] Uncaught exception:', err?.stack || err);
+  console.error('[local-opener] ❌ ECCEZIONE NON CATTURATA:', err?.stack || err);
+  console.error('[local-opener] 🔄 Il servizio tenterà di continuare...');
+  telemetry.recordError('uncaught_exception', err);
+  
+  // In modalità servizio, non terminare immediatamente
+  if (!process.env.NSSM_SERVICE_NAME) {
+    // Se non è un servizio NSSM, termina dopo 1 secondo
+    setTimeout(() => {
+      console.error('[local-opener] 🛑 Terminazione dopo eccezione critica');
+      process.exit(1);
+    }, 1000);
+  }
 });
 
-process.on('unhandledRejection', (reason) => {
-  console.error('[local-opener] Unhandled rejection:', reason);
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[local-opener] ❌ PROMISE REJECTION NON GESTITA:', reason);
+  console.error('[local-opener] 🔍 Promise:', promise);
+  telemetry.recordError('unhandled_rejection', reason);
 });
+
+// Gestione chiusura graceful
+process.on('SIGTERM', () => {
+  console.log('[local-opener] 🛑 Ricevuto SIGTERM, chiusura graceful...');
+  telemetry.recordServiceShutdown('SIGTERM');
+  server.close(() => {
+    console.log('[local-opener] ✅ Servizio terminato correttamente');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('[local-opener] 🛑 Ricevuto SIGINT, chiusura graceful...');
+  telemetry.recordServiceShutdown('SIGINT');
+  server.close(() => {
+    console.log('[local-opener] ✅ Servizio terminato correttamente');
+    process.exit(0);
+  });
+});
+
+// Log informazioni di sistema per debug
+setTimeout(() => {
+  console.log(`[local-opener] 📊 Statistiche sistema:`);
+  console.log(`[local-opener]   - Memoria: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+  console.log(`[local-opener]   - Uptime: ${Math.round(process.uptime())}s`);
+  console.log(`[local-opener]   - Node.js: ${process.version}`);
+}, 5000);
 
 

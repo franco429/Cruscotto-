@@ -122,13 +122,34 @@ if %ERRORLEVEL% EQU 0 (
     sc query "CruscottoLocalOpener" | findstr "STATE" | findstr "RUNNING" >nul
     if !ERRORLEVEL! EQU 0 (
         echo      %GREEN%✅ Servizio in esecuzione%RESET%
+        echo      • Il servizio si avvia automaticamente all'accensione
     ) else (
         echo      %YELLOW%⚠️ Servizio installato ma non in esecuzione%RESET%
-        echo      • Prova: net start CruscottoLocalOpener
+        echo      • Tenta avvio manuale: net start CruscottoLocalOpener
+        echo      • Oppure riavvia il PC per auto-start
+        
+        rem Tenta avvio automatico del servizio
+        echo    🔄 Tentativo avvio automatico servizio...
+        net start CruscottoLocalOpener >nul 2>&1
+        if !ERRORLEVEL! EQU 0 (
+            echo      %GREEN%✅ Servizio avviato con successo%RESET%
+        ) else (
+            echo      %RED%❌ Impossibile avviare il servizio automaticamente%RESET%
+            echo      • Potrebbe richiedere permessi amministratore
+        )
+    )
+    
+    rem Controlla configurazione auto-start
+    sc qc "CruscottoLocalOpener" | findstr "AUTO_START" >nul 2>&1
+    if !ERRORLEVEL! EQU 0 (
+        echo      %GREEN%✅ Auto-start configurato correttamente%RESET%
+    ) else (
+        echo      %YELLOW%⚠️ Auto-start non configurato%RESET%
     )
 ) else (
     echo    %YELLOW%⚠️ SERVIZIO WINDOWS NON TROVATO%RESET%
     echo      • Local Opener potrebbe essere in esecuzione manualmente
+    echo      • Reinstalla usando l'Installer Universale per auto-start
     echo      • Oppure installazione non completata correttamente
 )
 
