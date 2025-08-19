@@ -1,20 +1,33 @@
-# Cruscotto Local Opener - Versione Portable
+# 🚀 Cruscotto Local Opener - Versione Portable con AVVIO AUTOMATICO
 
-## Cosa è incluso
-- local-opener.exe: L'applicazione principale
+## 📦 Cosa è incluso
+- local-opener.exe: L'applicazione principale (36MB)
 - nssm.exe: Utility per installare come servizio Windows
+- INSTALLA-COME-AMMINISTRATORE.bat: ⭐ INSTALLAZIONE AUTOMATICA (RACCOMANDATO)
+- installa-servizio-admin.ps1: Script PowerShell avanzato per installazione
+- installa-servizio.bat: Script base (richiede esecuzione manuale come Admin)
+- diagnostica-servizio.bat: Verifica stato e risoluzione problemi
+- disinstalla-servizio.bat: Rimozione completa servizio
+- avvia-manualmente.bat: Test modalità console
 - assets/: Risorse dell'applicazione (icone, ecc.)
 
-## Come usare
+## 🚀 Come usare - PROCEDURA CORRETTA
 
-### Opzione 1: Installazione come Servizio (Raccomandato)
-1. Esegui "installa-servizio.bat" come Amministratore
-2. Il servizio si avvierà automaticamente e all'accensione del PC
-3. Per disinstallare, esegui "disinstalla-servizio.bat" come Amministratore
+### ⭐ METODO RACCOMANDATO: Installazione Automatica
+1. **ESEGUI**: "INSTALLA-COME-AMMINISTRATORE.bat"
+2. **CLICCA "SÌ"** quando Windows richiede privilegi Amministratore (UAC)
+3. **ATTENDI** che lo script completi l'installazione
+4. **RIAVVIA IL PC** per testare l'avvio automatico
+5. **VERIFICA**: Dopo il riboot, vai su http://127.0.0.1:17654
 
-### Opzione 2: Avvio Manuale
-1. Esegui "avvia-manualmente.bat"
-2. Il servizio rimarrà attivo finché non chiudi la finestra
+### 🔧 Metodo Alternativo: Installazione Manuale
+1. Tasto destro su "installa-servizio.bat" → "Esegui come amministratore"
+2. Se fallisce, usa il metodo raccomandato sopra
+
+### 📊 Verifica Installazione
+1. Esegui "diagnostica-servizio.bat" per controllare lo stato
+2. Vai su http://127.0.0.1:17654 per testare la connessione
+3. Il servizio dovrebbe essere "RUNNING" e configurato per "AUTO_START"
 
 ## Configurazione
 Il Local Opener si configura automaticamente al primo avvio.
