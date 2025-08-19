@@ -105,5 +105,40 @@ Write-Host "🔧 Manager servizi: services.msc" -ForegroundColor White
 Write-Host "📋 Diagnostica: diagnostica-servizio.bat" -ForegroundColor White
 Write-Host ""
 
+Write-Host ""
+Write-Host "🔍 Rilevazione automatica percorsi Google Drive..." -ForegroundColor Cyan
+
+# Esegui rilevazione automatica percorsi Google Drive
+$AutoDetectScript = Join-Path $ScriptDir "auto-detect-google-drive.ps1"
+if (Test-Path $AutoDetectScript) {
+    try {
+        $DetectionResult = & $AutoDetectScript -Silent -ConfigureService
+        if ($DetectionResult -and $DetectionResult.Success -and $DetectionResult.Count -gt 0) {
+            Write-Host "✅ Rilevati automaticamente $($DetectionResult.Count) percorsi Google Drive!" -ForegroundColor Green
+            Write-Host "📁 Percorsi configurati:" -ForegroundColor White
+            foreach ($Path in $DetectionResult.ValidPaths) {
+                Write-Host "   • $Path" -ForegroundColor Gray
+            }
+        } else {
+            Write-Host "⚠️ Nessun percorso Google Drive rilevato automaticamente" -ForegroundColor Yellow
+            Write-Host "💡 Configura manualmente i percorsi dall'interfaccia web" -ForegroundColor Cyan
+        }
+    } catch {
+        Write-Host "⚠️ Rilevazione automatica non riuscita, configurazione manuale necessaria" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "⚠️ Script di rilevazione automatica non trovato" -ForegroundColor Yellow
+    Write-Host "💡 Scarica la versione aggiornata del Local Opener" -ForegroundColor Cyan
+}
+
+Write-Host ""
 Write-Host "✅ INSTALLAZIONE COMPLETATA!" -ForegroundColor Green
+Write-Host ""
+Write-Host "🎯 PROSSIMI PASSI:" -ForegroundColor Magenta
+Write-Host "=================" -ForegroundColor Magenta
+Write-Host "1. 🌐 Apri il Cruscotto SGI nel browser" -ForegroundColor White
+Write-Host "2. ⚙️ Vai in Impostazioni → Configurazione Local Opener" -ForegroundColor White
+Write-Host "3. 🔍 Clicca 'Rileva Automaticamente' se i percorsi non sono già configurati" -ForegroundColor White
+Write-Host "4. 📄 Prova ad aprire un documento per testare il funzionamento" -ForegroundColor White
+Write-Host ""
 Read-Host "Premi Invio per uscire"

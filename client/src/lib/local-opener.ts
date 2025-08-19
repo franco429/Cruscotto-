@@ -82,6 +82,88 @@ export async function checkLocalOpenerAvailability(): Promise<boolean> {
   }
 }
 
+// Controlla la configurazione dei percorsi e suggerisce la rilevazione automatica
+export async function checkAndPromptPathConfiguration(): Promise<void> {
+  try {
+    // Verifica se il servizio è disponibile
+    const isAvailable = await checkLocalOpenerAvailability();
+    if (!isAvailable) {
+      return; // Se il servizio non è disponibile, gestito da checkAndPromptLocalOpener
+    }
+
+    // Controlla se l'utente ha già dismisso questo prompt
+    const configPromptKey = 'localOpenerPathConfigDismissed';
+    if (sessionStorage.getItem(configPromptKey) === 'true') {
+      return;
+    }
+
+    // Controlla la configurazione attuale dei percorsi
+    const configResponse = await fetch("http://127.0.0.1:17654/config", {
+      method: "GET",
+      signal: AbortSignal.timeout(3000),
+    });
+
+    if (configResponse.ok) {
+      const config = await configResponse.json();
+      const hasConfiguredPaths = config.roots && config.roots.length > 0;
+      
+      if (!hasConfiguredPaths) {
+        // Importa dinamicamente i componenti necessari
+        const { toast } = await import("../hooks/use-toast");
+
+        // Notifica all'utente che può configurare automaticamente i percorsi
+        toast({
+          title: "🔍 Configurazione Automatica Disponibile",
+          description: "I percorsi di Google Drive non sono ancora configurati. Vuoi rilevarli automaticamente?",
+          duration: 12000,
+          onClick: async () => {
+            // Avvia rilevazione automatica
+            try {
+              const autoDetectResponse = await fetch("/api/local-opener/auto-detect-paths", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include"
+              });
+
+              if (autoDetectResponse.ok) {
+                const result = await autoDetectResponse.json();
+                if (result.success && result.detectedPaths.length > 0) {
+                  toast({
+                    title: "✅ Percorsi Configurati Automaticamente!",
+                    description: `Rilevati ${result.detectedPaths.length} percorsi Google Drive. Ora puoi aprire i documenti localmente!`,
+                    duration: 8000,
+                  });
+                } else {
+                  toast({
+                    title: "⚠️ Nessun Percorso Rilevato",
+                    description: "Vai in Impostazioni → Configurazione Local Opener per configurare manualmente.",
+                    duration: 6000,
+                  });
+                }
+              } else {
+                throw new Error("Errore nella rilevazione automatica");
+              }
+            } catch (error) {
+              toast({
+                title: "❌ Rilevazione Fallita",
+                description: "Configura manualmente i percorsi dalle Impostazioni.",
+                variant: "destructive",
+                duration: 5000,
+              });
+            }
+            
+            // Segna come gestito per questa sessione
+            sessionStorage.setItem(configPromptKey, 'true');
+          }
+        });
+      }
+    }
+  } catch (error) {
+    // Errore silenzioso, non vogliamo interrompere l'esperienza utente
+    console.warn("Impossibile controllare la configurazione dei percorsi Local Opener:", error);
+  }
+}
+
 // Controlla disponibilità del servizio e propone automaticamente l'installazione
 export async function checkAndPromptLocalOpener(): Promise<void> {
   // Controlla se l'utente ha già rifiutato l'installazione in questa sessione

@@ -29,6 +29,95 @@ interface LocalOpenerTelemetryData {
 
 export function registerLocalOpenerRoutes(app: Express) {
 
+  // Endpoint per rilevazione automatica percorsi Google Drive locale
+  app.post('/api/local-opener/auto-detect-paths', async (req: Request, res: Response) => {
+    try {
+      // Invoca il servizio locale per la rilevazione automatica
+      const localResponse = await fetch('http://127.0.0.1:17654/auto-detect-paths', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+        signal: AbortSignal.timeout(10000) // Timeout di 10 secondi
+      });
+
+      if (!localResponse.ok) {
+        throw new Error(`Local Opener service error: ${localResponse.status}`);
+      }
+
+      const result = await localResponse.json();
+      
+      logger.info('Google Drive paths auto-detected', {
+        detectedPaths: result.detectedPaths?.length || 0,
+        success: result.success,
+        clientIP: req.ip
+      });
+
+      res.json({
+        success: result.success,
+        detectedPaths: result.detectedPaths || [],
+        configuredPaths: result.configuredPaths || [],
+        message: result.message || 'Rilevazione automatica completata'
+      });
+
+    } catch (error) {
+      logger.error('Auto-detection failed', { 
+        error: error instanceof Error ? error.message : String(error),
+        clientIP: req.ip
+      });
+      
+      res.status(500).json({ 
+        success: false,
+        error: 'Servizio locale non disponibile o errore nella rilevazione automatica',
+        detectedPaths: [],
+        configuredPaths: []
+      });
+    }
+  });
+
+  // Endpoint per forzare riconfigurazione percorsi Google Drive
+  app.post('/api/local-opener/reconfigure-paths', async (req: Request, res: Response) => {
+    try {
+      const { forcedPaths } = req.body;
+      
+      const localResponse = await fetch('http://127.0.0.1:17654/reconfigure-paths', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ forcedPaths: forcedPaths || [] }),
+        signal: AbortSignal.timeout(15000) // Timeout più lungo per riconfigurazione
+      });
+
+      if (!localResponse.ok) {
+        throw new Error(`Local Opener service error: ${localResponse.status}`);
+      }
+
+      const result = await localResponse.json();
+      
+      logger.info('Google Drive paths reconfigured', {
+        configuredPaths: result.configuredPaths?.length || 0,
+        success: result.success,
+        clientIP: req.ip
+      });
+
+      res.json({
+        success: result.success,
+        configuredPaths: result.configuredPaths || [],
+        message: result.message || 'Riconfigurazione completata'
+      });
+
+    } catch (error) {
+      logger.error('Path reconfiguration failed', { 
+        error: error instanceof Error ? error.message : String(error),
+        clientIP: req.ip
+      });
+      
+      res.status(500).json({ 
+        success: false,
+        error: 'Errore nella riconfigurazione dei percorsi',
+        configuredPaths: []
+      });
+    }
+  });
+
   // Endpoint semplificato per statistiche documenti (opzionale per admin/debug)
   app.get('/api/documents/local-count', async (req: Request, res: Response) => {
     try {

@@ -17,6 +17,7 @@ import { Button } from "../components/ui/button";
 import { Link } from "wouter";
 import { toast } from "react-hot-toast";
 import { apiRequest } from "../lib/queryClient";
+import { checkAndPromptLocalOpener, checkAndPromptPathConfiguration } from "../lib/local-opener";
 
 export default function HomePage() {
   /* -----------------------------------------------------------
@@ -60,6 +61,21 @@ export default function HomePage() {
       newUrl.searchParams.delete('fromDrive');
       window.history.replaceState({}, '', newUrl.toString());
     }
+  }, []);
+
+  // Controllo Local Opener e configurazione percorsi all'avvio
+  useEffect(() => {
+    const initializeLocalOpener = async () => {
+      // Prima controlla se il servizio è installato
+      await checkAndPromptLocalOpener();
+      
+      // Poi controlla la configurazione dei percorsi (se il servizio è attivo)
+      setTimeout(() => {
+        checkAndPromptPathConfiguration();
+      }, 3000); // Attendi 3 secondi per evitare sovrapposizione con altri toast
+    };
+
+    initializeLocalOpener();
   }, []);
 
   // Aggiorna automaticamente gli stati di allerta ogni minuto

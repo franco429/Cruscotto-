@@ -76,16 +76,52 @@ function discoverDefaultRoots() {
 
   if (platform === 'win32') {
     console.log(`[local-opener] 🔍 Ricerca cartelle Google Drive su Windows...`);
+    console.log(`[local-opener] 🔧 Utente servizio: ${os.userInfo().username} | Home: ${home}`);
     
-    // Windows – Mirror (cartelle fisiche) - Tutti i pattern possibili
+    // Windows – Mirror (cartelle fisiche) - Ricerca in TUTTE le directory utente
     const mirrorPaths = [
+      // Directory utente corrente (potrebbe essere SYSTEM se servizio)
       path.join(home, 'Google Drive'),
       path.join(home, 'GoogleDrive'),
       path.join(home, 'Documents', 'Google Drive'),
       path.join(home, 'Desktop', 'Google Drive'),
+      // Directory utente nominale
       path.join('C:', 'Users', os.userInfo().username, 'Google Drive'),
       path.join('C:', 'Users', 'Public', 'Google Drive')
     ];
+    
+    // NUOVA FUNZIONALITÀ: Scansione di TUTTI gli utenti in C:\Users\
+    try {
+      console.log(`[local-opener] 👥 Scansione cartelle di tutti gli utenti...`);
+      const usersDir = 'C:\\Users';
+      if (fs.existsSync(usersDir)) {
+        const userFolders = fs.readdirSync(usersDir, { withFileTypes: true });
+        
+        for (const userFolder of userFolders) {
+          if (userFolder.isDirectory() && 
+              !['Public', 'Default', 'All Users'].includes(userFolder.name) &&
+              !userFolder.name.startsWith('.')) {
+            
+            const userPath = path.join(usersDir, userFolder.name);
+            console.log(`[local-opener] 👤 Controllo utente: ${userFolder.name}`);
+            
+            // Aggiungi tutti i possibili percorsi Google Drive per questo utente
+            const userMirrorPaths = [
+              path.join(userPath, 'Google Drive'),
+              path.join(userPath, 'GoogleDrive'), 
+              path.join(userPath, 'Documents', 'Google Drive'),
+              path.join(userPath, 'Desktop', 'Google Drive'),
+              path.join(userPath, 'OneDrive', 'Google Drive'), // Casi particolari
+              path.join(userPath, 'Dropbox', 'Google Drive')  // Casi particolari
+            ];
+            
+            userMirrorPaths.forEach(addIfDir);
+          }
+        }
+      }
+    } catch (scanError) {
+      console.log(`[local-opener] ⚠️ Errore scansione utenti: ${scanError.message}`);
+    }
     
     mirrorPaths.forEach(addIfDir);
 
@@ -141,9 +177,41 @@ function discoverDefaultRoots() {
     }
     
     // Aggiunta: controllo variabili ambiente per percorsi personalizzati
+    console.log(`[local-opener] 🌐 Controllo variabili ambiente...`);
     if (process.env.GOOGLE_DRIVE_PATH) {
+      console.log(`[local-opener] 📂 GOOGLE_DRIVE_PATH trovata: ${process.env.GOOGLE_DRIVE_PATH}`);
       addIfDir(process.env.GOOGLE_DRIVE_PATH);
     }
+    
+    // NUOVA FUNZIONALITÀ: Controllo variabili ambiente comuni per Google Drive
+    const possibleEnvVars = [
+      'GOOGLE_DRIVE_PATH',
+      'GOOGLEDRIVE_PATH', 
+      'GDRIVE_PATH',
+      'USERPROFILE', // Controlla anche USERPROFILE per fallback
+      'HOMEPATH'
+    ];
+    
+    possibleEnvVars.forEach(envVar => {
+      const envValue = process.env[envVar];
+      if (envValue && envVar !== 'GOOGLE_DRIVE_PATH') { // Già controllato sopra
+        if (envVar === 'USERPROFILE' || envVar === 'HOMEPATH') {
+          // Per USERPROFILE, aggiungi i path standard Google Drive
+          const userProfilePaths = [
+            path.join(envValue, 'Google Drive'),
+            path.join(envValue, 'GoogleDrive'),
+            path.join(envValue, 'Documents', 'Google Drive')
+          ];
+          userProfilePaths.forEach(p => {
+            console.log(`[local-opener] 🔍 Controllo da ${envVar}: ${p}`);
+            addIfDir(p);
+          });
+        } else {
+          console.log(`[local-opener] 📂 ${envVar} trovata: ${envValue}`);
+          addIfDir(envValue);
+        }
+      }
+    });
     
   } else if (platform === 'darwin') {
     // macOS – Supporto completo

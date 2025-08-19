@@ -48,6 +48,8 @@ export default function LocalOpenerConfig() {
   const [newRoot, setNewRoot] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [isTestingRoot, setIsTestingRoot] = useState(false);
+  const [isAutoDetecting, setIsAutoDetecting] = useState(false);
+  const [isReconfiguring, setIsReconfiguring] = useState(false);
   const { toast } = useToast();
 
   // Controlla lo stato del servizio
@@ -147,6 +149,99 @@ export default function LocalOpenerConfig() {
         description: "Impossibile rimuovere la cartella",
         variant: "destructive",
       });
+    }
+  };
+
+  // Rilevazione automatica percorsi Google Drive
+  const autoDetectPaths = async () => {
+    setIsAutoDetecting(true);
+    try {
+      const response = await fetch("/api/local-opener/auto-detect-paths", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include"
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.detectedPaths.length > 0) {
+          // Aggiorna la configurazione con i percorsi rilevati
+          setConfig(prev => prev ? { ...prev, roots: data.configuredPaths } : null);
+          toast({
+            title: "🎉 Rilevazione automatica riuscita!",
+            description: `Trovati ${data.detectedPaths.length} percorsi Google Drive. Configurazione aggiornata automaticamente.`,
+            duration: 8000,
+          });
+        } else {
+          toast({
+            title: "⚠️ Nessun percorso trovato",
+            description: "Non sono stati rilevati percorsi Google Drive. Configura manualmente le cartelle.",
+            variant: "destructive",
+            duration: 6000,
+          });
+        }
+      } else {
+        throw new Error("Errore nella rilevazione automatica");
+      }
+    } catch (err: any) {
+      toast({
+        title: "❌ Rilevazione fallita",
+        description: err.message || "Impossibile rilevare automaticamente i percorsi Google Drive",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAutoDetecting(false);
+    }
+  };
+
+  // Riconfigurazione forzata percorsi
+  const reconfigurePaths = async () => {
+    setIsReconfiguring(true);
+    try {
+      // Prova percorsi comuni di Google Drive
+      const commonPaths = [
+        `${process.env.USERPROFILE || 'C:\\Users\\%USERNAME%'}\\Google Drive`,
+        `${process.env.USERPROFILE || 'C:\\Users\\%USERNAME%'}\\GoogleDrive`,
+        "G:\\Il mio Drive",
+        "G:\\My Drive",
+        "H:\\Il mio Drive",
+        "H:\\My Drive"
+      ];
+
+      const response = await fetch("/api/local-opener/reconfigure-paths", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ forcedPaths: commonPaths }),
+        credentials: "include"
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.configuredPaths.length > 0) {
+          setConfig(prev => prev ? { ...prev, roots: data.configuredPaths } : null);
+          toast({
+            title: "✅ Riconfigurazione completata",
+            description: `Configurati ${data.configuredPaths.length} percorsi Google Drive standard.`,
+            duration: 6000,
+          });
+        } else {
+          toast({
+            title: "⚠️ Riconfigurazione parziale",
+            description: "Alcuni percorsi potrebbero non essere stati configurati. Verifica manualmente.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        throw new Error("Errore nella riconfigurazione");
+      }
+    } catch (err: any) {
+      toast({
+        title: "❌ Riconfigurazione fallita",
+        description: err.message || "Impossibile riconfigurare i percorsi Google Drive",
+        variant: "destructive",
+      });
+    } finally {
+      setIsReconfiguring(false);
     }
   };
 
@@ -306,7 +401,33 @@ export default function LocalOpenerConfig() {
                 )}
               </ScrollArea>
 
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={autoDetectPaths} disabled={isAutoDetecting}>
+                  {isAutoDetecting ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Rilevazione...
+                    </>
+                  ) : (
+                    <>
+                      <Settings className="h-4 w-4 mr-2" />
+                      🔍 Rileva Automaticamente
+                    </>
+                  )}
+                </Button>
+                <Button variant="outline" onClick={reconfigurePaths} disabled={isReconfiguring}>
+                  {isReconfiguring ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Configurazione...
+                    </>
+                  ) : (
+                    <>
+                      <Folder className="h-4 w-4 mr-2" />
+                      🔧 Riconfigura Percorsi
+                    </>
+                  )}
+                </Button>
                 <Button onClick={() => setShowAddDialog(true)}>
                   <FolderPlus className="h-4 w-4 mr-2" />
                   Aggiungi Cartella
@@ -357,11 +478,12 @@ export default function LocalOpenerConfig() {
             </div>
             <Separator />
             <div>
-              <p className="font-medium">4. Configura le cartelle</p>
-              <p className="text-muted-foreground">
-                Aggiungi le cartelle dove sono salvati i documenti ISO (es. Google
-                Drive locale, cartelle di rete, ecc.)
-              </p>
+              <p className="font-medium">4. Configura le cartelle (AUTOMATICO!)</p>
+              <div className="ml-4 space-y-1 text-muted-foreground">
+                <p><strong>🔍 Rilevazione Automatica:</strong> Clicca "Rileva Automaticamente" per trovare i percorsi Google Drive automaticamente</p>
+                <p><strong>🔧 Riconfigurazione:</strong> Se hai problemi, usa "Riconfigura Percorsi" per impostare i percorsi standard</p>
+                <p><strong>➕ Configurazione Manuale:</strong> In alternativa, aggiungi manualmente le cartelle con i documenti ISO</p>
+              </div>
             </div>
             <Separator />
             <div>

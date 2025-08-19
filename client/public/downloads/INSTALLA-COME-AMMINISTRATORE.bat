@@ -9,6 +9,9 @@ echo     di Amministratore necessari per installare il servizio Windows.
 echo.
 echo 🔄 Se richiesto, clicca "Sì" nella finestra UAC per continuare.
 echo.
+echo 🆕 NUOVO: Include rilevazione automatica percorsi Google Drive!
+echo     I percorsi delle cartelle verranno configurati automaticamente.
+echo.
 pause
 
 echo.
