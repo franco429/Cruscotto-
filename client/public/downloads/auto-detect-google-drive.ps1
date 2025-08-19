@@ -8,8 +8,8 @@ param(
 )
 
 if (-not $Silent) {
-    Write-Host "🔍 RILEVAZIONE AUTOMATICA PERCORSI GOOGLE DRIVE" -ForegroundColor Green
-    Write-Host "===============================================" -ForegroundColor Green
+    Write-Host "RILEVAZIONE AUTOMATICA PERCORSI GOOGLE DRIVE" -ForegroundColor Green
+    Write-Host "============================================" -ForegroundColor Green
     Write-Host ""
 }
 
