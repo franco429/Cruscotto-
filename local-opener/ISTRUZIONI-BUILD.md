@@ -1,70 +1,100 @@
-# 🚀 Guida Rapida al Build
+# 🚀 **Build Guide - Local Opener con Avvio Automatico**
 
-## ✅ Problema Risolto
-L'errore `"iscc" non è riconosciuto` è stato risolto! Ora il sistema funziona anche senza Inno Setup installato.
+## 🎯 **NUOVO SISTEMA: PORTABLE-FIRST**
 
-## 📋 Comandi Disponibili
+**La versione PORTABLE è ora la PRINCIPALE** e include tutte le funzionalità avanzate:
+- ✅ **Avvio automatico** come servizio Windows
+- ✅ **Diagnostica integrata** per troubleshooting  
+- ✅ **Zero dipendenze** esterne richieste
+- ✅ **Installazione semplificata** con script batch
 
-### Raccomandato: Versione Portable
+## 📋 **Comandi Build Aggiornati**
+
+### **🥇 RACCOMANDATO: Versione Portable Completa**
 ```bash
 npm run build:portable
 ```
-✅ **Sempre funziona** - Non richiede software aggiuntivo  
-📁 **Output**: `dist/portable/` con tutto il necessario  
-🎯 **Per**: Distribuzione manuale, testing, uso immediato
+- ✅ **Output**: `dist/portable/` + `dist/cruscotto-local-opener-portable-AGGIORNATO.zip`
+- ✅ **Include**: Avvio automatico, diagnostica, NSSM, script di installazione
+- ✅ **Distribuzione**: Pronta per frontend web
+- 🎯 **Per**: Tutti gli utenti finali (raccomandato)
 
-### Automatico: Installer (con fallback)
+### **🔧 Alternative per Sviluppo**
 ```bash
+# Build rapido per test
+npm run build:universal
+
+# Solo se hai Inno Setup (opzionale)  
 npm run build:installer
-```
-🔍 **Rileva automaticamente** se Inno Setup è disponibile  
-✅ Se disponibile → Crea installer completo  
-🔄 Se NON disponibile → Crea versione portable automaticamente
 
-### Solo Eseguibile
+# Build completo per release (include tutto)
+npm run build:all
+```
+
+## 📦 **Output Dettagliato**
+
+### **Versione Portable** (`npm run build:portable`)
+```
+📁 dist/portable/
+├── 🚀 local-opener.exe              (Applicazione 36MB)
+├── 🔧 nssm.exe                      (Service manager)
+├── ⚡ installa-servizio.bat         (INSTALLAZIONE AUTOMATICA)
+├── 🔍 diagnostica-servizio.bat      (Troubleshooting)
+├── 🗑️ disinstalla-servizio.bat      (Rimozione completa)
+├── 📋 avvia-manualmente.bat         (Test console)
+├── 📖 README.txt                    (Guida utente)
+├── ⚙️ config-esempio.json          (Configurazione)
+└── 📁 assets/                       (Risorse)
+
+📦 dist/cruscotto-local-opener-portable-AGGIORNATO.zip (14MB)
+```
+
+## 🔄 **Workflow di Distribuzione**
+
+### **Per Frontend Web:**
 ```bash
-npm run build
-```
-📦 **Output**: Solo `dist/local-opener.exe`  
-🎯 **Per**: Sviluppo, testing rapido
+# 1. Build versione portable
+npm run build:portable
 
-## 🎯 Quale Usare?
+# 2. Copia nel frontend (manuale)
+cp dist/cruscotto-local-opener-portable-AGGIORNATO.zip ../client/public/downloads/
 
-| Situazione | Comando |
-|------------|---------|
-| **Uso normale** | `npm run build:portable` |
-| **Non so cosa ho** | `npm run build:installer` |
-| **Sviluppo/test** | `npm run build` |
-
-## 📁 Cosa Ottieni
-
-### Con `build:portable`
-```
-dist/portable/
-├── local-opener.exe         # Applicazione principale
-├── nssm.exe                # Per installare come servizio
-├── installa-servizio.bat   # Script di installazione automatica
-├── disinstalla-servizio.bat # Script di rimozione
-├── avvia-manualmente.bat   # Per test rapidi
-├── README.txt              # Istruzioni complete
-└── config-esempio.json     # Configurazione di esempio
+# 3. Deploy frontend
+# Il file sarà disponibile in /downloads/
 ```
 
-**Pronto per:**
-- ✅ Copiare su altri PC
-- ✅ Installazione automatica come servizio Windows
-- ✅ Distribuzione senza dipendenze
+### **Per Distribuzione Manuale:**
+```bash
+# Copia intera cartella dist/portable/ 
+# Oppure distribuisci il file .zip
+```
 
-## 🛠️ Installazione Inno Setup (Opzionale)
+## ⚠️ **Note Importanti**
 
-Se vuoi l'installer completo con wizard:
-1. Scarica: https://jrsoftware.org/isinfo.php
-2. Installa Inno Setup 6.x
-3. Riprova: `npm run build:installer`
+### **Installer .exe (Opzionale)**
+- ⚠️ Richiede **Inno Setup 6.x** installato manualmente
+- 🔄 **Fallback automatico** alla versione portable se manca
+- 📊 **Meno priorità** rispetto alla versione portable
 
-## ✨ Vantaggi della Soluzione
+### **Compatibilità**
+- ✅ **Windows 7 SP1+** supportato
+- ✅ **Multi-architettura** (x86, x64, ARM64)  
+- ✅ **Nessuna dipendenza** runtime richiesta
 
-- 🚫 **Niente più errori**: Funziona sempre, con o senza Inno Setup
-- 🎯 **Scelta flessibile**: Portable per uso immediato, installer per enterprise
-- 🔄 **Auto-fallback**: Se Inno Setup non c'è, crea automaticamente il portable
-- 📋 **Tutto incluso**: Scripts, documentazione, configurazione di esempio
+## 🎯 **Raccomandazioni Aggiornate**
+
+| Situazione | Comando Raccomandato |
+|------------|---------------------|
+| **👥 Utenti finali** | `npm run build:portable` |
+| **🧪 Testing locale** | `npm run build:portable` |
+| **🏢 Distribuzione enterprise** | `npm run build:portable` |
+| **📦 Release completa** | `npm run build:all` |
+| **🔧 Sviluppo rapido** | `npm run build:universal` |
+
+## ✨ **Vantaggi del Nuovo Sistema**
+
+- 🎯 **Semplicità**: Un solo file ZIP include tutto
+- 🔄 **Avvio automatico**: Si installa come servizio Windows
+- 🔍 **Autodiagnostica**: Script integrato per risoluzione problemi  
+- 📦 **Zero dipendenze**: Funziona su qualsiasi Windows senza prerequisiti
+- 🚀 **Distribuzione immediata**: Pronto per il frontend web

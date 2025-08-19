@@ -1,146 +1,146 @@
-# Cruscotto Local Opener
+# 🚀 Cruscotto Local Opener
 
-Servizio locale per aprire documenti direttamente dal PC con **compatibilità universale Windows**.
+**Servizio locale per aprire documenti direttamente dal PC con avvio automatico e compatibilità universale Windows.**
 
-## 🎯 Compatibilità Sistema
+## 🎯 **NUOVO: AVVIO AUTOMATICO GARANTITO**
 
-### Versioni Windows Supportate
+### ✅ **Caratteristiche Principali**
+- 🔄 **AVVIO AUTOMATICO**: Si installa come servizio Windows e si avvia ad ogni boot del PC
+- 📦 **VERSIONE PORTABLE**: Non richiede Inno Setup o installer complessi  
+- 🔧 **DIAGNOSTICA INTEGRATA**: Script di verifica e risoluzione problemi inclusi
+- 🛡️ **RESILIENZA**: Restart automatico in caso di crash o problemi
+- 📊 **LOGGING AVANZATO**: Log dettagliati per diagnostica e supporto
+
+### 🖥️ **Compatibilità Sistema Estesa**
 - ✅ **Windows 7 SP1+** (con aggiornamenti)
-- ✅ **Windows 8/8.1**
+- ✅ **Windows 8/8.1** 
 - ✅ **Windows 10** (tutte le versioni)
-- ✅ **Windows 11** (tutte le versioni)  
+- ✅ **Windows 11** (tutte le versioni)
 - ✅ **Windows Server 2008 R2+**
+- ✅ **Architetture**: x86, x64, ARM64
 
-### Architetture Supportate
-- ✅ **x86 (32-bit)** - sistemi legacy
-- ✅ **x64 (64-bit)** - standard moderno
-- ✅ **ARM64** - dispositivi Windows ARM
-
-## Funzionalità
-
-- ✅ Auto-rilevamento cartelle Google Drive (tutte le lettere C:..Z:)
+### 📁 **Rilevamento Automatico**
+- ✅ Auto-rilevamento cartelle Google Drive (lettere C-Z)
 - ✅ Supporto percorsi UNC di rete (\\SERVER\Share)
 - ✅ Configurazione multi-root persistente
 - ✅ Matching intelligente dei file (fuzzy match)
-- ✅ Avvio automatico come servizio Windows
-- ✅ Wizard di configurazione nell'installer
-- ✅ **Rilevamento automatico architettura sistema**
-- ✅ **Versione portable per massima compatibilità**
 
-## Build e Installazione
+## 🚀 **Build e Distribuzione**
 
-### Prerequisiti
+### **✅ Versione Consigliata: PORTABLE**
 
-1. **Node.js 20+** (aggiornato per compatibilità)
-2. PowerShell (per scaricare NSSM)
-3. ⚠️ Inno Setup 6.x (opzionale, solo per installer completo)
+**La versione portable è ora la PRINCIPALE e include TUTTO:**
+- 🔄 Avvio automatico come servizio Windows
+- 🔧 Diagnostica integrata
+- 📦 Nessuna dipendenza esterna richiesta
 
-### Build
+### **📋 Prerequisiti Build**
+
+1. **Node.js 20+** 
+2. **PowerShell** (per scaricare NSSM)
+
+### **🔨 Comandi Build**
 
 ```bash
-# 1. Installa dipendenze
+# 1. Setup iniziale
 cd local-opener
 npm install
 
 # 2. Scarica NSSM (necessario per servizio Windows)
-cd installer
-powershell -ExecutionPolicy Bypass -File download-nssm.ps1
-cd ..
+cd installer && powershell -ExecutionPolicy Bypass -File download-nssm.ps1 && cd ..
 
-# 3. BUILD COMPLETO UNIVERSALE (Raccomandato)
-npm run build:all
-# → Crea tutte le versioni: x86, x64, ARM64, portable e installer
+# 3. BUILD RACCOMANDATO - Versione Portable Completa
+npm run build:portable
 
-# 4. OPZIONI BUILD SPECIFICHE:
-
-# Build rapido (solo architettura corrente)
-npm run build
-
-# Build universale (x64 + ARM64)
-npm run build:universal
-
-# Solo versione portable
-npm run build:portable-zip
-
-# Solo installer (richiede Inno Setup)
-npm run build:installer
-
-# Build completo con debug
-npm run build:complete
+# 4. Alternative (opzionali):
+npm run build:universal     # Per sistemi moderni x64/ARM64
+npm run build:installer     # Se hai Inno Setup installato
 ```
 
-### 🎯 Quale comando usare?
+### **📦 Output Versione Portable**
 
-- **`npm run build:all`** ← **RACCOMANDATO** per massima compatibilità
-- **`npm run build:universal`** ← Per sistemi moderni (x64/ARM64)
-- **`npm run build`** ← Solo per test rapidi
+**Cartella**: `dist/portable/`  
+**Archivio**: `dist/cruscotto-local-opener-portable-AGGIORNATO.zip`
 
-### Output
+**Contenuto:**
+```
+portable/
+├── 🚀 local-opener.exe              (36MB - Applicazione principale)
+├── 🔧 nssm.exe                      (Service manager Windows)  
+├── ⚡ installa-servizio.bat         (INSTALLAZIONE AVVIO AUTOMATICO)
+├── 🔍 diagnostica-servizio.bat      (Verifica e troubleshooting)
+├── 🗑️ disinstalla-servizio.bat      (Rimozione completa)
+├── 📋 avvia-manualmente.bat         (Test modalità console)
+├── 📖 README.txt                    (Guida completa)
+├── ⚙️ config-esempio.json          (Configurazione esempio)
+└── 📁 assets/                       (Icone e risorse)
+```
 
-**Versione Portable (`npm run build:portable`):**
-- `dist/portable/local-opener.exe` - Eseguibile principale
-- `dist/portable/nssm.exe` - Utility per servizi Windows
-- `dist/portable/installa-servizio.bat` - Script di installazione automatica
-- `dist/portable/disinstalla-servizio.bat` - Script di rimozione
-- `dist/portable/avvia-manualmente.bat` - Avvio in modalità console
-- `dist/portable/README.txt` - Istruzioni complete
-- `dist/portable/config-esempio.json` - Configurazione di esempio
+### **🎯 Distribuzione Frontend**
 
-**Installer Completo (se Inno Setup è installato):**
-- `dist/cruscotto-local-opener-setup.exe` - Installer con wizard
+**Per integrare nel frontend web:**
+1. Copia `dist/cruscotto-local-opener-portable-AGGIORNATO.zip`
+2. In `client/public/downloads/`
+3. Il frontend userà automaticamente questa versione
 
-### Quale versione scegliere?
+## 🔧 **Installazione e Configurazione**
 
-- 🚀 **Versione Portable**: Per la maggior parte degli usi. Non richiede software aggiuntivo
-- 🏢 **Installer**: Per distribuzioni enterprise o quando serve il wizard di configurazione
+### **🚀 Procedura SEMPLIFICATA** 
 
-## Configurazione
+**1. Download dal Frontend:**
+- Vai su **Impostazioni → Applicazione**  
+- Clicca **"Scarica Local Opener (Avvio Automatico)"**
 
-### Automatica (consigliata)
-
-L'installer:
-1. Chiede la cartella principale dei documenti ISO
-2. Rileva automaticamente Google Drive su tutte le lettere
-3. **✅ Installa come servizio Windows con avvio automatico**
-4. **✅ Configura il servizio per avviarsi ad ogni boot di Windows**
-5. Salva la configurazione in `%APPDATA%\.local-opener\config.json`
-6. **✅ Verifica automaticamente che l'installazione sia riuscita**
-
-### 🔄 Avvio Automatico
-
-Dopo l'installazione con l'installer, **il Local Opener si avvierà automaticamente**:
-- ✅ Ad ogni accensione/riavvio del PC
-- ✅ Anche dopo aggiornamenti di Windows
-- ✅ Senza bisogno di aprire il cmd o eseguire file manualmente
-- ✅ Funziona in background come servizio Windows
-
-### 🔧 Verifica e Diagnostica
-
-**Script di Diagnostica** (disponibile nel Menu Start):
+**2. Installazione Automatica:**
 ```bash
-# Dalla cartella installazione o Menu Start > Cruscotto Local Opener
+# Estrai l'archivio scaricato
+# Esegui come Amministratore:
+installa-servizio.bat
+```
+
+**3. Risultato:**
+- ✅ **Servizio installato** come `CruscottoLocalOpener`
+- ✅ **Avvio automatico configurato** per ogni boot di Windows  
+- ✅ **Rilevamento automatico** cartelle Google Drive
+- ✅ **Configurazione salvata** in `%APPDATA%\.local-opener\config.json`
+- ✅ **Verifica automatica** che tutto funzioni
+
+### **🔄 Avvio Automatico GARANTITO**
+
+**Dopo l'installazione:**
+- 🚀 **Si avvia automaticamente** ad ogni accensione/riavvio del PC
+- 🔄 **Restart automatico** se il servizio va in crash  
+- 🛡️ **Resilienza** anche dopo aggiornamenti Windows
+- 🎯 **Zero intervento manuale** richiesto
+
+### **🔍 Diagnostica e Verifica**
+
+**Script Integrato:**
+```bash
+# Incluso nell'archivio scaricato:
 diagnostica-servizio.bat
 ```
 
-Questo script verifica:
-- ✅ Stato del servizio Windows
-- ✅ Configurazione avvio automatico  
-- ✅ Connessione alla porta 17654
-- ✅ File di configurazione
-- ✅ Log del servizio
-- 🔧 Comandi per risolvere problemi comuni
+**Verifica automaticamente:**
+- ✅ Stato servizio Windows (`CruscottoLocalOpener`)
+- ✅ Configurazione avvio automatico (SERVICE_AUTO_START)
+- ✅ Connessione HTTP (`http://127.0.0.1:17654`)
+- ✅ File configurazione e log
+- 🔧 **Comandi per risolvere** ogni problema specifico
 
-### Manuale
+### **⚙️ Configurazione Manuale (Opzionale)**
 
 ```bash
-# Aggiungi cartella
-curl -H "Content-Type: application/json" -d "{\"addRoot\":\"C:/Percorso/ISO\"}" http://127.0.0.1:17654/config
+# Aggiungi cartelle aggiuntive via API
+curl -H "Content-Type: application/json" \
+     -d '{"addRoot":"C:/Percorso/Documenti"}' \
+     http://127.0.0.1:17654/config
 
-# Verifica configurazione
+# Verifica stato
 curl http://127.0.0.1:17654/health
 ```
 
-## Integrazione Web App
+## 🌐 **Integrazione Web App**
 
 1. L'utente clicca l'icona occhio su un documento locale
 2. Il client chiama `http://127.0.0.1:17654/open` con:
@@ -166,61 +166,78 @@ Per aziende con molti PC:
 3. Pre-configura la root nel file `config.json`
 4. Il servizio si avvia automaticamente
 
-## Troubleshooting
+## 🛠️ **Troubleshooting**
 
-### 🔧 Problemi Comuni
+### **🔍 Diagnostica Automatica**
 
-- **404 "File non trovato"**: Verifica che il percorso logico corrisponda alla struttura reale
-- **Servizio non parte**: Controlla Windows Event Viewer  
-- **Permessi negati**: Esegui installer come amministratore
-
-### 🚨 Avvio Automatico Non Funziona
-
-Se dopo l'installazione il Local Opener non si avvia automaticamente:
-
-**1. Verifica Stato Servizio:**
+**PRIMA COSA DA FARE:**
 ```cmd
-# Esegui diagnostica-servizio.bat dal Menu Start o da:
-%ProgramFiles%\CruscottoLocalOpener\diagnostica-servizio.bat
+# Esegui lo script di diagnostica incluso:
+diagnostica-servizio.bat
 ```
 
-**2. Installazione Manuale Servizio:**
+Lo script ti dirà **esattamente** cosa non funziona e **come risolverlo**.
+
+### **🚨 Problemi Comuni e Soluzioni**
+
+#### **❌ Servizio Non Installato**
 ```cmd
-# Se l'installer ha fallito, installa manualmente:
-cd "%ProgramFiles%\CruscottoLocalOpener"
-nssm install CruscottoLocalOpener local-opener.exe
-nssm set CruscottoLocalOpener Start SERVICE_AUTO_START
-nssm set CruscottoLocalOpener DelayedAutoStart 1
-nssm start CruscottoLocalOpener
+# Soluzione: Reinstalla come Amministratore
+# 1. Estrai nuovamente l'archivio scaricato
+# 2. Tasto destro su "installa-servizio.bat" 
+# 3. "Esegui come amministratore"
 ```
 
-**3. Verifica Avvio Automatico:**
+#### **⚠️ Servizio Installato ma Non Avviato**  
 ```cmd
-sc qc CruscottoLocalOpener | findstr START_TYPE
-# Dovrebbe mostrare: START_TYPE : 2 AUTO_START
+# Soluzione: Avvia manualmente
+sc start CruscottoLocalOpener
+
+# O riavvia il PC completamente
 ```
 
-**4. Riavvio Completo:**
+#### **🔧 Avvio Automatico Non Configurato**
 ```cmd
-# Se ancora non funziona, riavvia PC e testa:
-# Dopo riavvio, apri cmd e verifica:
-sc query CruscottoLocalOpener
-curl http://127.0.0.1:17654/health
+# Soluzione: Configura avvio automatico
+sc config CruscottoLocalOpener start= auto
+sc start CruscottoLocalOpener
 ```
 
-**5. Installazione Fallback (Manuale):**
-Se il servizio Windows non funziona, puoi usare l'avvio con Task Scheduler:
+#### **🌐 Connessione HTTP Fallisce (porta 17654)**
 ```cmd
-# Crea task Windows per avvio automatico:
-schtasks /create /tn "Local Opener Startup" /tr "%ProgramFiles%\CruscottoLocalOpener\local-opener.exe" /sc onstart /ru SYSTEM
+# Soluzione: Verifica firewall
+netsh advfirewall firewall add rule name="Local Opener" dir=in action=allow protocol=TCP localport=17654
+
+# O disabilita temporaneamente Windows Firewall per test
 ```
 
-### 📱 Supporto
+#### **🦠 Antivirus Blocca l'Esecuzione**
+- Aggiungi **eccezione** per la cartella del Local Opener
+- Disabilita **temporaneamente** l'antivirus durante installazione
+- Usa **Windows Defender** come unico antivirus (raccomandato)
 
-- **Script Diagnostica**: `diagnostica-servizio.bat` (nel Menu Start)
-- **Log Servizio**: `%APPDATA%\.local-opener\service.log`
-- **Manager Servizi**: `services.msc` (cerca "Cruscotto Local Opener")
-- **Event Viewer**: Windows Logs > System (filtro per "CruscottoLocalOpener")
+### **🔄 Reinstallazione Completa**
+
+Se nulla funziona:
+```cmd
+# 1. Disinstalla completamente
+disinstalla-servizio.bat
+
+# 2. Rimuovi cartelle
+rmdir /s "%APPDATA%\.local-opener"
+
+# 3. Riavvia il PC
+
+# 4. Reinstalla da zero
+installa-servizio.bat
+```
+
+### **📊 Log e Supporto**
+
+- **📁 Configurazione**: `%APPDATA%\.local-opener\config.json`
+- **📋 Log servizio**: `%APPDATA%\.local-opener\service.log`  
+- **❌ Log errori**: `%APPDATA%\.local-opener\service-error.log`
+- **🖥️ Manager servizi**: `services.msc` (cerca "Cruscotto Local Opener")
 
 ## Sicurezza
 

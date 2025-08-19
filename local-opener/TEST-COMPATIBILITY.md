@@ -1,23 +1,46 @@
-# TEST COMPATIBILITÀ LOCAL OPENER
+# 🧪 **TEST COMPATIBILITÀ - LOCAL OPENER AVVIO AUTOMATICO**
 
-## ✅ Checklist Test Completa
+## 🎯 **Focus: Versione Portable con Avvio Automatico**
 
-### Test Base (Obbligatori)
-- [ ] **Windows 10/11 x64**: Installer funziona
-- [ ] **Windows 10/11 x64**: Versione portable funziona  
-- [ ] **Servizio attivo**: `http://127.0.0.1:17654/health` risponde
-- [ ] **Frontend integration**: "Ricontrolla" mostra servizio attivo
-- [ ] **File opening**: Test apertura documento funziona
+**Priorità di test aggiornata:** Versione portable è ora la PRINCIPALE.
 
-### Test Compatibilità Estesa
-- [ ] **Windows 7 SP1**: Versione portable (installer può fallire)
-- [ ] **Windows 8.1**: Entrambe le versioni
-- [ ] **Windows 11 ARM**: Versione portable con ARM64
-- [ ] **Antivirus attivo**: Windows Defender + altro antivirus
-- [ ] **Utente non-admin**: Solo versione portable
+## ✅ **Test Base Obbligatori**
 
-### Test Edge Cases
-- [ ] **Porta 17654 occupata**: Gestione conflitti
+### **🔄 Avvio Automatico (CRITICO)**
+- [ ] **Installazione servizio**: `installa-servizio.bat` eseguito come Admin
+- [ ] **Servizio installato**: `sc query CruscottoLocalOpener` → SERVICE_RUNNING  
+- [ ] **Auto-start configurato**: `sc qc CruscottoLocalOpener` → AUTO_START
+- [ ] **Riavvio PC**: Dopo reboot, servizio si avvia automaticamente
+- [ ] **Connessione HTTP**: `http://127.0.0.1:17654/health` risponde senza intervento manuale
+
+### **🔧 Diagnostica Integrata**
+- [ ] **Script diagnostica**: `diagnostica-servizio.bat` funziona
+- [ ] **Rilevamento problemi**: Script identifica servizio non installato
+- [ ] **Rilevamento problemi**: Script identifica servizio non avviato  
+- [ ] **Comandi risoluzione**: Script fornisce comandi corretti per fix
+
+### **🌐 Integrazione Frontend**
+- [ ] **Download corretto**: Frontend scarica `cruscotto-local-opener-portable-AGGIORNATO.zip`
+- [ ] **Button "Ricontrolla"**: Rileva servizio attivo correttamente
+- [ ] **Apertura documenti**: Test apertura file funziona dal frontend
+
+## 🖥️ **Test Compatibilità Sistema**
+
+### **Windows Core (Obbligatori)**
+- [ ] **Windows 10 x64**: Installazione e avvio automatico
+- [ ] **Windows 11 x64**: Installazione e avvio automatico
+- [ ] **Windows 11 ARM64**: Versione portable funziona
+
+### **Windows Legacy (Opzionali)**  
+- [ ] **Windows 7 SP1**: Versione portable (servizio può richiedere configurazione manuale)
+- [ ] **Windows 8.1**: Versione portable
+
+### **Sicurezza e Antivirus**
+- [ ] **Windows Defender**: Non blocca installazione
+- [ ] **Antivirus terze parti**: Aggiunta eccezione se necessario
+- [ ] **Firewall Windows**: Porta 17654 accessibile  
+
+## 🔧 **Test Edge Cases**
 - [ ] **Multiple versioni**: Disinstallazione e reinstallazione
 - [ ] **Windows Updates**: Sopravvivenza agli aggiornamenti sistema
 - [ ] **Firewall aziendale**: Bypass o configurazione
