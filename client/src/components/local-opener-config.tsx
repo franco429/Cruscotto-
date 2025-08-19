@@ -242,26 +242,15 @@ export default function LocalOpenerConfig() {
 
             <div className="flex flex-wrap gap-2">
               {!status.isRunning && (
-                <>
-                  <Button asChild variant="default">
-                    <a
-                      href="/downloads/cruscotto-local-opener-setup.exe"
-                      download="cruscotto-local-opener-setup.exe"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Installer Universale
-                    </a>
-                  </Button>
-                  <Button asChild variant="outline" size="sm">
-                    <a
-                      href="/downloads/cruscotto-local-opener-portable.zip"
-                      download="cruscotto-local-opener-portable.zip"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Versione Portable
-                    </a>
-                  </Button>
-                </>
+                <Button asChild variant="default">
+                  <a
+                    href="/downloads/cruscotto-local-opener-portable-AGGIORNATO.zip"
+                    download="cruscotto-local-opener-portable-AGGIORNATO.zip"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Scarica Local Opener (Avvio Automatico)
+                  </a>
+                </Button>
               )}
               <Button
                 variant="outline"
@@ -270,28 +259,6 @@ export default function LocalOpenerConfig() {
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Ricontrolla
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const link = document.createElement('a');
-                  link.href = '/downloads/debug-local-opener.bat';
-                  link.download = 'debug-local-opener.bat';
-                  link.setAttribute('target', '_blank');
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
-                  
-                  toast({
-                    title: "📋 Script Debug Scaricato",
-                    description: "Esegui debug-local-opener.bat per diagnosticare problemi",
-                    duration: 5000,
-                  });
-                }}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Debug Script
               </Button>
             </div>
           </div>
@@ -361,25 +328,36 @@ export default function LocalOpenerConfig() {
         <CardContent>
           <div className="space-y-3 text-sm">
             <div>
-              <p className="font-medium">1. Scegli la versione adatta</p>
+              <p className="font-medium">1. Scarica e installa Local Opener</p>
               <div className="ml-4 space-y-1 text-muted-foreground">
-                <p><strong>Installer Universale:</strong> Per installazione permanente con servizio Windows (raccomandato)</p>
-                <p><strong>Versione Portable:</strong> Per esecuzione diretta senza installazione</p>
+                <p><strong>✅ Avvio Automatico:</strong> Si installa come servizio Windows e si avvia automaticamente ad ogni accensione del PC</p>
+                <p><strong>📦 Versione Portable:</strong> Non richiede installazione complessa, funziona subito</p>
+                <p><strong>🔧 Include diagnostica:</strong> Script integrato per risolvere problemi di configurazione</p>
               </div>
             </div>
             <Separator />
             <div>
-              <p className="font-medium">2. Compatibilità Sistema</p>
+              <p className="font-medium">2. Procedura di installazione</p>
               <div className="ml-4 space-y-1 text-muted-foreground">
-                <p>✅ Windows 10 (versione 1903+) / Windows 11</p>
-                <p>✅ Architetture: Intel/AMD x64, ARM64</p>
-                <p>✅ Supporto automatico rilevamento architettura</p>
-                <p>⚠️ Richiede privilegi amministratore per l'installer</p>
+                <p>1. Scarica il file "Local Opener (Avvio Automatico)"</p>
+                <p>2. Estrai l'archivio in una cartella (es. Desktop)</p>
+                <p>3. Esegui "installa-servizio.bat" come Amministratore</p>
+                <p>4. Il servizio si configurerà automaticamente per l'avvio automatico</p>
               </div>
             </div>
             <Separator />
             <div>
-              <p className="font-medium">3. Configura le cartelle</p>
+              <p className="font-medium">3. Compatibilità Sistema</p>
+              <div className="ml-4 space-y-1 text-muted-foreground">
+                <p>✅ Windows 7 SP1+ / Windows 10 / Windows 11</p>
+                <p>✅ Architetture: x86, x64, ARM64</p>
+                <p>✅ Auto-rilevamento cartelle Google Drive</p>
+                <p>⚠️ Richiede privilegi amministratore per l'installazione servizio</p>
+              </div>
+            </div>
+            <Separator />
+            <div>
+              <p className="font-medium">4. Configura le cartelle</p>
               <p className="text-muted-foreground">
                 Aggiungi le cartelle dove sono salvati i documenti ISO (es. Google
                 Drive locale, cartelle di rete, ecc.)
@@ -387,7 +365,7 @@ export default function LocalOpenerConfig() {
             </div>
             <Separator />
             <div>
-              <p className="font-medium">4. Testa il funzionamento</p>
+              <p className="font-medium">5. Testa il funzionamento</p>
               <p className="text-muted-foreground">
                 Usa il pulsante "Testa Apertura File" per verificare che tutto
                 funzioni correttamente
@@ -395,12 +373,12 @@ export default function LocalOpenerConfig() {
             </div>
             <Separator />
             <div>
-              <p className="font-medium">🔧 Problemi di compatibilità?</p>
+              <p className="font-medium">🔧 Risoluzione problemi</p>
               <div className="ml-4 space-y-1 text-muted-foreground">
-                <p>• Se l'installer non funziona, prova la versione portable</p>
-                <p>• Disabilita temporaneamente l'antivirus durante l'installazione</p>
-                <p>• Esegui come amministratore se richiesto</p>
-                <p>• Verifica che Windows Defender non blocchi l'esecuzione</p>
+                <p>• Usa "diagnostica-servizio.bat" incluso nell'archivio per verificare lo stato</p>
+                <p>• Esegui sempre "installa-servizio.bat" come Amministratore</p>
+                <p>• Se antivirus blocca: aggiungi eccezione o disabilita temporaneamente</p>
+                <p>• Riavvia il PC se il servizio non si avvia automaticamente</p>
               </div>
             </div>
           </div>
