@@ -20,30 +20,30 @@ $ValidPaths = @()
 function Add-DetectedPath {
     param([string]$Path, [string]$Source)
     
-    if (Test-Path $Path) {
-        $DetectedPaths += @{
-            Path = $Path
-            Source = $Source
-            Exists = $true
+            if (Test-Path $Path) {
+            $DetectedPaths += @{
+                Path = $Path
+                Source = $Source
+                Exists = $true
+            }
+            $ValidPaths += $Path
+            if (-not $Silent) {
+                Write-Host "Trovato: $Path (da $Source)" -ForegroundColor Green
+            }
+        } else {
+            $DetectedPaths += @{
+                Path = $Path
+                Source = $Source
+                Exists = $false
+            }
+            if (-not $Silent) {
+                Write-Host "Non valido: $Path (da $Source)" -ForegroundColor Yellow
+            }
         }
-        $ValidPaths += $Path
-        if (-not $Silent) {
-            Write-Host "✅ Trovato: $Path (da $Source)" -ForegroundColor Green
-        }
-    } else {
-        $DetectedPaths += @{
-            Path = $Path
-            Source = $Source
-            Exists = $false
-        }
-        if (-not $Silent) {
-            Write-Host "❌ Non valido: $Path (da $Source)" -ForegroundColor Yellow
-        }
-    }
 }
 
 if (-not $Silent) {
-    Write-Host "🔎 Ricerca percorsi Google Drive nel registro di Windows..." -ForegroundColor Cyan
+    Write-Host "Ricerca percorsi Google Drive nel registro di Windows..." -ForegroundColor Cyan
 }
 
 # 1. Ricerca nel registro di Windows - Google Drive Desktop
@@ -61,7 +61,7 @@ try {
     }
 } catch {
     if (-not $Silent) {
-        Write-Host "⚠️ Errore accesso registro Google Drive Desktop: $($_.Exception.Message)" -ForegroundColor Yellow
+        Write-Host "Errore accesso registro Google Drive Desktop: $($_.Exception.Message)" -ForegroundColor Yellow
     }
 }
 
@@ -88,7 +88,7 @@ try {
     }
 } catch {
     if (-not $Silent) {
-        Write-Host "⚠️ Registro Google Backup & Sync non accessibile" -ForegroundColor Yellow
+        Write-Host "Registro Google Backup & Sync non accessibile" -ForegroundColor Yellow
     }
 }
 
@@ -125,24 +125,24 @@ $ValidPaths = $ValidPaths | Sort-Object -Unique
 
 if (-not $Silent) {
     Write-Host ""
-    Write-Host "📊 RISULTATI RILEVAZIONE:" -ForegroundColor Magenta
-    Write-Host "=========================" -ForegroundColor Magenta
-    Write-Host "🔍 Percorsi analizzati: $($DetectedPaths.Count)" -ForegroundColor White
-    Write-Host "✅ Percorsi validi trovati: $($ValidPaths.Count)" -ForegroundColor Green
+    Write-Host "RISULTATI RILEVAZIONE:" -ForegroundColor Magenta
+    Write-Host "======================" -ForegroundColor Magenta
+    Write-Host "Percorsi analizzati: $($DetectedPaths.Count)" -ForegroundColor White
+    Write-Host "Percorsi validi trovati: $($ValidPaths.Count)" -ForegroundColor Green
     
     if ($ValidPaths.Count -gt 0) {
         Write-Host ""
-        Write-Host "📁 PERCORSI VALIDI RILEVATI:" -ForegroundColor Green
+        Write-Host "PERCORSI VALIDI RILEVATI:" -ForegroundColor Green
         foreach ($Path in $ValidPaths) {
-            Write-Host "   • $Path" -ForegroundColor White
+            Write-Host "   $Path" -ForegroundColor White
         }
     } else {
         Write-Host ""
-        Write-Host "⚠️ NESSUN PERCORSO GOOGLE DRIVE RILEVATO" -ForegroundColor Yellow
-        Write-Host "💡 Suggerimenti:" -ForegroundColor Cyan
-        Write-Host "   • Verifica che Google Drive sia installato e configurato" -ForegroundColor White
-        Write-Host "   • Controlla se Google Drive è in G:\ o H:\" -ForegroundColor White
-        Write-Host "   • Aggiungi manualmente i percorsi nell'interfaccia" -ForegroundColor White
+        Write-Host "NESSUN PERCORSO GOOGLE DRIVE RILEVATO" -ForegroundColor Yellow
+        Write-Host "Suggerimenti:" -ForegroundColor Cyan
+        Write-Host "   Verifica che Google Drive sia installato e configurato" -ForegroundColor White
+        Write-Host "   Controlla se Google Drive e in G:\ o H:\" -ForegroundColor White
+        Write-Host "   Aggiungi manualmente i percorsi nell'interfaccia" -ForegroundColor White
     }
 }
 
@@ -150,7 +150,7 @@ if (-not $Silent) {
 if ($ConfigureService -and $ValidPaths.Count -gt 0) {
     if (-not $Silent) {
         Write-Host ""
-        Write-Host "🔧 Configurazione automatica Local Opener..." -ForegroundColor Cyan
+        Write-Host "Configurazione automatica Local Opener..." -ForegroundColor Cyan
     }
     
     try {
@@ -165,17 +165,17 @@ if ($ConfigureService -and $ValidPaths.Count -gt 0) {
         
         if ($Response.success) {
             if (-not $Silent) {
-                Write-Host "✅ Configurazione servizio completata!" -ForegroundColor Green
+                Write-Host "Configurazione servizio completata!" -ForegroundColor Green
             }
         } else {
             if (-not $Silent) {
-                Write-Host "⚠️ Configurazione servizio parzialmente riuscita" -ForegroundColor Yellow
+                Write-Host "Configurazione servizio parzialmente riuscita" -ForegroundColor Yellow
             }
         }
     } catch {
         if (-not $Silent) {
-            Write-Host "❌ Impossibile configurare il servizio automaticamente: $($_.Exception.Message)" -ForegroundColor Red
-            Write-Host "💡 Configura manualmente dall'interfaccia web" -ForegroundColor Cyan
+            Write-Host "Impossibile configurare il servizio automaticamente: $($_.Exception.Message)" -ForegroundColor Red
+            Write-Host "Configura manualmente dall'interfaccia web" -ForegroundColor Cyan
         }
     }
 }
@@ -194,13 +194,13 @@ if ($OutputFile) {
     
     if (-not $Silent) {
         Write-Host ""
-        Write-Host "💾 Risultati salvati in: $OutputFile" -ForegroundColor Cyan
+        Write-Host "Risultati salvati in: $OutputFile" -ForegroundColor Cyan
     }
 }
 
 if (-not $Silent) {
     Write-Host ""
-    Write-Host "✅ RILEVAZIONE COMPLETATA!" -ForegroundColor Green
+    Write-Host "RILEVAZIONE COMPLETATA!" -ForegroundColor Green
     if ($ValidPaths.Count -eq 0) {
         Write-Host ""
         Read-Host "Premi Invio per uscire"

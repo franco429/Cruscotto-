@@ -3,6 +3,7 @@
 // contacts a local service (if running) on 127.0.0.1 which performs the OS-level open.
 
 import type { DocumentDocument as Document } from "../../../shared-types/schema";
+import { apiRequest } from "./queryClient";
 
 type OpenResult = { ok: boolean; message?: string };
 
@@ -119,29 +120,21 @@ export async function checkAndPromptPathConfiguration(): Promise<void> {
           onClick: async () => {
             // Avvia rilevazione automatica
             try {
-              const autoDetectResponse = await fetch("/api/local-opener/auto-detect-paths", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include"
-              });
-
-              if (autoDetectResponse.ok) {
-                const result = await autoDetectResponse.json();
-                if (result.success && result.detectedPaths.length > 0) {
-                  toast({
-                    title: "✅ Percorsi Configurati Automaticamente!",
-                    description: `Rilevati ${result.detectedPaths.length} percorsi Google Drive. Ora puoi aprire i documenti localmente!`,
-                    duration: 8000,
-                  });
-                } else {
-                  toast({
-                    title: "⚠️ Nessun Percorso Rilevato",
-                    description: "Vai in Impostazioni → Configurazione Local Opener per configurare manualmente.",
-                    duration: 6000,
-                  });
-                }
+              const autoDetectResponse = await apiRequest("POST", "/api/local-opener/auto-detect-paths", {});
+              const result = await autoDetectResponse.json();
+              
+              if (result.success && result.detectedPaths.length > 0) {
+                toast({
+                  title: "✅ Percorsi Configurati Automaticamente!",
+                  description: `Rilevati ${result.detectedPaths.length} percorsi Google Drive. Ora puoi aprire i documenti localmente!`,
+                  duration: 8000,
+                });
               } else {
-                throw new Error("Errore nella rilevazione automatica");
+                toast({
+                  title: "⚠️ Nessun Percorso Rilevato",
+                  description: "Vai in Impostazioni → Configurazione Local Opener per configurare manualmente.",
+                  duration: 6000,
+                });
               }
             } catch (error) {
               toast({

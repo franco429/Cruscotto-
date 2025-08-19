@@ -43,21 +43,28 @@ Write-Host "🔧 Installazione servizio con configurazione avanzata..." -Foregro
 & $NssmPath set $ServiceName DisplayName "Cruscotto Local Opener Service"
 & $NssmPath set $ServiceName Description "Servizio per aprire documenti locali da Cruscotto SGI - Avvio automatico all'accensione PC"
 
-Write-Host "⚙️ Configurazione avvio automatico..." -ForegroundColor Cyan
+Write-Host "Configurazione avvio automatico..." -ForegroundColor Cyan
 & $NssmPath set $ServiceName Start SERVICE_AUTO_START
 & $NssmPath set $ServiceName Type SERVICE_WIN32_OWN_PROCESS
-& $NssmPath set $ServiceName DelayedAutoStart 1
+& $NssmPath set $ServiceName DelayedAutoStart 0
 
-Write-Host "🔄 Configurazione resilienza e restart automatico..." -ForegroundColor Cyan
+Write-Host "Configurazione resilienza e restart automatico..." -ForegroundColor Cyan
 & $NssmPath set $ServiceName AppExit Default Restart
-& $NssmPath set $ServiceName AppRestartDelay 10000
-& $NssmPath set $ServiceName AppThrottle 5000
-& $NssmPath set $ServiceName AppStopMethodConsole 15000
+& $NssmPath set $ServiceName AppRestartDelay 5000
+& $NssmPath set $ServiceName AppThrottle 3000
+& $NssmPath set $ServiceName AppStopMethodConsole 10000
+& $NssmPath set $ServiceName AppStopMethodWindow 5000
+& $NssmPath set $ServiceName AppStopMethodThreads 3000
 
-Write-Host "🔐 Configurazione sicurezza..." -ForegroundColor Cyan
+Write-Host "Configurazione persistenza servizio..." -ForegroundColor Cyan
+& $NssmPath set $ServiceName AppNoConsole 1
+& $NssmPath set $ServiceName AppAffinity All
+& $NssmPath set $ServiceName AppPriority NORMAL_PRIORITY_CLASS
+
+Write-Host "Configurazione sicurezza..." -ForegroundColor Cyan
 & $NssmPath set $ServiceName ObjectName LocalSystem
 
-Write-Host "📝 Configurazione logging..." -ForegroundColor Cyan
+Write-Host "Configurazione logging..." -ForegroundColor Cyan
 $LogDir = "$env:APPDATA\.local-opener"
 New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
 & $NssmPath set $ServiceName AppStdout "$LogDir\service.log"
@@ -65,48 +72,48 @@ New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
 & $NssmPath set $ServiceName AppRotateFiles 1
 & $NssmPath set $ServiceName AppRotateSeconds 86400
 
-Write-Host "🌐 Configurazione firewall Windows..." -ForegroundColor Cyan
+Write-Host "Configurazione firewall Windows..." -ForegroundColor Cyan
 netsh advfirewall firewall delete rule name="Local Opener" 2>$null | Out-Null
 netsh advfirewall firewall add rule name="Local Opener" dir=in action=allow protocol=TCP localport=17654 | Out-Null
 
-Write-Host "🚀 Avvio servizio..." -ForegroundColor Cyan
+Write-Host "Avvio servizio..." -ForegroundColor Cyan
 & $NssmPath start $ServiceName
 
 Write-Host ""
-Write-Host "⏳ Attendo 5 secondi per verifica avvio..." -ForegroundColor Yellow
+Write-Host "Attendo 5 secondi per verifica avvio..." -ForegroundColor Yellow
 Start-Sleep -Seconds 5
 
-Write-Host "🔍 Verifica stato servizio..." -ForegroundColor Cyan
+Write-Host "Verifica stato servizio..." -ForegroundColor Cyan
 $ServiceStatus = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 
 if ($ServiceStatus -and $ServiceStatus.Status -eq "Running") {
-    Write-Host "✅ SUCCESSO! Servizio installato e avviato correttamente" -ForegroundColor Green
-    Write-Host "🎉 Il Local Opener si avvierà automaticamente ad ogni accensione del PC" -ForegroundColor Green
+    Write-Host "SUCCESSO! Servizio installato e avviato correttamente" -ForegroundColor Green
+    Write-Host "Il Local Opener si avviera automaticamente ad ogni accensione del PC" -ForegroundColor Green
     
     # Test connessione
     try {
         $Response = Invoke-WebRequest -Uri "http://127.0.0.1:17654/health" -TimeoutSec 5 -UseBasicParsing
-        Write-Host "✅ Test connessione HTTP riuscito!" -ForegroundColor Green
+        Write-Host "Test connessione HTTP riuscito!" -ForegroundColor Green
     } catch {
-        Write-Host "⚠️ Servizio avviato ma connessione HTTP non ancora pronta" -ForegroundColor Yellow
-        Write-Host "💡 Attendi qualche secondo e riprova" -ForegroundColor Yellow
+        Write-Host "Servizio avviato ma connessione HTTP non ancora pronta" -ForegroundColor Yellow
+        Write-Host "Attendi qualche secondo e riprova" -ForegroundColor Yellow
     }
 } else {
-    Write-Host "⚠️ Servizio installato ma potrebbe non essere avviato" -ForegroundColor Yellow
-    Write-Host "💡 Riavvia il PC o esegui: sc start $ServiceName" -ForegroundColor Yellow
+    Write-Host "Servizio installato ma potrebbe non essere avviato" -ForegroundColor Yellow
+    Write-Host "Riavvia il PC o esegui: sc start $ServiceName" -ForegroundColor Yellow
 }
 
 Write-Host ""
-Write-Host "📊 STATO INSTALLAZIONE:" -ForegroundColor Magenta
-Write-Host "================================" -ForegroundColor Magenta
-Write-Host "🌐 URL servizio: http://127.0.0.1:17654" -ForegroundColor White
-Write-Host "📁 Log servizio: $LogDir\service.log" -ForegroundColor White
-Write-Host "🔧 Manager servizi: services.msc" -ForegroundColor White
-Write-Host "📋 Diagnostica: diagnostica-servizio.bat" -ForegroundColor White
+Write-Host "STATO INSTALLAZIONE:" -ForegroundColor Magenta
+Write-Host "====================" -ForegroundColor Magenta
+Write-Host "URL servizio: http://127.0.0.1:17654" -ForegroundColor White
+Write-Host "Log servizio: $LogDir\service.log" -ForegroundColor White
+Write-Host "Manager servizi: services.msc" -ForegroundColor White
+Write-Host "Diagnostica: diagnostica-servizio.bat" -ForegroundColor White
 Write-Host ""
 
 Write-Host ""
-Write-Host "🔍 Rilevazione automatica percorsi Google Drive..." -ForegroundColor Cyan
+Write-Host "Rilevazione automatica percorsi Google Drive..." -ForegroundColor Cyan
 
 # Esegui rilevazione automatica percorsi Google Drive
 $AutoDetectScript = Join-Path $ScriptDir "auto-detect-google-drive.ps1"
@@ -114,31 +121,31 @@ if (Test-Path $AutoDetectScript) {
     try {
         $DetectionResult = & $AutoDetectScript -Silent -ConfigureService
         if ($DetectionResult -and $DetectionResult.Success -and $DetectionResult.Count -gt 0) {
-            Write-Host "✅ Rilevati automaticamente $($DetectionResult.Count) percorsi Google Drive!" -ForegroundColor Green
-            Write-Host "📁 Percorsi configurati:" -ForegroundColor White
+            Write-Host "Rilevati automaticamente $($DetectionResult.Count) percorsi Google Drive!" -ForegroundColor Green
+            Write-Host "Percorsi configurati:" -ForegroundColor White
             foreach ($Path in $DetectionResult.ValidPaths) {
-                Write-Host "   • $Path" -ForegroundColor Gray
+                Write-Host "   $Path" -ForegroundColor Gray
             }
         } else {
-            Write-Host "⚠️ Nessun percorso Google Drive rilevato automaticamente" -ForegroundColor Yellow
-            Write-Host "💡 Configura manualmente i percorsi dall'interfaccia web" -ForegroundColor Cyan
+            Write-Host "Nessun percorso Google Drive rilevato automaticamente" -ForegroundColor Yellow
+            Write-Host "Configura manualmente i percorsi dall'interfaccia web" -ForegroundColor Cyan
         }
     } catch {
-        Write-Host "⚠️ Rilevazione automatica non riuscita, configurazione manuale necessaria" -ForegroundColor Yellow
+        Write-Host "Rilevazione automatica non riuscita, configurazione manuale necessaria" -ForegroundColor Yellow
     }
 } else {
-    Write-Host "⚠️ Script di rilevazione automatica non trovato" -ForegroundColor Yellow
-    Write-Host "💡 Scarica la versione aggiornata del Local Opener" -ForegroundColor Cyan
+    Write-Host "Script di rilevazione automatica non trovato" -ForegroundColor Yellow
+    Write-Host "Scarica la versione aggiornata del Local Opener" -ForegroundColor Cyan
 }
 
 Write-Host ""
-Write-Host "✅ INSTALLAZIONE COMPLETATA!" -ForegroundColor Green
+Write-Host "INSTALLAZIONE COMPLETATA!" -ForegroundColor Green
 Write-Host ""
-Write-Host "🎯 PROSSIMI PASSI:" -ForegroundColor Magenta
-Write-Host "=================" -ForegroundColor Magenta
-Write-Host "1. 🌐 Apri il Cruscotto SGI nel browser" -ForegroundColor White
-Write-Host "2. ⚙️ Vai in Impostazioni → Configurazione Local Opener" -ForegroundColor White
-Write-Host "3. 🔍 Clicca 'Rileva Automaticamente' se i percorsi non sono già configurati" -ForegroundColor White
-Write-Host "4. 📄 Prova ad aprire un documento per testare il funzionamento" -ForegroundColor White
+Write-Host "PROSSIMI PASSI:" -ForegroundColor Magenta
+Write-Host "===============" -ForegroundColor Magenta
+Write-Host "1. Apri il Cruscotto SGI nel browser" -ForegroundColor White
+Write-Host "2. Vai in Impostazioni - Configurazione Local Opener" -ForegroundColor White
+Write-Host "3. Clicca 'Rileva Automaticamente' se i percorsi non sono gia configurati" -ForegroundColor White
+Write-Host "4. Prova ad aprire un documento per testare il funzionamento" -ForegroundColor White
 Write-Host ""
 Read-Host "Premi Invio per uscire"

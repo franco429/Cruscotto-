@@ -26,6 +26,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
+import { apiRequest } from "../lib/queryClient";
 
 interface LocalOpenerConfig {
   roots: string[];
@@ -156,32 +157,23 @@ export default function LocalOpenerConfig() {
   const autoDetectPaths = async () => {
     setIsAutoDetecting(true);
     try {
-      const response = await fetch("/api/local-opener/auto-detect-paths", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include"
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.detectedPaths.length > 0) {
-          // Aggiorna la configurazione con i percorsi rilevati
-          setConfig(prev => prev ? { ...prev, roots: data.configuredPaths } : null);
-          toast({
-            title: "🎉 Rilevazione automatica riuscita!",
-            description: `Trovati ${data.detectedPaths.length} percorsi Google Drive. Configurazione aggiornata automaticamente.`,
-            duration: 8000,
-          });
-        } else {
-          toast({
-            title: "⚠️ Nessun percorso trovato",
-            description: "Non sono stati rilevati percorsi Google Drive. Configura manualmente le cartelle.",
-            variant: "destructive",
-            duration: 6000,
-          });
-        }
+      const response = await apiRequest("POST", "/api/local-opener/auto-detect-paths", {});
+      const data = await response.json();
+      if (data.success && data.detectedPaths.length > 0) {
+        // Aggiorna la configurazione con i percorsi rilevati
+        setConfig(prev => prev ? { ...prev, roots: data.configuredPaths } : null);
+        toast({
+          title: "🎉 Rilevazione automatica riuscita!",
+          description: `Trovati ${data.detectedPaths.length} percorsi Google Drive. Configurazione aggiornata automaticamente.`,
+          duration: 8000,
+        });
       } else {
-        throw new Error("Errore nella rilevazione automatica");
+        toast({
+          title: "⚠️ Nessun percorso trovato",
+          description: "Non sono stati rilevati percorsi Google Drive. Configura manualmente le cartelle.",
+          variant: "destructive",
+          duration: 6000,
+        });
       }
     } catch (err: any) {
       toast({
@@ -208,31 +200,22 @@ export default function LocalOpenerConfig() {
         "H:\\My Drive"
       ];
 
-      const response = await fetch("/api/local-opener/reconfigure-paths", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ forcedPaths: commonPaths }),
-        credentials: "include"
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.configuredPaths.length > 0) {
-          setConfig(prev => prev ? { ...prev, roots: data.configuredPaths } : null);
-          toast({
-            title: "✅ Riconfigurazione completata",
-            description: `Configurati ${data.configuredPaths.length} percorsi Google Drive standard.`,
-            duration: 6000,
-          });
-        } else {
-          toast({
-            title: "⚠️ Riconfigurazione parziale",
-            description: "Alcuni percorsi potrebbero non essere stati configurati. Verifica manualmente.",
-            variant: "destructive",
-          });
-        }
+      const response = await apiRequest("POST", "/api/local-opener/reconfigure-paths", { forcedPaths: commonPaths });
+      const data = await response.json();
+      
+      if (data.success && data.configuredPaths.length > 0) {
+        setConfig(prev => prev ? { ...prev, roots: data.configuredPaths } : null);
+        toast({
+          title: "✅ Riconfigurazione completata",
+          description: `Configurati ${data.configuredPaths.length} percorsi Google Drive standard.`,
+          duration: 6000,
+        });
       } else {
-        throw new Error("Errore nella riconfigurazione");
+        toast({
+          title: "⚠️ Riconfigurazione parziale",
+          description: "Alcuni percorsi potrebbero non essere stati configurati. Verifica manualmente.",
+          variant: "destructive",
+        });
       }
     } catch (err: any) {
       toast({
