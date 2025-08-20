@@ -1,14 +1,19 @@
 # Script PowerShell per installare automaticamente Local Opener come servizio
 # Richiede automaticamente privilegi amministratore
 
-# Controllo se già eseguito come amministratore
-if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-    Write-Host "🔒 Richiesta privilegi Amministratore..." -ForegroundColor Yellow
-    Start-Process PowerShell -Verb runAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
+# Controllo se gia eseguito come amministratore
+$currentPrincipal = [Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
+$adminRole = [Security.Principal.WindowsBuiltInRole] "Administrator"
+$isAdmin = $currentPrincipal.IsInRole($adminRole)
+
+if (-NOT $isAdmin) {
+    Write-Host "Richiesta privilegi Amministratore..." -ForegroundColor Yellow
+    $scriptPath = $MyInvocation.MyCommand.Definition
+    Start-Process PowerShell -Verb runAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`""
     exit
 }
 
-Write-Host "🚀 INSTALLAZIONE CRUSCOTTO LOCAL OPENER - AVVIO AUTOMATICO" -ForegroundColor Green
+Write-Host "INSTALLAZIONE CRUSCOTTO LOCAL OPENER - AVVIO AUTOMATICO" -ForegroundColor Green
 Write-Host "====================================================================" -ForegroundColor Green
 Write-Host ""
 
@@ -19,24 +24,24 @@ $NssmPath = Join-Path $ScriptDir "nssm.exe"
 
 # Verifica file necessari
 if (-not (Test-Path $ExePath)) {
-    Write-Host "❌ ERRORE: local-opener.exe non trovato!" -ForegroundColor Red
+    Write-Host "ERRORE: local-opener.exe non trovato!" -ForegroundColor Red
     Read-Host "Premi Invio per uscire"
     exit 1
 }
 
 if (-not (Test-Path $NssmPath)) {
-    Write-Host "❌ ERRORE: nssm.exe non trovato!" -ForegroundColor Red
+    Write-Host "ERRORE: nssm.exe non trovato!" -ForegroundColor Red
     Read-Host "Premi Invio per uscire"
     exit 1
 }
 
 $ServiceName = "CruscottoLocalOpener"
 
-Write-Host "🛑 Arresto servizio esistente (se presente)..." -ForegroundColor Cyan
+Write-Host "Arresto servizio esistente (se presente)..." -ForegroundColor Cyan
 & $NssmPath stop $ServiceName 2>$null
 & $NssmPath remove $ServiceName confirm 2>$null
 
-Write-Host "🔧 Installazione servizio con configurazione avanzata..." -ForegroundColor Cyan
+Write-Host "Installazione servizio con configurazione avanzata..." -ForegroundColor Cyan
 & $NssmPath install $ServiceName $ExePath
 & $NssmPath set $ServiceName AppDirectory $ScriptDir
 & $NssmPath set $ServiceName DisplayName "Cruscotto Local Opener Service"
@@ -97,12 +102,27 @@ if ($ServiceStatus -and $ServiceStatus.Status -eq "Paused") {
 
 if ($ServiceStatus -and $ServiceStatus.Status -eq "Running") {
     Write-Host "SUCCESSO! Servizio installato e avviato correttamente" -ForegroundColor Green
-    Write-Host "Il Local Opener si avviera automaticamente ad ogni accensione del PC" -ForegroundColor Green
+    Write-Host "Il Local Opener si avviera automaticamente ad ogni accensione del PC" -ForegroundColor Greengit 
     
     # Test connessione
     try {
         $Response = Invoke-WebRequest -Uri "http://127.0.0.1:17654/health" -TimeoutSec 5 -UseBasicParsing
         Write-Host "Test connessione HTTP riuscito!" -ForegroundColor Green
+        
+        # Prova a leggere la risposta per vedere le cartelle trovate
+        try {
+            $HealthData = $Response.Content | ConvertFrom-Json
+            if ($HealthData.roots -and $HealthData.roots.Count -gt 0) {
+                Write-Host "Cartelle Google Drive trovate automaticamente: $($HealthData.roots.Count)" -ForegroundColor Green
+                foreach ($root in $HealthData.roots) {
+                    Write-Host "  - $root" -ForegroundColor White
+                }
+            } else {
+                Write-Host "Nessuna cartella trovata automaticamente - puoi aggiungerle manualmente dal frontend" -ForegroundColor Yellow
+            }
+        } catch {
+            Write-Host "Servizio attivo, configurazione percorsi disponibile dal frontend" -ForegroundColor Yellow
+        }
     } catch {
         Write-Host "Servizio avviato ma connessione HTTP non ancora pronta" -ForegroundColor Yellow
         Write-Host "Attendi qualche secondo e riprova" -ForegroundColor Yellow
