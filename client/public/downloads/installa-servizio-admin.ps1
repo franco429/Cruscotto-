@@ -2,8 +2,7 @@
 # Richiede automaticamente privilegi amministratore
 
 # Controllo se già eseguito come amministratore
-if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))
-{
+if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
     Write-Host "🔒 Richiesta privilegi Amministratore..." -ForegroundColor Yellow
     Start-Process PowerShell -Verb runAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
     exit
@@ -46,7 +45,6 @@ Write-Host "🔧 Installazione servizio con configurazione avanzata..." -Foregro
 Write-Host "Configurazione avvio automatico..." -ForegroundColor Cyan
 & $NssmPath set $ServiceName Start SERVICE_AUTO_START
 & $NssmPath set $ServiceName Type SERVICE_WIN32_OWN_PROCESS
-# DelayedAutoStart rimosso - parametro non valido per NSSM
 
 Write-Host "Configurazione resilienza e restart automatico..." -ForegroundColor Cyan
 & $NssmPath set $ServiceName AppExit Default Restart
@@ -122,7 +120,7 @@ if ($ServiceStatus -and $ServiceStatus.Status -eq "Running") {
     Write-Host "1. Riavvia il PC completamente" -ForegroundColor White
     Write-Host "2. Esegui come amministratore: sc start $ServiceName" -ForegroundColor White  
     Write-Host "3. Controlla i log in: $LogDir\service-error.log" -ForegroundColor White
-    Write-Host "4. Esegui diagnostica-servizio.bat per troubleshooting avanzato" -ForegroundColor White
+    Write-Host "4. Esegui diagnostica-servizio-avanzata.bat per troubleshooting avanzato" -ForegroundColor White
     Write-Host "5. Se il problema persiste, reinstalla con privilegi amministratore completi" -ForegroundColor White
 }
 
@@ -132,36 +130,9 @@ Write-Host "====================" -ForegroundColor Magenta
 Write-Host "URL servizio: http://127.0.0.1:17654" -ForegroundColor White
 Write-Host "Log servizio: $LogDir\service.log" -ForegroundColor White
 Write-Host "Manager servizi: services.msc" -ForegroundColor White
-Write-Host "Diagnostica: diagnostica-servizio.bat" -ForegroundColor White
+Write-Host "Diagnostica: diagnostica-servizio-avanzata.bat" -ForegroundColor White
 Write-Host ""
 
-Write-Host ""
-Write-Host "Rilevazione automatica percorsi Google Drive..." -ForegroundColor Cyan
-
-# Esegui rilevazione automatica percorsi Google Drive
-$AutoDetectScript = Join-Path $ScriptDir "auto-detect-google-drive.ps1"
-if (Test-Path $AutoDetectScript) {
-    try {
-        $DetectionResult = & $AutoDetectScript -Silent -ConfigureService
-        if ($DetectionResult -and $DetectionResult.Success -and $DetectionResult.Count -gt 0) {
-            Write-Host "Rilevati automaticamente $($DetectionResult.Count) percorsi Google Drive!" -ForegroundColor Green
-            Write-Host "Percorsi configurati:" -ForegroundColor White
-            foreach ($Path in $DetectionResult.ValidPaths) {
-                Write-Host "   $Path" -ForegroundColor Gray
-            }
-        } else {
-            Write-Host "Nessun percorso Google Drive rilevato automaticamente" -ForegroundColor Yellow
-            Write-Host "Configura manualmente i percorsi dall'interfaccia web" -ForegroundColor Cyan
-        }
-    } catch {
-        Write-Host "Rilevazione automatica non riuscita, configurazione manuale necessaria" -ForegroundColor Yellow
-    }
-} else {
-    Write-Host "Script di rilevazione automatica non trovato" -ForegroundColor Yellow
-    Write-Host "Scarica la versione aggiornata del Local Opener" -ForegroundColor Cyan
-}
-
-Write-Host ""
 Write-Host "INSTALLAZIONE COMPLETATA!" -ForegroundColor Green
 Write-Host ""
 Write-Host "PROSSIMI PASSI:" -ForegroundColor Magenta
