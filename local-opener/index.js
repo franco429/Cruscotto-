@@ -249,6 +249,9 @@ app.get("/", (_req, res) => {
         <ul>
           <li><a href="/health">/health</a> - Stato del servizio</li>
           <li><a href="/config">/config</a> - Configurazione cartelle</li>
+          <li><strong>POST /auto-detect-paths</strong> - Rilevazione automatica Google Drive</li>
+          <li><strong>POST /reconfigure-paths</strong> - Riconfigurazione forzata percorsi</li>
+          <li><strong>POST /open</strong> - Apertura documenti locali</li>
         </ul>
         <p>Versione: 1.0.0</p>
       </body>
@@ -570,6 +573,109 @@ app.delete("/config", (req, res) => {
   CONFIG.roots = CONFIG.roots.filter((r) => r !== path.resolve(root));
   writeConfig(CONFIG);
   res.json({ roots: CONFIG.roots });
+});
+
+// Endpoint per rilevazione automatica percorsi Google Drive
+app.post("/auto-detect-paths", (_req, res) => {
+  try {
+    console.log(`[local-opener] 🔍 Richiesta rilevazione automatica percorsi...`);
+    
+    // Riesegui auto-discovery
+    const detectedPaths = discoverDefaultRoots();
+    
+    // Aggiorna configurazione
+    CONFIG.roots = detectedPaths;
+    writeConfig(CONFIG);
+    
+    console.log(`[local-opener] ✅ Rilevazione completata: ${detectedPaths.length} percorsi trovati`);
+    detectedPaths.forEach(path => console.log(`[local-opener]   - ${path}`));
+    
+    // Registra evento telemetria
+    telemetry.recordConfigurationChange('auto_detect_paths', { 
+      detectedPathsCount: detectedPaths.length,
+      paths: detectedPaths 
+    });
+    
+    res.json({
+      success: true,
+      detectedPaths: detectedPaths,
+      configuredPaths: detectedPaths, // I percorsi sono già configurati automaticamente
+      message: `Rilevati automaticamente ${detectedPaths.length} percorsi Google Drive`
+    });
+    
+  } catch (error) {
+    console.error(`[local-opener] ❌ Errore rilevazione automatica:`, error);
+    telemetry.recordError('auto_detect_paths_failed', error);
+    
+    res.status(500).json({
+      success: false,
+      detectedPaths: [],
+      configuredPaths: CONFIG.roots || [],
+      message: `Errore durante rilevazione automatica: ${error.message}`
+    });
+  }
+});
+
+// Endpoint per riconfigurazione forzata percorsi
+app.post("/reconfigure-paths", (req, res) => {
+  try {
+    const { forcedPaths } = req.body || {};
+    console.log(`[local-opener] 🔧 Richiesta riconfigurazione percorsi forzata...`);
+    
+    let configuredPaths = [];
+    
+    if (Array.isArray(forcedPaths) && forcedPaths.length > 0) {
+      // Verifica percorsi forzati
+      for (const forcedPath of forcedPaths) {
+        try {
+          if (fs.existsSync(forcedPath) && fs.statSync(forcedPath).isDirectory()) {
+            configuredPaths.push(path.resolve(forcedPath));
+            console.log(`[local-opener] ✅ Percorso forzato valido: ${forcedPath}`);
+          } else {
+            console.log(`[local-opener] ⚠️ Percorso forzato non valido: ${forcedPath}`);
+          }
+        } catch (err) {
+          console.log(`[local-opener] ❌ Errore verifica percorso: ${forcedPath}`);
+        }
+      }
+    }
+    
+    // Se nessun percorso forzato valido, esegui auto-discovery
+    if (configuredPaths.length === 0) {
+      console.log(`[local-opener] 🔍 Nessun percorso forzato valido, eseguo auto-discovery...`);
+      configuredPaths = discoverDefaultRoots();
+    }
+    
+    // Aggiorna configurazione
+    CONFIG.roots = configuredPaths;
+    writeConfig(CONFIG);
+    
+    console.log(`[local-opener] ✅ Riconfigurazione completata: ${configuredPaths.length} percorsi configurati`);
+    configuredPaths.forEach(path => console.log(`[local-opener]   - ${path}`));
+    
+    // Registra evento telemetria
+    telemetry.recordConfigurationChange('reconfigure_paths', { 
+      configuredPathsCount: configuredPaths.length,
+      paths: configuredPaths,
+      hadForcedPaths: Array.isArray(forcedPaths) && forcedPaths.length > 0
+    });
+    
+    res.json({
+      success: true,
+      configuredPaths: configuredPaths,
+      message: `Configurati ${configuredPaths.length} percorsi Google Drive`
+    });
+    
+  } catch (error) {
+    console.error(`[local-opener] ❌ Errore riconfigurazione:`, error);
+    telemetry.recordError('reconfigure_paths_failed', error);
+    
+    res.status(500).json({
+      success: false,
+      configuredPaths: CONFIG.roots || [],
+      message: `Errore durante riconfigurazione: ${error.message}`
+    });
+  }
 });
 
 app.post("/open", (req, res) => {
