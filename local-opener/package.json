@@ -26,7 +26,9 @@
     "build:portable-zip": "npm run build:universal && node create-portable-zip.js",
     "build:installer": "npm run build:universal && node check-inno-setup.js",
     "build:installer-force": "npm run build:universal && cd installer && iscc setup.iss",
-    "build:all": "npm run build:compatible"
+    "build:all": "npm run build:compatible",
+    "build:aggiornato": "node create-portable-aggiornato.js",
+    "build:aggiornato-full": "npm run build:portable && node create-portable-aggiornato.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -36,7 +38,3 @@
     "pkg": "^5.8.1"
   }
 }
-
-
-
-
