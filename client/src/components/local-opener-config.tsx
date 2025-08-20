@@ -24,6 +24,9 @@ import {
   RefreshCw,
   Folder,
   ExternalLink,
+  Wrench,
+  Activity,
+  AlertTriangle,
 } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { apiRequest } from "../lib/queryClient";
@@ -320,15 +323,35 @@ export default function LocalOpenerConfig() {
 
             <div className="flex flex-wrap gap-2">
               {!status.isRunning && (
-                <Button asChild variant="default">
-                  <a
-                    href="/downloads/cruscotto-local-opener-portable-AGGIORNATO.zip"
-                    download="cruscotto-local-opener-portable-AGGIORNATO.zip"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Scarica Local Opener (Avvio Automatico)
-                  </a>
-                </Button>
+                <>
+                  <Button asChild variant="default">
+                    <a
+                      href="/downloads/cruscotto-local-opener-portable-AGGIORNATO.zip"
+                      download="cruscotto-local-opener-portable-AGGIORNATO.zip"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Scarica Local Opener (Avvio Automatico)
+                    </a>
+                  </Button>
+                  <Button asChild variant="outline">
+                    <a
+                      href="/downloads/diagnostica-servizio-avanzata.bat"
+                      download="diagnostica-servizio-avanzata.bat"
+                    >
+                      <Activity className="h-4 w-4 mr-2" />
+                      Script Diagnostica
+                    </a>
+                  </Button>
+                  <Button asChild variant="outline">
+                    <a
+                      href="/downloads/ripara-servizio-automatico.bat"
+                      download="ripara-servizio-automatico.bat"
+                    >
+                      <Wrench className="h-4 w-4 mr-2" />
+                      Script Riparazione
+                    </a>
+                  </Button>
+                </>
               )}
               <Button
                 variant="outline"
@@ -342,6 +365,43 @@ export default function LocalOpenerConfig() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Troubleshooting Alert */}
+      {!status.isRunning && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Servizio Local Opener non disponibile</AlertTitle>
+          <AlertDescription className="space-y-3">
+            <p>Il servizio non è attivo. Questo può essere causato da:</p>
+            <ul className="list-disc list-inside space-y-1 text-sm">
+              <li>Servizio Windows non installato o arrestato</li>
+              <li>Configurazione NSSM non corretta (problema DelayedAutoStart risolto)</li>
+              <li>Interferenza antivirus o firewall</li>
+              <li>Conflitti di porta (17654 già in uso)</li>
+            </ul>
+            <div className="flex flex-wrap gap-2 mt-3">
+              <Button asChild size="sm" variant="outline">
+                <a
+                  href="/downloads/diagnostica-servizio-avanzata.bat"
+                  download="diagnostica-servizio-avanzata.bat"
+                >
+                  <Activity className="h-4 w-4 mr-2" />
+                  Diagnostica Completa
+                </a>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <a
+                  href="/downloads/ripara-servizio-automatico.bat"
+                  download="ripara-servizio-automatico.bat"
+                >
+                  <Wrench className="h-4 w-4 mr-2" />
+                  Riparazione Automatica
+                </a>
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Configuration Card */}
       {status.isRunning && config && (
@@ -480,10 +540,11 @@ export default function LocalOpenerConfig() {
             <div>
               <p className="font-medium">🔧 Risoluzione problemi</p>
               <div className="ml-4 space-y-1 text-muted-foreground">
-                <p>• Usa "diagnostica-servizio.bat" incluso nell'archivio per verificare lo stato</p>
-                <p>• Esegui sempre "installa-servizio.bat" come Amministratore</p>
-                <p>• Se antivirus blocca: aggiungi eccezione o disabilita temporaneamente</p>
-                <p>• Riavvia il PC se il servizio non si avvia automaticamente</p>
+                <p><strong>📊 Diagnostica avanzata:</strong> Scarica e esegui "diagnostica-servizio-avanzata.bat" per un'analisi completa del sistema</p>
+                <p><strong>🛠️ Riparazione automatica:</strong> Se il servizio non funziona, usa "ripara-servizio-automatico.bat" per reinstallazione completa</p>
+                <p><strong>⚡ Avvio manuale:</strong> Se il servizio è in stato PAUSED, riavvia il PC o esegui: <code>sc start CruscottoLocalOpener</code></p>
+                <p><strong>🛡️ Antivirus:</strong> Aggiungi eccezione per la cartella Local Opener in Windows Defender/Antivirus</p>
+                <p><strong>🔐 Privilegi:</strong> Esegui sempre gli script come Amministratore (click destro → "Esegui come amministratore")</p>
               </div>
             </div>
           </div>

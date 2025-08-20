@@ -46,17 +46,18 @@ Write-Host "🔧 Installazione servizio con configurazione avanzata..." -Foregro
 Write-Host "Configurazione avvio automatico..." -ForegroundColor Cyan
 & $NssmPath set $ServiceName Start SERVICE_AUTO_START
 & $NssmPath set $ServiceName Type SERVICE_WIN32_OWN_PROCESS
-& $NssmPath set $ServiceName DelayedAutoStart 0
+# DelayedAutoStart rimosso - parametro non valido per NSSM
 
 Write-Host "Configurazione resilienza e restart automatico..." -ForegroundColor Cyan
 & $NssmPath set $ServiceName AppExit Default Restart
 & $NssmPath set $ServiceName AppRestartDelay 5000
 & $NssmPath set $ServiceName AppThrottle 3000
+& $NssmPath set $ServiceName AppStopMethodSkip 0
 & $NssmPath set $ServiceName AppStopMethodConsole 10000
 & $NssmPath set $ServiceName AppStopMethodWindow 5000
 & $NssmPath set $ServiceName AppStopMethodThreads 3000
 
-Write-Host "Configurazione persistenza servizio..." -ForegroundColor Cyan
+Write-Host "Configurazione migliorata per stabilita..." -ForegroundColor Cyan
 & $NssmPath set $ServiceName AppNoConsole 1
 & $NssmPath set $ServiceName AppAffinity All
 & $NssmPath set $ServiceName AppPriority NORMAL_PRIORITY_CLASS
@@ -80,11 +81,21 @@ Write-Host "Avvio servizio..." -ForegroundColor Cyan
 & $NssmPath start $ServiceName
 
 Write-Host ""
-Write-Host "Attendo 5 secondi per verifica avvio..." -ForegroundColor Yellow
-Start-Sleep -Seconds 5
+Write-Host "Attendo 10 secondi per verifica avvio..." -ForegroundColor Yellow
+Start-Sleep -Seconds 10
 
 Write-Host "Verifica stato servizio..." -ForegroundColor Cyan
 $ServiceStatus = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+
+# Controlla se il servizio e' in stato PAUSED e tenta di riavviarlo
+if ($ServiceStatus -and $ServiceStatus.Status -eq "Paused") {
+    Write-Host "Servizio in stato PAUSED - tentativo riavvio forzato..." -ForegroundColor Yellow
+    & $NssmPath stop $ServiceName
+    Start-Sleep -Seconds 3
+    & $NssmPath start $ServiceName
+    Start-Sleep -Seconds 10
+    $ServiceStatus = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+}
 
 if ($ServiceStatus -and $ServiceStatus.Status -eq "Running") {
     Write-Host "SUCCESSO! Servizio installato e avviato correttamente" -ForegroundColor Green
@@ -99,8 +110,20 @@ if ($ServiceStatus -and $ServiceStatus.Status -eq "Running") {
         Write-Host "Attendi qualche secondo e riprova" -ForegroundColor Yellow
     }
 } else {
-    Write-Host "Servizio installato ma potrebbe non essere avviato" -ForegroundColor Yellow
-    Write-Host "Riavvia il PC o esegui: sc start $ServiceName" -ForegroundColor Yellow
+    Write-Host "PROBLEMA: Servizio non avviato correttamente!" -ForegroundColor Red
+    if ($ServiceStatus) {
+        Write-Host "Stato attuale servizio: $($ServiceStatus.Status)" -ForegroundColor Yellow
+    } else {
+        Write-Host "Servizio non trovato nel sistema!" -ForegroundColor Red
+    }
+    
+    Write-Host ""
+    Write-Host "SOLUZIONI SUGGERITE:" -ForegroundColor Magenta
+    Write-Host "1. Riavvia il PC completamente" -ForegroundColor White
+    Write-Host "2. Esegui come amministratore: sc start $ServiceName" -ForegroundColor White  
+    Write-Host "3. Controlla i log in: $LogDir\service-error.log" -ForegroundColor White
+    Write-Host "4. Esegui diagnostica-servizio.bat per troubleshooting avanzato" -ForegroundColor White
+    Write-Host "5. Se il problema persiste, reinstalla con privilegi amministratore completi" -ForegroundColor White
 }
 
 Write-Host ""

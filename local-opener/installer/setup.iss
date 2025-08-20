@@ -89,7 +89,7 @@ Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} Description ""Serv
 ; STEP 3: Configurazione CRITICA per avvio automatico
 Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} Start SERVICE_AUTO_START"; Flags: runhidden; StatusMsg: "Configurazione avvio automatico..."
 Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} Type SERVICE_WIN32_OWN_PROCESS"; Flags: runhidden
-Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} DelayedAutoStart 1"; Flags: runhidden
+; DelayedAutoStart rimosso - parametro non valido per NSSM
 
 ; STEP 4: Configurazione restart automatico e resilienza
 Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppExit Default Restart"; Flags: runhidden
