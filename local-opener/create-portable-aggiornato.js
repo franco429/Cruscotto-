@@ -19,6 +19,7 @@ const extraFiles = [
   'DISINSTALLA-LOCAL-OPENER.bat',
   'DISINSTALLA-SEMPLICE.bat',
   'disinstalla-servizio-admin.ps1',
+  'FERMA-E-DISINSTALLA-SERVIZIO.bat',
   'INSTALLA-COME-AMMINISTRATORE.bat',
   'installa-servizio-admin.ps1',
   'rimuovi-servizio-forzato.bat',
