@@ -114,6 +114,7 @@ if ($UseNodeJs) {
 Write-Host "Configurazione avvio automatico..." -ForegroundColor Cyan
 & $NssmPath set $ServiceName Start SERVICE_AUTO_START
 & $NssmPath set $ServiceName Type SERVICE_WIN32_OWN_PROCESS
+& $NssmPath set $ServiceName DelayedAutoStart 1
 
 Write-Host "Configurazione resilienza e restart automatico..." -ForegroundColor Cyan
 & $NssmPath set $ServiceName AppExit Default Restart
@@ -133,7 +134,8 @@ Write-Host "Configurazione sicurezza..." -ForegroundColor Cyan
 & $NssmPath set $ServiceName ObjectName LocalSystem
 
 Write-Host "Configurazione logging..." -ForegroundColor Cyan
-$LogDir = "$env:APPDATA\.local-opener"
+# Usa ProgramData per log accessibili dal servizio (LocalSystem)
+$LogDir = Join-Path $env:ProgramData "CruscottoLocalOpener"
 New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
 & $NssmPath set $ServiceName AppStdout "$LogDir\service.log"
 & $NssmPath set $ServiceName AppStderr "$LogDir\service-error.log"
