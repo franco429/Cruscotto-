@@ -1,0 +1,22 @@
+{
+  "roots": [
+    "G:\\Il mio Drive",
+    "H:\\Il mio Drive", 
+    "C:\\Users\\NomeUtente\\Google Drive",
+    "C:\\Users\\NomeUtente\\Documents\\Google Drive"
+  ],
+  "_commenti": {
+    "roots": "Array di percorsi dove cercare i documenti. Configurato automaticamente dal servizio.",
+    "esempi_percorsi": [
+      "Per Google Drive Desktop: G:\\Il mio Drive, H:\\My Drive",
+      "Per Google Drive Backup & Sync: C:\\Users\\Username\\Google Drive",
+      "Per cartelle manuali: qualsiasi percorso valido di Windows"
+    ],
+    "note": [
+      "Il servizio aggiorna automaticamente questo file al primo avvio",
+      "È possibile aggiungere percorsi manualmente qui o tramite API",
+      "Tutti i percorsi devono essere assoluti e esistenti",
+      "Il servizio verifica automaticamente l'accessibilità dei percorsi"
+    ]
+  }
+}

@@ -9,65 +9,65 @@ $Port = 17654
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 
 # 1. Verifica stato servizio
-Write-Host "1️⃣ VERIFICA STATO SERVIZIO" -ForegroundColor Yellow
+Write-Host "1. VERIFICA STATO SERVIZIO" -ForegroundColor Yellow
 Write-Host "==============================" -ForegroundColor Yellow
 $Service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 
 if ($Service) {
-    Write-Host "✅ Servizio trovato nel sistema" -ForegroundColor Green
+    Write-Host "OK Servizio trovato nel sistema" -ForegroundColor Green
     Write-Host "   Nome: $($Service.Name)" -ForegroundColor White
     Write-Host "   Stato: $($Service.Status)" -ForegroundColor White
     Write-Host "   Tipo avvio: $($Service.StartType)" -ForegroundColor White
     
     if ($Service.Status -eq "Running") {
-        Write-Host "✅ Servizio in esecuzione" -ForegroundColor Green
+        Write-Host "OK Servizio in esecuzione" -ForegroundColor Green
     } else {
-        Write-Host "⚠️ Servizio NON in esecuzione" -ForegroundColor Yellow
+        Write-Host "ATTENZIONE Servizio NON in esecuzione" -ForegroundColor Yellow
     }
 } else {
-    Write-Host "❌ Servizio NON trovato nel sistema" -ForegroundColor Red
+    Write-Host "ERRORE Servizio NON trovato nel sistema" -ForegroundColor Red
 }
 
 Write-Host ""
 
 # 2. Verifica processi
-Write-Host "2️⃣ VERIFICA PROCESSI" -ForegroundColor Yellow
+Write-Host "2. VERIFICA PROCESSI" -ForegroundColor Yellow
 Write-Host "=====================" -ForegroundColor Yellow
 $Processes = Get-Process -Name "*local-opener*", "*node*" -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like "*local-opener*" -or ($_.ProcessName -eq "node" -and $_.CommandLine -like "*index.js*") }
 
 if ($Processes) {
-    Write-Host "✅ Processi Local Opener trovati:" -ForegroundColor Green
+    Write-Host "OK Processi Local Opener trovati:" -ForegroundColor Green
     foreach ($proc in $Processes) {
         Write-Host "   PID: $($proc.Id) | Nome: $($proc.ProcessName) | Memoria: $([math]::Round($proc.WorkingSet64/1MB, 2)) MB" -ForegroundColor White
     }
 } else {
-    Write-Host "❌ Nessun processo Local Opener in esecuzione" -ForegroundColor Red
+    Write-Host "ERRORE Nessun processo Local Opener in esecuzione" -ForegroundColor Red
 }
 
 Write-Host ""
 
 # 3. Verifica porta
-Write-Host "3️⃣ VERIFICA PORTA $Port" -ForegroundColor Yellow
+Write-Host "3. VERIFICA PORTA $Port" -ForegroundColor Yellow
 Write-Host "==========================" -ForegroundColor Yellow
 try {
     $Connection = Test-NetConnection -ComputerName "127.0.0.1" -Port $Port -WarningAction SilentlyContinue
     if ($Connection.TcpTestSucceeded) {
-        Write-Host "✅ Porta $Port accessibile" -ForegroundColor Green
+        Write-Host "OK Porta $Port accessibile" -ForegroundColor Green
     } else {
-        Write-Host "❌ Porta $Port NON accessibile" -ForegroundColor Red
+        Write-Host "ERRORE Porta $Port NON accessibile" -ForegroundColor Red
     }
 } catch {
-    Write-Host "❌ Errore test porta: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "ERRORE test porta: $($_.Exception.Message)" -ForegroundColor Red
 }
 
 Write-Host ""
 
 # 4. Test connessione HTTP
-Write-Host "4️⃣ TEST CONNESSIONE HTTP" -ForegroundColor Yellow
+Write-Host "4. TEST CONNESSIONE HTTP" -ForegroundColor Yellow
 Write-Host "=========================" -ForegroundColor Yellow
 try {
     $Response = Invoke-WebRequest -Uri "http://127.0.0.1:$Port/health" -TimeoutSec 10 -UseBasicParsing
-    Write-Host "✅ Connessione HTTP riuscita" -ForegroundColor Green
+    Write-Host "OK Connessione HTTP riuscita" -ForegroundColor Green
     Write-Host "   Status Code: $($Response.StatusCode)" -ForegroundColor White
     
     try {
@@ -76,16 +76,16 @@ try {
         Write-Host "   Percorsi configurati: $($HealthData.roots.Count)" -ForegroundColor White
         Write-Host "   Google Drive rilevato: $($HealthData.googleDriveDetected)" -ForegroundColor White
     } catch {
-        Write-Host "⚠️ Risposta ricevuta ma formato non JSON" -ForegroundColor Yellow
+        Write-Host "ATTENZIONE Risposta ricevuta ma formato non JSON" -ForegroundColor Yellow
     }
 } catch {
-    Write-Host "❌ Connessione HTTP fallita: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "ERRORE Connessione HTTP fallita: $($_.Exception.Message)" -ForegroundColor Red
 }
 
 Write-Host ""
 
 # 5. Verifica file di sistema
-Write-Host "5️⃣ VERIFICA FILE DI SISTEMA" -ForegroundColor Yellow
+Write-Host "5. VERIFICA FILE DI SISTEMA" -ForegroundColor Yellow
 Write-Host "============================" -ForegroundColor Yellow
 $FilesToCheck = @(
     @{ Path = (Join-Path $ScriptDir "index.js"); Name = "Script Node.js" },
@@ -97,23 +97,23 @@ $FilesToCheck = @(
 foreach ($file in $FilesToCheck) {
     if (Test-Path $file.Path) {
         $fileInfo = Get-Item $file.Path
-        Write-Host "✅ $($file.Name): trovato ($([math]::Round($fileInfo.Length/1KB, 2)) KB)" -ForegroundColor Green
+        Write-Host "OK $($file.Name): trovato ($([math]::Round($fileInfo.Length/1KB, 2)) KB)" -ForegroundColor Green
     } else {
-        Write-Host "❌ $($file.Name): NON trovato" -ForegroundColor Red
+        Write-Host "ERRORE $($file.Name): NON trovato" -ForegroundColor Red
     }
 }
 
 Write-Host ""
 
 # 6. Verifica configurazione
-Write-Host "6️⃣ VERIFICA CONFIGURAZIONE" -ForegroundColor Yellow
+Write-Host "6. VERIFICA CONFIGURAZIONE" -ForegroundColor Yellow
 Write-Host "===========================" -ForegroundColor Yellow
 $ConfigDir = "$env:APPDATA\.local-opener"
 $ConfigFile = Join-Path $ConfigDir "config.json"
 $LogDir = "$env:APPDATA\.local-opener"
 
 if (Test-Path $ConfigFile) {
-    Write-Host "✅ File di configurazione trovato" -ForegroundColor Green
+    Write-Host "OK File di configurazione trovato" -ForegroundColor Green
     try {
         $Config = Get-Content $ConfigFile | ConvertFrom-Json
         Write-Host "   Percorsi configurati: $($Config.roots.Count)" -ForegroundColor White
@@ -121,21 +121,21 @@ if (Test-Path $ConfigFile) {
             Write-Host "   Percorsi:" -ForegroundColor White
             foreach ($root in $Config.roots) {
                 $exists = Test-Path $root
-                $status = if ($exists) { "✅" } else { "❌" }
+                $status = if ($exists) { "OK" } else { "ERRORE" }
                 Write-Host "     $status $root" -ForegroundColor White
             }
         }
     } catch {
-        Write-Host "⚠️ File di configurazione corrotto" -ForegroundColor Yellow
+        Write-Host "ATTENZIONE File di configurazione corrotto" -ForegroundColor Yellow
     }
 } else {
-    Write-Host "⚠️ File di configurazione NON trovato" -ForegroundColor Yellow
+    Write-Host "ATTENZIONE File di configurazione NON trovato" -ForegroundColor Yellow
 }
 
 Write-Host ""
 
 # 7. Verifica log
-Write-Host "7️⃣ VERIFICA LOG" -ForegroundColor Yellow
+Write-Host "7. VERIFICA LOG" -ForegroundColor Yellow
 Write-Host "================" -ForegroundColor Yellow
 $LogFiles = @(
     @{ Path = (Join-Path $LogDir "service.log"); Name = "Log servizio" },

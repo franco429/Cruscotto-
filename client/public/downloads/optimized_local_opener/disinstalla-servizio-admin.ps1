@@ -1,7 +1,7 @@
 # Script PowerShell per disinstallare completamente Local Opener
 # Richiede automaticamente privilegi amministratore
 
-# Controllo se già eseguito come amministratore
+# Controllo se gia eseguito come amministratore
 $currentPrincipal = [Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
 $adminRole = [Security.Principal.WindowsBuiltInRole] "Administrator"
 $isAdmin = $currentPrincipal.IsInRole($adminRole)
@@ -22,10 +22,10 @@ $NssmPath = Join-Path $ScriptDir "nssm.exe"
 $ServiceName = "CruscottoLocalOpener"
 
 if (-not (Test-Path $NssmPath)) {
-    Write-Host "⚠️ AVVISO: nssm.exe non trovato, utilizzo comandi Windows standard" -ForegroundColor Yellow
+    Write-Host "AVVISO: nssm.exe non trovato, utilizzo comandi Windows standard" -ForegroundColor Yellow
 }
 
-Write-Host "🛑 Arresto servizio Local Opener..." -ForegroundColor Yellow
+Write-Host "Arresto servizio Local Opener..." -ForegroundColor Yellow
 if (Test-Path $NssmPath) {
     & $NssmPath stop $ServiceName 2>$null | Out-Null
 } else {
@@ -35,21 +35,21 @@ if (Test-Path $NssmPath) {
 
 Start-Sleep -Seconds 3
 
-Write-Host "🗑️ Rimozione servizio dal sistema..." -ForegroundColor Yellow
+Write-Host "Rimozione servizio dal sistema..." -ForegroundColor Yellow
 if (Test-Path $NssmPath) {
     & $NssmPath remove $ServiceName confirm 2>$null | Out-Null
 } else {
     sc.exe delete $ServiceName 2>$null | Out-Null
 }
 
-Write-Host "🔥 Rimozione regole firewall..." -ForegroundColor Yellow
+Write-Host "Rimozione regole firewall..." -ForegroundColor Yellow
 netsh advfirewall firewall delete rule name="Local Opener" 2>$null | Out-Null
 
-Write-Host "🔍 Verifica rimozione..." -ForegroundColor Cyan
+Write-Host "Verifica rimozione..." -ForegroundColor Cyan
 $ServiceCheck = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 
 if ($ServiceCheck) {
-    Write-Host "⚠️ ATTENZIONE: Il servizio è ancora presente nel sistema" -ForegroundColor Yellow
+    Write-Host "ATTENZIONE: Il servizio e ancora presente nel sistema" -ForegroundColor Yellow
     Write-Host "Tentativo rimozione forzata..." -ForegroundColor Yellow
     
     # Tentativo di rimozione forzata
@@ -59,17 +59,17 @@ if ($ServiceCheck) {
     $ServiceCheck = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
     
     if ($ServiceCheck) {
-        Write-Host "❌ ERRORE: Impossibile rimuovere completamente il servizio" -ForegroundColor Red
+        Write-Host "ERRORE: Impossibile rimuovere completamente il servizio" -ForegroundColor Red
         Write-Host "Potrebbe essere necessario riavviare il PC per completare la rimozione" -ForegroundColor Yellow
     } else {
-        Write-Host "✅ Servizio rimosso con successo dopo tentativo forzato" -ForegroundColor Green
+        Write-Host "Servizio rimosso con successo dopo tentativo forzato" -ForegroundColor Green
     }
 } else {
-    Write-Host "✅ Servizio rimosso con successo" -ForegroundColor Green
+    Write-Host "Servizio rimosso con successo" -ForegroundColor Green
 }
 
 Write-Host ""
-Write-Host "📁 Gestione file di configurazione..." -ForegroundColor Cyan
+Write-Host "Gestione file di configurazione..." -ForegroundColor Cyan
 $ConfigDir = "$env:APPDATA\.local-opener"
 $LogDir = "$env:APPDATA\.local-opener"
 
@@ -101,7 +101,7 @@ $ProcessCheck = Get-Process -Name "local-opener*" -ErrorAction SilentlyContinue
 
 if (-not $FinalServiceCheck -and -not $ProcessCheck) {
     Write-Host "DISINSTALLAZIONE COMPLETATA CON SUCCESSO!" -ForegroundColor Green
-    Write-Host "Il servizio Local Opener è stato rimosso completamente" -ForegroundColor Green
+    Write-Host "Il servizio Local Opener e stato rimosso completamente" -ForegroundColor Green
     Write-Host "Nessun processo Local Opener in esecuzione" -ForegroundColor Green
 } else {
     Write-Host "DISINSTALLAZIONE PARZIALE" -ForegroundColor Yellow
