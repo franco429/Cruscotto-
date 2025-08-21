@@ -80,19 +80,19 @@ if (Test-Path $ConfigDir) {
     if ($RemoveConfig -eq "s" -or $RemoveConfig -eq "S" -or $RemoveConfig -eq "si" -or $RemoveConfig -eq "SI") {
         try {
             Remove-Item -Path $ConfigDir -Recurse -Force
-            Write-Host "✅ File di configurazione rimossi" -ForegroundColor Green
+            Write-Host "OK File di configurazione rimossi" -ForegroundColor Green
         } catch {
-            Write-Host "⚠️ Impossibile rimuovere alcuni file di configurazione: $($_.Exception.Message)" -ForegroundColor Yellow
+            Write-Host "ATTENZIONE: Impossibile rimuovere alcuni file di configurazione: $($_.Exception.Message)" -ForegroundColor Yellow
         }
     } else {
-        Write-Host "ℹ️ File di configurazione mantenuti in: $ConfigDir" -ForegroundColor Cyan
+        Write-Host "INFO: File di configurazione mantenuti in: $ConfigDir" -ForegroundColor Cyan
     }
 } else {
-    Write-Host "ℹ️ Nessun file di configurazione trovato" -ForegroundColor Cyan
+    Write-Host "INFO: Nessun file di configurazione trovato" -ForegroundColor Cyan
 }
 
 Write-Host ""
-Write-Host "📋 RISULTATO DISINSTALLAZIONE:" -ForegroundColor Magenta
+Write-Host "RISULTATO DISINSTALLAZIONE:" -ForegroundColor Magenta
 Write-Host "==============================" -ForegroundColor Magenta
 
 # Verifica finale
@@ -100,11 +100,11 @@ $FinalServiceCheck = Get-Service -Name $ServiceName -ErrorAction SilentlyContinu
 $ProcessCheck = Get-Process -Name "local-opener*" -ErrorAction SilentlyContinue
 
 if (-not $FinalServiceCheck -and -not $ProcessCheck) {
-    Write-Host "✅ DISINSTALLAZIONE COMPLETATA CON SUCCESSO!" -ForegroundColor Green
-    Write-Host "✅ Il servizio Local Opener è stato rimosso completamente" -ForegroundColor Green
-    Write-Host "✅ Nessun processo Local Opener in esecuzione" -ForegroundColor Green
+    Write-Host "DISINSTALLAZIONE COMPLETATA CON SUCCESSO!" -ForegroundColor Green
+    Write-Host "Il servizio Local Opener è stato rimosso completamente" -ForegroundColor Green
+    Write-Host "Nessun processo Local Opener in esecuzione" -ForegroundColor Green
 } else {
-    Write-Host "⚠️ DISINSTALLAZIONE PARZIALE" -ForegroundColor Yellow
+    Write-Host "DISINSTALLAZIONE PARZIALE" -ForegroundColor Yellow
     if ($FinalServiceCheck) {
         Write-Host "- Servizio ancora presente nel sistema" -ForegroundColor Yellow
     }
@@ -112,12 +112,12 @@ if (-not $FinalServiceCheck -and -not $ProcessCheck) {
         Write-Host "- Processi Local Opener ancora in esecuzione" -ForegroundColor Yellow
     }
     Write-Host ""
-    Write-Host "🔧 AZIONI CONSIGLIATE:" -ForegroundColor Magenta
+    Write-Host "AZIONI CONSIGLIATE:" -ForegroundColor Magenta
     Write-Host "1. Riavvia il PC per completare la rimozione" -ForegroundColor White
     Write-Host "2. Controlla manualmente in services.msc" -ForegroundColor White
     Write-Host "3. Termina manualmente i processi local-opener nel Task Manager" -ForegroundColor White
 }
 
 Write-Host ""
-Write-Host "✅ DISINSTALLAZIONE TERMINATA!" -ForegroundColor Green
+Write-Host "DISINSTALLAZIONE TERMINATA!" -ForegroundColor Green
 Read-Host "Premi Invio per uscire"

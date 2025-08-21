@@ -186,7 +186,7 @@ if ($ServiceStatus -and $ServiceStatus.Status -eq "Running") {
     
     # Test connessione con timeout più lungo
     Write-Host ""
-    Write-Host "🔍 Test connessione servizio..." -ForegroundColor Cyan
+    Write-Host "Test connessione servizio..." -ForegroundColor Cyan
     try {
         $Response = Invoke-WebRequest -Uri "http://127.0.0.1:17654/health" -TimeoutSec 30 -UseBasicParsing
         Write-Host "✅ Test connessione HTTP riuscito!" -ForegroundColor Green
@@ -196,23 +196,23 @@ if ($ServiceStatus -and $ServiceStatus.Status -eq "Running") {
             $HealthData = $Response.Content | ConvertFrom-Json
             if ($HealthData.roots -and $HealthData.roots.Count -gt 0) {
                 Write-Host ""
-                Write-Host "📂 CARTELLE GOOGLE DRIVE RILEVATE AUTOMATICAMENTE: $($HealthData.roots.Count)" -ForegroundColor Green
+                Write-Host "CARTELLE GOOGLE DRIVE RILEVATE AUTOMATICAMENTE: $($HealthData.roots.Count)" -ForegroundColor Green
                 foreach ($root in $HealthData.roots) {
                     Write-Host "   ✓ $root" -ForegroundColor White
                 }
             } else {
-                Write-Host "⚠️ Nessuna cartella trovata automaticamente - puoi aggiungerle manualmente dal frontend" -ForegroundColor Yellow
+                Write-Host "ATTENZIONE: Nessuna cartella trovata automaticamente - puoi aggiungerle manualmente dal frontend" -ForegroundColor Yellow
             }
         } catch {
-            Write-Host "ℹ️ Servizio attivo, configurazione percorsi disponibile dal frontend" -ForegroundColor Cyan
+            Write-Host "INFO: Servizio attivo, configurazione percorsi disponibile dal frontend" -ForegroundColor Cyan
         }
     } catch {
-        Write-Host "⚠️ Servizio avviato ma connessione HTTP non ancora pronta" -ForegroundColor Yellow
-        Write-Host "ℹ️ Attendi qualche secondo e riprova su http://127.0.0.1:17654" -ForegroundColor Cyan
+        Write-Host "ATTENZIONE: Servizio avviato ma connessione HTTP non ancora pronta" -ForegroundColor Yellow
+        Write-Host "INFO: Attendi qualche secondo e riprova su http://127.0.0.1:17654" -ForegroundColor Cyan
     }
     
 } else {
-    Write-Host "❌ PROBLEMA: Servizio non avviato correttamente!" -ForegroundColor Red
+    Write-Host "ERRORE: Servizio non avviato correttamente!" -ForegroundColor Red
     if ($ServiceStatus) {
         Write-Host "Stato attuale servizio: $($ServiceStatus.Status)" -ForegroundColor Yellow
     } else {
@@ -220,7 +220,7 @@ if ($ServiceStatus -and $ServiceStatus.Status -eq "Running") {
     }
     
     Write-Host ""
-    Write-Host "🔧 SOLUZIONI SUGGERITE:" -ForegroundColor Magenta
+    Write-Host "SOLUZIONI SUGGERITE:" -ForegroundColor Magenta
     Write-Host "1. Riavvia il PC completamente" -ForegroundColor White
     Write-Host "2. Esegui come amministratore: sc start $ServiceName" -ForegroundColor White  
     Write-Host "3. Controlla i log in: $LogDir\service-error.log" -ForegroundColor White
@@ -229,14 +229,14 @@ if ($ServiceStatus -and $ServiceStatus.Status -eq "Running") {
 }
 
 Write-Host ""
-Write-Host "📋 INFORMAZIONI UTILI:" -ForegroundColor Magenta
+Write-Host "INFORMAZIONI UTILI:" -ForegroundColor Magenta
 Write-Host "================================" -ForegroundColor Magenta
-Write-Host "🌐 URL servizio locale: http://127.0.0.1:17654" -ForegroundColor White
-Write-Host "📁 Log servizio: $LogDir\service.log" -ForegroundColor White
-Write-Host "📁 Log errori: $LogDir\service-error.log" -ForegroundColor White
-Write-Host "⚙️ Manager servizi Windows: services.msc" -ForegroundColor White
-Write-Host "🔧 Diagnostica: diagnostica-servizio.bat" -ForegroundColor White
+Write-Host "URL servizio locale: http://127.0.0.1:17654" -ForegroundColor White
+Write-Host "Log servizio: $LogDir\service.log" -ForegroundColor White
+Write-Host "Log errori: $LogDir\service-error.log" -ForegroundColor White
+Write-Host "Manager servizi Windows: services.msc" -ForegroundColor White
+Write-Host "Diagnostica: diagnostica-servizio.bat" -ForegroundColor White
 Write-Host ""
 
-Write-Host "🎉 INSTALLAZIONE COMPLETATA!" -ForegroundColor Green
+Write-Host "INSTALLAZIONE COMPLETATA!" -ForegroundColor Green
 Read-Host "Premi Invio per uscire"

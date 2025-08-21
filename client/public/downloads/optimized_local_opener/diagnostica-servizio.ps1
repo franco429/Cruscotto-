@@ -145,7 +145,7 @@ $LogFiles = @(
 foreach ($log in $LogFiles) {
     if (Test-Path $log.Path) {
         $logInfo = Get-Item $log.Path
-        Write-Host "✅ $($log.Name): trovato ($([math]::Round($logInfo.Length/1KB, 2)) KB)" -ForegroundColor Green
+        Write-Host "OK $($log.Name): trovato ($([math]::Round($logInfo.Length/1KB, 2)) KB)" -ForegroundColor Green
         
         # Mostra ultime righe del log errori se presente
         if ($log.Name -eq "Log errori" -and $logInfo.Length -gt 0) {
@@ -160,36 +160,36 @@ foreach ($log in $LogFiles) {
             }
         }
     } else {
-        Write-Host "ℹ️ $($log.Name): non presente" -ForegroundColor Cyan
+        Write-Host "INFO $($log.Name): non presente" -ForegroundColor Cyan
     }
 }
 
 Write-Host ""
 
 # 8. Verifica Node.js (se applicabile)
-Write-Host "8️⃣ VERIFICA NODE.JS" -ForegroundColor Yellow
+Write-Host "8. VERIFICA NODE.JS" -ForegroundColor Yellow
 Write-Host "===================" -ForegroundColor Yellow
 try {
     $NodeVersion = & node --version 2>$null
     if ($NodeVersion) {
-        Write-Host "✅ Node.js installato: $NodeVersion" -ForegroundColor Green
+        Write-Host "OK Node.js installato: $NodeVersion" -ForegroundColor Green
     } else {
-        Write-Host "⚠️ Node.js non trovato nel PATH" -ForegroundColor Yellow
+        Write-Host "ATTENZIONE Node.js non trovato nel PATH" -ForegroundColor Yellow
     }
 } catch {
-    Write-Host "⚠️ Node.js non accessibile" -ForegroundColor Yellow
+    Write-Host "ATTENZIONE Node.js non accessibile" -ForegroundColor Yellow
 }
 
 Write-Host ""
 
 # 9. Raccomandazioni
-Write-Host "9️⃣ RACCOMANDAZIONI" -ForegroundColor Yellow
+Write-Host "9. RACCOMANDAZIONI" -ForegroundColor Yellow
 Write-Host "==================" -ForegroundColor Yellow
 
 $hasIssues = $false
 
 if (-not $Service -or $Service.Status -ne "Running") {
-    Write-Host "🔧 PROBLEMA: Servizio non in esecuzione" -ForegroundColor Red
+    Write-Host "PROBLEMA: Servizio non in esecuzione" -ForegroundColor Red
     Write-Host "   Soluzione: Esegui INSTALLA-COME-AMMINISTRATORE.bat" -ForegroundColor White
     $hasIssues = $true
 }
@@ -197,24 +197,24 @@ if (-not $Service -or $Service.Status -ne "Running") {
 try {
     $testConnection = Test-NetConnection -ComputerName "127.0.0.1" -Port $Port -WarningAction SilentlyContinue
     if (-not $testConnection.TcpTestSucceeded) {
-        Write-Host "🔧 PROBLEMA: Porta non accessibile" -ForegroundColor Red
+        Write-Host "PROBLEMA: Porta non accessibile" -ForegroundColor Red
         Write-Host "   Soluzione: Controlla firewall e riavvia servizio" -ForegroundColor White
         $hasIssues = $true
     }
 } catch {}
 
 if (-not (Test-Path $ConfigFile)) {
-    Write-Host "🔧 PROBLEMA: Configurazione mancante" -ForegroundColor Red
+    Write-Host "PROBLEMA: Configurazione mancante" -ForegroundColor Red
     Write-Host "   Soluzione: Riavvia il servizio per ricreare la configurazione" -ForegroundColor White
     $hasIssues = $true
 }
 
 if (-not $hasIssues) {
-    Write-Host "✅ TUTTO OK: Il servizio sembra funzionare correttamente!" -ForegroundColor Green
+    Write-Host "TUTTO OK: Il servizio sembra funzionare correttamente!" -ForegroundColor Green
 }
 
 Write-Host ""
-Write-Host "📋 INFORMAZIONI SISTEMA" -ForegroundColor Magenta
+Write-Host "INFORMAZIONI SISTEMA" -ForegroundColor Magenta
 Write-Host "========================" -ForegroundColor Magenta
 Write-Host "Sistema operativo: $((Get-WmiObject Win32_OperatingSystem).Caption)" -ForegroundColor White
 Write-Host "Architettura: $env:PROCESSOR_ARCHITECTURE" -ForegroundColor White
@@ -223,5 +223,5 @@ Write-Host "Directory servizio: $ScriptDir" -ForegroundColor White
 Write-Host "Directory configurazione: $ConfigDir" -ForegroundColor White
 
 Write-Host ""
-Write-Host "✅ DIAGNOSTICA COMPLETATA!" -ForegroundColor Green
+Write-Host "DIAGNOSTICA COMPLETATA!" -ForegroundColor Green
 Read-Host "Premi Invio per uscire"
