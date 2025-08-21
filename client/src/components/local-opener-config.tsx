@@ -384,11 +384,11 @@ export default function LocalOpenerConfig() {
                 <>
                   <Button asChild variant="default">
                     <a
-                      href="/downloads/cruscotto-local-opener-portable-AGGIORNATO.zip"
-                      download="cruscotto-local-opener-portable-AGGIORNATO.zip"
+                      href="/downloads/cruscotto-local-opener-portable-OTTIMIZZATO.zip"
+                      download="cruscotto-local-opener-portable-OTTIMIZZATO.zip"
                     >
                       <Download className="h-4 w-4 mr-2" />
-                      Scarica Local Opener (Avvio Automatico)
+                      Scarica Local Opener OTTIMIZZATO (Avvio Automatico)
                     </a>
                   </Button>
                   <Button asChild variant="outline">
@@ -550,21 +550,24 @@ export default function LocalOpenerConfig() {
         <CardContent>
           <div className="space-y-3 text-sm">
             <div>
-              <p className="font-medium">1. Scarica e installa Local Opener</p>
+              <p className="font-medium">1. Scarica e installa Local Opener OTTIMIZZATO</p>
               <div className="ml-4 space-y-1 text-muted-foreground">
-                <p><strong>✅ Avvio Automatico:</strong> Si installa come servizio Windows e si avvia automaticamente ad ogni accensione del PC</p>
-                <p><strong>📦 Versione Portable:</strong> Non richiede installazione complessa, funziona subito</p>
-                <p><strong>🔧 Include diagnostica:</strong> Script integrato per risolvere problemi di configurazione</p>
+                <p><strong>✅ Versione Ottimizzata:</strong> Ridotte le dimensioni del 51% per download più veloce</p>
+                <p><strong>🚀 Avvio Automatico:</strong> Si installa come servizio Windows e si avvia automaticamente ad ogni accensione del PC</p>
+                <p><strong>🧠 Rilevamento Intelligente:</strong> Trova automaticamente tutti i percorsi Google Drive</p>
+                <p><strong>📦 Zero Dipendenze:</strong> Pacchetto completo e autonomo, funziona subito</p>
+                <p><strong>🔧 Diagnostica Integrata:</strong> Script avanzati per troubleshooting automatico</p>
               </div>
             </div>
             <Separator />
             <div>
-              <p className="font-medium">2. Procedura di installazione</p>
+              <p className="font-medium">2. Procedura di installazione SEMPLIFICATA</p>
               <div className="ml-4 space-y-1 text-muted-foreground">
-                <p>1. Scarica il file "Local Opener (Avvio Automatico)"</p>
-                <p>2. Estrai l'archivio in una cartella (es. Desktop)</p>
-                <p>3. Esegui "installa-servizio.bat" come Amministratore</p>
-                <p>4. Il servizio si configurerà automaticamente per l'avvio automatico</p>
+                <p>1. Scarica il file "Local Opener OTTIMIZZATO (Avvio Automatico)"</p>
+                <p>2. Estrai l'archivio ZIP in una cartella qualsiasi</p>
+                <p>3. Doppio click su "INSTALLA-COME-AMMINISTRATORE.bat"</p>
+                <p>4. Clicca "Sì" quando richiesto per i privilegi amministratore</p>
+                <p>5. ✅ INSTALLAZIONE AUTOMATICA completata in 30 secondi!</p>
               </div>
             </div>
             <Separator />
