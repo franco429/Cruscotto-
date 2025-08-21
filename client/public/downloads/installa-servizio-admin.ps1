@@ -19,12 +19,58 @@ Write-Host ""
 
 # Percorso della directory corrente dello script
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+$NodeScriptPath = Join-Path $ScriptDir "index.js"
 $ExePath = Join-Path $ScriptDir "local-opener.exe"
 $NssmPath = Join-Path $ScriptDir "nssm.exe"
 
-# Verifica file necessari
-if (-not (Test-Path $ExePath)) {
-    Write-Host "ERRORE: local-opener.exe non trovato!" -ForegroundColor Red
+# Cerca Node.js nel sistema
+$NodePath = $null
+$PossibleNodePaths = @(
+    "node",
+    "C:\Program Files\nodejs\node.exe",
+    "C:\Program Files (x86)\nodejs\node.exe",
+    "$env:PROGRAMFILES\nodejs\node.exe",
+    "${env:PROGRAMFILES(X86)}\nodejs\node.exe",
+    "$env:LOCALAPPDATA\Programs\nodejs\node.exe"
+)
+
+foreach ($TestPath in $PossibleNodePaths) {
+    try {
+        $TestResult = & $TestPath --version 2>$null
+        if ($TestResult -match "v\d+\.\d+\.\d+") {
+            $NodePath = $TestPath
+            Write-Host "Node.js trovato: $NodePath (versione: $TestResult)" -ForegroundColor Green
+            break
+        }
+    } catch {
+        continue
+    }
+}
+
+# Determina quale eseguibile usare (PRIORITA': binario compilato)
+if (Test-Path $ExePath) {
+    Write-Host "MODALITA BINARIA: Usando local-opener.exe compilato (CONSIGLIATO)" -ForegroundColor Green
+    $ServiceExePath = $ExePath
+    $ServiceArgs = ""
+    $UseNodeJs = $false
+} elseif ($NodePath -and (Test-Path $NodeScriptPath) -and (Test-Path (Join-Path $ScriptDir "node_modules"))) {
+    Write-Host "MODALITA NODE.JS: Usando Node.js con dipendenze disponibili" -ForegroundColor Yellow
+    Write-Host "ATTENZIONE: Verifico dipendenze Node.js..." -ForegroundColor Yellow
+    $ServiceExePath = $NodePath
+    $ServiceArgs = "`"$NodeScriptPath`""
+    $UseNodeJs = $true
+} else {
+    Write-Host "ERRORE: Nessun eseguibile utilizzabile trovato!" -ForegroundColor Red
+    Write-Host "- local-opener.exe exists: $(Test-Path $ExePath)" -ForegroundColor Red
+    if ($NodePath) {
+        Write-Host "- Node.js path: $NodePath" -ForegroundColor Red
+        Write-Host "- index.js exists: $(Test-Path $NodeScriptPath)" -ForegroundColor Red  
+        Write-Host "- node_modules exists: $(Test-Path (Join-Path $ScriptDir "node_modules"))" -ForegroundColor Red
+    } else {
+        Write-Host "- Node.js: Non trovato" -ForegroundColor Red
+    }
+    Write-Host "" -ForegroundColor Red
+    Write-Host "SOLUZIONE: Scarica cruscotto-local-opener-setup.exe dal sito" -ForegroundColor White
     Read-Host "Premi Invio per uscire"
     exit 1
 }
@@ -42,10 +88,28 @@ Write-Host "Arresto servizio esistente (se presente)..." -ForegroundColor Cyan
 & $NssmPath remove $ServiceName confirm 2>$null
 
 Write-Host "Installazione servizio con configurazione avanzata..." -ForegroundColor Cyan
-& $NssmPath install $ServiceName $ExePath
+
+if ($UseNodeJs) {
+    Write-Host "Configurazione servizio Node.js con auto-discovery avanzato..." -ForegroundColor Cyan
+    & $NssmPath install $ServiceName $ServiceExePath $ServiceArgs
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "ERRORE durante installazione servizio Node.js!" -ForegroundColor Red
+        Read-Host "Premi Invio per uscire"
+        exit 1
+    }
+} else {
+    Write-Host "Configurazione servizio binario..." -ForegroundColor Yellow
+    & $NssmPath install $ServiceName $ServiceExePath
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "ERRORE durante installazione servizio!" -ForegroundColor Red
+        Read-Host "Premi Invio per uscire"
+        exit 1
+    }
+}
+
 & $NssmPath set $ServiceName AppDirectory $ScriptDir
 & $NssmPath set $ServiceName DisplayName "Cruscotto Local Opener Service"
-& $NssmPath set $ServiceName Description "Servizio per aprire documenti locali da Cruscotto SGI - Avvio automatico all'accensione PC"
+& $NssmPath set $ServiceName Description "Servizio per aprire documenti locali da Pannello SGI - Avvio automatico all accensione PC"
 
 Write-Host "Configurazione avvio automatico..." -ForegroundColor Cyan
 & $NssmPath set $ServiceName Start SERVICE_AUTO_START
@@ -53,12 +117,12 @@ Write-Host "Configurazione avvio automatico..." -ForegroundColor Cyan
 
 Write-Host "Configurazione resilienza e restart automatico..." -ForegroundColor Cyan
 & $NssmPath set $ServiceName AppExit Default Restart
-& $NssmPath set $ServiceName AppRestartDelay 5000
-& $NssmPath set $ServiceName AppThrottle 3000
+& $NssmPath set $ServiceName AppRestartDelay 10000
+& $NssmPath set $ServiceName AppThrottle 5000
 & $NssmPath set $ServiceName AppStopMethodSkip 0
-& $NssmPath set $ServiceName AppStopMethodConsole 10000
+& $NssmPath set $ServiceName AppStopMethodConsole 15000
 & $NssmPath set $ServiceName AppStopMethodWindow 5000
-& $NssmPath set $ServiceName AppStopMethodThreads 3000
+& $NssmPath set $ServiceName AppStopMethodThreads 10000
 
 Write-Host "Configurazione migliorata per stabilita..." -ForegroundColor Cyan
 & $NssmPath set $ServiceName AppNoConsole 1
@@ -102,11 +166,18 @@ if ($ServiceStatus -and $ServiceStatus.Status -eq "Paused") {
 
 if ($ServiceStatus -and $ServiceStatus.Status -eq "Running") {
     Write-Host "SUCCESSO! Servizio installato e avviato correttamente" -ForegroundColor Green
-    Write-Host "Il Local Opener si avviera automaticamente ad ogni accensione del PC" -ForegroundColor Greengit 
+    if ($UseNodeJs) {
+        Write-Host "MODALITA NODE.JS ATTIVA: Auto-discovery avanzato di Google Drive abilitato!" -ForegroundColor Green
+        Write-Host "Il servizio cerchera automaticamente Google Drive in TUTTE le cartelle utente" -ForegroundColor Green
+    } else {
+        Write-Host "MODALITA BINARIA ATTIVA: Auto-discovery Google Drive e apertura documenti ottimizzata!" -ForegroundColor Green
+        Write-Host "Il servizio e stato installato nella modalita piu stabile e performante" -ForegroundColor Green
+    }
+    Write-Host "Il Local Opener si avviera automaticamente ad ogni accensione del PC" -ForegroundColor Green
     
     # Test connessione
     try {
-        $Response = Invoke-WebRequest -Uri "http://127.0.0.1:17654/health" -TimeoutSec 5 -UseBasicParsing
+        $Response = Invoke-WebRequest -Uri "http://127.0.0.1:17654/health" -TimeoutSec 10 -UseBasicParsing
         Write-Host "Test connessione HTTP riuscito!" -ForegroundColor Green
         
         # Prova a leggere la risposta per vedere le cartelle trovate
@@ -125,7 +196,7 @@ if ($ServiceStatus -and $ServiceStatus.Status -eq "Running") {
         }
     } catch {
         Write-Host "Servizio avviato ma connessione HTTP non ancora pronta" -ForegroundColor Yellow
-        Write-Host "Attendi qualche secondo e riprova" -ForegroundColor Yellow
+        Write-Host "Attendi qualche secondo e riprova su http://127.0.0.1:17654" -ForegroundColor Yellow
     }
 } else {
     Write-Host "PROBLEMA: Servizio non avviato correttamente!" -ForegroundColor Red
@@ -140,26 +211,18 @@ if ($ServiceStatus -and $ServiceStatus.Status -eq "Running") {
     Write-Host "1. Riavvia il PC completamente" -ForegroundColor White
     Write-Host "2. Esegui come amministratore: sc start $ServiceName" -ForegroundColor White  
     Write-Host "3. Controlla i log in: $LogDir\service-error.log" -ForegroundColor White
-    Write-Host "4. Esegui diagnostica-servizio-avanzata.bat per troubleshooting avanzato" -ForegroundColor White
+    Write-Host "4. Esegui diagnostica-servizio.bat per troubleshooting avanzato" -ForegroundColor White
     Write-Host "5. Se il problema persiste, reinstalla con privilegi amministratore completi" -ForegroundColor White
 }
 
 Write-Host ""
 Write-Host "STATO INSTALLAZIONE:" -ForegroundColor Magenta
-Write-Host "====================" -ForegroundColor Magenta
+Write-Host "================================" -ForegroundColor Magenta
 Write-Host "URL servizio: http://127.0.0.1:17654" -ForegroundColor White
 Write-Host "Log servizio: $LogDir\service.log" -ForegroundColor White
 Write-Host "Manager servizi: services.msc" -ForegroundColor White
-Write-Host "Diagnostica: diagnostica-servizio-avanzata.bat" -ForegroundColor White
+Write-Host "Diagnostica: diagnostica-servizio.bat" -ForegroundColor White
 Write-Host ""
 
 Write-Host "INSTALLAZIONE COMPLETATA!" -ForegroundColor Green
-Write-Host ""
-Write-Host "PROSSIMI PASSI:" -ForegroundColor Magenta
-Write-Host "===============" -ForegroundColor Magenta
-Write-Host "1. Apri il Cruscotto SGI nel browser" -ForegroundColor White
-Write-Host "2. Vai in Impostazioni - Configurazione Local Opener" -ForegroundColor White
-Write-Host "3. Clicca 'Rileva Automaticamente' se i percorsi non sono gia configurati" -ForegroundColor White
-Write-Host "4. Prova ad aprire un documento per testare il funzionamento" -ForegroundColor White
-Write-Host ""
 Read-Host "Premi Invio per uscire"

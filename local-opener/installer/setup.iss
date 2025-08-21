@@ -3,7 +3,7 @@
 
 #define MyAppName "Cruscotto Local Opener"
 #define MyAppVersion "1.0.0"
-#define MyAppPublisher "Cruscotto SGI"
+#define MyAppPublisher "Pannello SGI"
 #define MyAppURL "https://cruscotto-sgi.onrender.com"
 #define MyAppExeName "local-opener.exe"
 #define MyServiceName "CruscottoLocalOpener"
@@ -84,7 +84,7 @@ Filename: "{app}\nssm.exe"; Parameters: "remove {#MyServiceName} confirm"; Flags
 Filename: "{app}\nssm.exe"; Parameters: "install {#MyServiceName} ""{app}\{#MyAppExeName}"""; Flags: runhidden; StatusMsg: "Installazione servizio Local Opener..."
 Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} AppDirectory ""{app}"""; Flags: runhidden
 Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} DisplayName ""Cruscotto Local Opener Service"""; Flags: runhidden
-Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} Description ""Servizio per aprire documenti locali da Cruscotto SGI - Avvio automatico all'accensione PC"""; Flags: runhidden
+Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} Description ""Servizio per aprire documenti locali da Pannello SGI - Avvio automatico all'accensione PC"""; Flags: runhidden
 
 ; STEP 3: Configurazione CRITICA per avvio automatico
 Filename: "{app}\nssm.exe"; Parameters: "set {#MyServiceName} Start SERVICE_AUTO_START"; Flags: runhidden; StatusMsg: "Configurazione avvio automatico..."

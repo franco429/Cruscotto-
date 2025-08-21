@@ -32,16 +32,71 @@ export function registerLocalOpenerRoutes(app: Express) {
   // Endpoint per rilevazione automatica percorsi Google Drive locale
   app.post('/api/local-opener/auto-detect-paths', async (req: Request, res: Response) => {
     try {
+      // Prima verifica se il servizio Local Opener è raggiungibile
+      let healthCheckResponse;
+      try {
+        healthCheckResponse = await fetch('http://127.0.0.1:17654/health', {
+          method: 'GET',
+          signal: AbortSignal.timeout(3000) // Timeout più breve per health check
+        });
+      } catch (healthError) {
+        logger.error('Local Opener health check failed', { 
+          error: healthError instanceof Error ? healthError.message : String(healthError),
+          clientIP: req.ip
+        });
+        
+        return res.status(503).json({ 
+          success: false,
+          error: 'Servizio Local Opener non disponibile. Assicurati che sia installato e in esecuzione sulla porta 17654.',
+          detailedError: healthError instanceof Error ? healthError.message : String(healthError),
+          detectedPaths: [],
+          configuredPaths: [],
+          troubleshooting: {
+            checkService: 'Verifica che il servizio Windows "CruscottoLocalOpener" sia in esecuzione',
+            checkPort: 'Verifica che la porta 17654 non sia bloccata da firewall',
+            reinstall: 'Prova a reinstallare Local Opener usando gli script di riparazione'
+          }
+        });
+      }
+
+      if (!healthCheckResponse.ok) {
+        logger.warn('Local Opener service unhealthy', { 
+          status: healthCheckResponse.status,
+          statusText: healthCheckResponse.statusText,
+          clientIP: req.ip
+        });
+        
+        return res.status(503).json({ 
+          success: false,
+          error: `Servizio Local Opener non funziona correttamente (Status: ${healthCheckResponse.status})`,
+          detectedPaths: [],
+          configuredPaths: [],
+          troubleshooting: {
+            restartService: 'Riavvia il servizio Windows "CruscottoLocalOpener"',
+            checkLogs: 'Controlla i log del servizio per errori specifici',
+            runDiagnostics: 'Esegui lo script di diagnostica automatica'
+          }
+        });
+      }
+
       // Invoca il servizio locale per la rilevazione automatica
       const localResponse = await fetch('http://127.0.0.1:17654/auto-detect-paths', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
-        signal: AbortSignal.timeout(10000) // Timeout di 10 secondi
+        signal: AbortSignal.timeout(15000) // Timeout più lungo per auto-detection
       });
 
       if (!localResponse.ok) {
-        throw new Error(`Local Opener service error: ${localResponse.status}`);
+        const errorText = await localResponse.text().catch(() => 'Errore sconosciuto');
+        logger.error('Local Opener auto-detect endpoint error', {
+          status: localResponse.status,
+          statusText: localResponse.statusText,
+          errorText: errorText,
+          clientIP: req.ip
+        });
+        
+        throw new Error(`Endpoint auto-detect fallito (${localResponse.status}): ${errorText}`);
       }
 
       const result = await localResponse.json();
@@ -62,14 +117,41 @@ export function registerLocalOpenerRoutes(app: Express) {
     } catch (error) {
       logger.error('Auto-detection failed', { 
         error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
         clientIP: req.ip
       });
       
-      res.status(500).json({ 
+      // Determina il tipo di errore per un messaggio più specifico
+      let errorMessage = 'Errore sconosciuto nella rilevazione automatica';
+      let statusCode = 500;
+      
+      if (error instanceof Error) {
+        if (error.message.includes('fetch')) {
+          errorMessage = 'Impossibile comunicare con il servizio Local Opener. Verifica che sia installato e in esecuzione.';
+          statusCode = 503;
+        } else if (error.message.includes('timeout') || error.message.includes('AbortError')) {
+          errorMessage = 'Timeout nella rilevazione automatica. Il servizio Local Opener potrebbe essere sovraccarico.';
+          statusCode = 408;
+        } else if (error.message.includes('ECONNREFUSED')) {
+          errorMessage = 'Connessione rifiutata dal servizio Local Opener. Assicurati che sia in esecuzione sulla porta 17654.';
+          statusCode = 503;
+        } else {
+          errorMessage = `Errore nel servizio Local Opener: ${error.message}`;
+        }
+      }
+      
+      res.status(statusCode).json({ 
         success: false,
-        error: 'Servizio locale non disponibile o errore nella rilevazione automatica',
+        error: errorMessage,
+        detailedError: error instanceof Error ? error.message : String(error),
         detectedPaths: [],
-        configuredPaths: []
+        configuredPaths: [],
+        troubleshooting: {
+          installation: 'Scarica e installa la versione più recente di Local Opener',
+          serviceCheck: 'Verifica lo stato del servizio con lo script di diagnostica',
+          firewall: 'Controlla che il firewall non blocchi la porta 17654',
+          antivirus: 'Aggiungi eccezione antivirus per Local Opener'
+        }
       });
     }
   });

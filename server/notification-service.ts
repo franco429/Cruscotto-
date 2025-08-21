@@ -236,12 +236,12 @@ async function sendExpirationNotifications(
           </table>
           
           <p style="margin-top: 20px;">
-            Accedi al <a href="${APP_URL}">Sistema di Cruscotto SGI</a> per gestire questi documenti.
+            Accedi al <a href="${APP_URL}">Sistema di Pannello SGI</a> per gestire questi documenti.
           </p>
           
           <hr style="border-top: 1px solid #ddd; margin: 20px 0;">
           <p style="color: #666; font-size: 12px;">
-            Questo è un messaggio automatico inviato dal sistema di Cruscotto SGI.<br>
+            Questo è un messaggio automatico inviato dal sistema di Pannello SGI.<br>
             Non rispondere a questa email.
           </p>
         </div>
@@ -251,7 +251,7 @@ async function sendExpirationNotifications(
       for (const admin of targetAdmins) {
         try {
           const result = await transporter.sendMail({
-            from: `"Cruscotto SGI" <${
+            from: `"Pannello SGI" <${
               process.env.SMTP_USER || "noreply@isodocmanager.it"
             }>`,
             to: admin.email,
@@ -485,12 +485,12 @@ export async function sendSyncErrorNotifications(
         </div>
         
         <p style="margin-top: 20px;">
-          Accedi al <a href="${APP_URL}">Sistema di Cruscotto SGI</a> per verificare lo stato della sincronizzazione.
+          Accedi al <a href="${APP_URL}">Sistema di Pannello SGI</a> per verificare lo stato della sincronizzazione.
         </p>
         
         <hr style="border-top: 1px solid #ddd; margin: 20px 0;">
         <p style="color: #666; font-size: 12px;">
-          Questo è un messaggio automatico inviato dal sistema di Cruscotto SGI.<br>
+          Questo è un messaggio automatico inviato dal sistema di Pannello SGI.<br>
           Non rispondere a questa email.
         </p>
       </div>
@@ -499,7 +499,7 @@ export async function sendSyncErrorNotifications(
     // Invia email a tutti gli admin target
     for (const admin of targetAdmins) {
       await transporter.sendMail({
-        from: `"Cruscotto SGI" <${
+        from: `"Pannello SGI" <${
           process.env.SMTP_USER || "noreply@isodocmanager.it"
         }>`,
         to: admin.email,

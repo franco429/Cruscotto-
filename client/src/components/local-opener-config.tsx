@@ -162,6 +162,7 @@ export default function LocalOpenerConfig() {
     try {
       const response = await apiRequest("POST", "/api/local-opener/auto-detect-paths", {});
       const data = await response.json();
+      
       if (data.success && data.detectedPaths.length > 0) {
         // Aggiorna la configurazione con i percorsi rilevati
         setConfig(prev => prev ? { ...prev, roots: data.configuredPaths } : null);
@@ -170,19 +171,49 @@ export default function LocalOpenerConfig() {
           description: `Trovati ${data.detectedPaths.length} percorsi Google Drive. Configurazione aggiornata automaticamente.`,
           duration: 8000,
         });
-      } else {
+      } else if (data.success && data.detectedPaths.length === 0) {
         toast({
           title: "⚠️ Nessun percorso trovato",
           description: "Non sono stati rilevati percorsi Google Drive. Configura manualmente le cartelle.",
           variant: "destructive",
           duration: 6000,
         });
+      } else {
+        // Errore dal servizio - mostra dettagli più specifici
+        let errorTitle = "❌ Rilevazione fallita";
+        let errorDescription = data.error || "Impossibile rilevare automaticamente i percorsi Google Drive";
+        
+        // Se ci sono informazioni di troubleshooting, aggiungile alla descrizione
+        if (data.troubleshooting) {
+          const troubleshootingTips = Object.values(data.troubleshooting).join('. ');
+          errorDescription += `\n\nSuggerimenti: ${troubleshootingTips}`;
+        }
+        
+        toast({
+          title: errorTitle,
+          description: errorDescription,
+          variant: "destructive",
+          duration: 10000, // Timeout più lungo per leggere i suggerimenti
+        });
       }
     } catch (err: any) {
+      // Gestisci errori di rete o parsing
+      let errorMessage = "Impossibile rilevare automaticamente i percorsi Google Drive";
+      
+      if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      // Se l'errore è di connessione al backend
+      if (err.message && err.message.includes('Failed to fetch')) {
+        errorMessage = "Errore di connessione al server. Verifica la tua connessione internet.";
+      }
+      
       toast({
         title: "❌ Rilevazione fallita",
-        description: err.message || "Impossibile rilevare automaticamente i percorsi Google Drive",
+        description: errorMessage,
         variant: "destructive",
+        duration: 8000,
       });
     } finally {
       setIsAutoDetecting(false);
@@ -206,25 +237,52 @@ export default function LocalOpenerConfig() {
       const response = await apiRequest("POST", "/api/local-opener/reconfigure-paths", { forcedPaths: commonPaths });
       const data = await response.json();
       
-      if (data.success && data.configuredPaths.length > 0) {
+      if (data.success && data.configuredPaths && data.configuredPaths.length > 0) {
         setConfig(prev => prev ? { ...prev, roots: data.configuredPaths } : null);
         toast({
           title: "✅ Riconfigurazione completata",
           description: `Configurati ${data.configuredPaths.length} percorsi Google Drive standard.`,
           duration: 6000,
         });
-      } else {
+      } else if (data.success && (!data.configuredPaths || data.configuredPaths.length === 0)) {
         toast({
           title: "⚠️ Riconfigurazione parziale",
-          description: "Alcuni percorsi potrebbero non essere stati configurati. Verifica manualmente.",
+          description: "Nessun percorso Google Drive è stato trovato nei percorsi standard. Verifica manualmente.",
           variant: "destructive",
+          duration: 8000,
+        });
+      } else {
+        // Errore dal servizio
+        let errorDescription = data.error || "Impossibile riconfigurare i percorsi Google Drive";
+        
+        if (data.troubleshooting) {
+          const troubleshootingTips = Object.values(data.troubleshooting).join('. ');
+          errorDescription += `\n\nSuggerimenti: ${troubleshootingTips}`;
+        }
+        
+        toast({
+          title: "❌ Riconfigurazione fallita",
+          description: errorDescription,
+          variant: "destructive",
+          duration: 10000,
         });
       }
     } catch (err: any) {
+      let errorMessage = "Impossibile riconfigurare i percorsi Google Drive";
+      
+      if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      if (err.message && err.message.includes('Failed to fetch')) {
+        errorMessage = "Errore di connessione al server. Verifica la tua connessione internet.";
+      }
+      
       toast({
         title: "❌ Riconfigurazione fallita",
-        description: err.message || "Impossibile riconfigurare i percorsi Google Drive",
+        description: errorMessage,
         variant: "destructive",
+        duration: 8000,
       });
     } finally {
       setIsReconfiguring(false);

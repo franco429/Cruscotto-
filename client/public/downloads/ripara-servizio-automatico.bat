@@ -105,7 +105,7 @@ echo.
 echo Configurazione parametri servizio...
 "%~dp0nssm.exe" set %SERVICE_NAME% AppDirectory "%~dp0"
 "%~dp0nssm.exe" set %SERVICE_NAME% DisplayName "Cruscotto Local Opener Service"
-"%~dp0nssm.exe" set %SERVICE_NAME% Description "Servizio per aprire documenti locali da Cruscotto SGI - Riparato automaticamente"
+"%~dp0nssm.exe" set %SERVICE_NAME% Description "Servizio per aprire documenti locali da Pannello SGI - Riparato automaticamente"
 
 echo.
 echo Configurazione avvio automatico...
@@ -237,7 +237,7 @@ echo.
 echo ✅ RIPARAZIONE AUTOMATICA COMPLETATA!
 echo.
 echo 💡 PROSSIMI PASSI:
-echo    1. Apri il Cruscotto SGI nel browser
+echo    1. Apri il Pannello SGI nel browser
 echo    2. Vai in Impostazioni → Applicazione
 echo    3. Verifica che lo stato del servizio sia "Attivo"
 echo    4. Testa l'apertura di un documento

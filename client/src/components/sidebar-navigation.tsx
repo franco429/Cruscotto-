@@ -202,9 +202,15 @@ export default function SidebarNavigation({
         <ScrollArea className="h-full">
           <div className="py-4 px-3">
             <div className="flex items-center px-2 py-2">
-              <FileText className="h-6 w-6 text-primary-600 dark:text-primary-400 mr-2" />
+              <img
+                src="/assets svg/pannello di controllo.svg.jpg"
+                alt="Pannello SGI"
+                className="h-8 w-8 mr-2"
+                width="32"
+                height="32"
+              />
               <h2 className="text-lg font-semibold text-slate-800 dark:text-white">
-                Cruscotto SGI
+                Pannello SGI
               </h2>
             </div>
 
@@ -302,27 +308,13 @@ export default function SidebarNavigation({
                           : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
                       )}
                     >
-                      <svg
-                        className={cn(
-                          "mr-3 h-5 w-5",
-                          currentPath === "/company-codes"
-                            ? "text-primary-500 dark:text-primary-400"
-                            : "text-slate-400 group-hover:text-slate-500 dark:text-slate-500 dark:group-hover:text-slate-400"
-                        )}
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                        <polyline points="14 2 14 8 20 8"></polyline>
-                        <polygon points="3 15 7 15 7 12 12 17 7 22 7 19 3 19 3 15"></polygon>
-                      </svg>
+                      <img
+                        src="/assets svg/pannello di controllo.svg.jpg"
+                        alt="Codici Aziendali"
+                        className="mr-3 h-8 w-8"
+                        width="32"
+                        height="32"
+                      />
                       Codici Aziendali
                     </a>
                   </Link>

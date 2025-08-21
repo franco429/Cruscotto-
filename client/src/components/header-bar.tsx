@@ -85,9 +85,15 @@ export default function HeaderBar({ onSearch, user }: HeaderBarProps) {
               className="flex items-center cursor-pointer"
               onClick={() => setLocation(user ? "/" : "/auth")}
             >
-              <FileText className="text-primary h-5 w-5 xs:h-6 xs:w-6 mr-1 xs:mr-2" />
+              <img
+                src="/assets svg/pannello di controllo.svg.jpg"
+                alt="Pannello SGI"
+                className="h-8 w-8 mr-1 xs:mr-2"
+                width="32"
+                height="32"
+              />
               <h1 className="text-sm xs:text-base sm:text-lg font-semibold text-slate-800 dark:text-white truncate max-w-[120px] xs:max-w-[160px] sm:max-w-full">
-                Cruscotto SGI
+                Pannello SGI
               </h1>
             </div>
           </div>

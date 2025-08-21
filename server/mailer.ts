@@ -113,7 +113,7 @@ export async function handlePasswordReset(req: Request, res: Response) {
       // Crea il template HTML dell'email
       const emailHTML = `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #333;">Recupero Password</h2>
-        <p>Hai richiesto il recupero della password per il tuo account Cruscotto SGI.</p>
+        <p>Hai richiesto il recupero della password per il tuo account Pannello SGI.</p>
         <p>Clicca sul pulsante qui sotto per reimpostare la tua password:</p>
         <p style="text-align: center;">
           <a href="${resetUrl}" style="display: inline-block; background-color: #0070f3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Reimposta Password</a>
@@ -126,9 +126,9 @@ export async function handlePasswordReset(req: Request, res: Response) {
 
       // Invia l'email usando nodemailer
       const info = await transporter.sendMail({
-        from: `"Cruscotto SGI" <${SMTP_USER || "noreply@isodocmanager.it"}>`,
+        from: `"Pannello SGI" <${SMTP_USER || "noreply@isodocmanager.it"}>`,
         to: user.email,
-        subject: "Recupero password - Cruscotto SGI",
+        subject: "Recupero password - Pannello SGI",
         text: `Hai richiesto il recupero della password. Clicca sul seguente link per reimpostare la tua password: ${resetUrl}\\n\\nQuesto link sarà valido per 1 ora.\\n\\nSe non hai richiesto il recupero della password, ignora questa email.`,
         html: emailHTML,
       });
@@ -208,7 +208,7 @@ export async function handleContactRequest(req: Request, res: Response) {
           </div>
           <hr style="border-top: 1px solid #ddd; margin: 20px 0;">
           <p style="color: #666; font-size: 12px;">
-            Questo messaggio è stato inviato dal form di contatto del Sistema di Cruscotto SGI.
+            Questo messaggio è stato inviato dal form di contatto del Sistema di Pannello SGI.
           </p>
         </div>
       `,

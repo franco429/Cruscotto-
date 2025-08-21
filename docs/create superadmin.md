@@ -1,6 +1,6 @@
-# Tools di Amministrazione - Cruscotto SGI
+# Tools di Amministrazione - Pannello SGI
 
-Questo directory contiene gli strumenti per la gestione amministrativa del sistema Cruscotto SGI.
+Questo directory contiene gli strumenti per la gestione amministrativa del sistema Pannello SGI.
 
 ## 📋 Strumenti Disponibili
 

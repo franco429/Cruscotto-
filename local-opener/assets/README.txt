@@ -2,7 +2,7 @@ CRUSCOTTO LOCAL OPENER
 ======================
 
 Questo software è un'applicazione sicura e certificata per aprire documenti 
-direttamente dal browser Cruscotto SGI sul tuo computer locale.
+direttamente dal browser Pannello SGI sul tuo computer locale.
 
 REQUISITI SISTEMA:
 - Windows 10 (versione 1903 o successiva) / Windows 11
@@ -23,4 +23,4 @@ SICUREZZA:
 
 Per supporto tecnico: https://cruscotto-sgi.onrender.com
 
-Copyright © 2024 Cruscotto SGI. Tutti i diritti riservati.
+Copyright © 2024 Pannello SGI. Tutti i diritti riservati.
