@@ -76,6 +76,20 @@ try {
     if ($GoogleDriveRegistry) {
         if (-not $Silent) { Write-Host "   OK Google Drive Desktop rilevato nel registro" -ForegroundColor Green }
         
+        # NUOVA FUNZIONALITÀ: Leggi path reali dal registro DriveFS
+        try {
+            $DriveFSRoots = Get-ChildItem -Path "HKCU:\Software\Google\DriveFS\Roots" -ErrorAction SilentlyContinue
+            foreach ($root in $DriveFSRoots) {
+                $rootProps = Get-ItemProperty -Path $root.PSPath -ErrorAction SilentlyContinue
+                if ($rootProps.MountPoint) {
+                    Add-DetectedPath -Path $rootProps.MountPoint -Source "Google DriveFS Registry (Ufficiale)"
+                    if (-not $Silent) { Write-Host "   OK Percorso registro DriveFS: $($rootProps.MountPoint)" -ForegroundColor Green }
+                }
+            }
+        } catch {
+            if (-not $Silent) { Write-Host "   INFO Impossibile leggere DriveFS Roots dal registro" -ForegroundColor Cyan }
+        }
+        
         # Rileva drive letters dal registro se disponibile
         $DriveLetters = @("G", "H", "I", "J", "K", "L", "M", "N")
         foreach ($Letter in $DriveLetters) {

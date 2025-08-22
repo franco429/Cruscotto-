@@ -94,6 +94,9 @@ function discoverDefaultRoots() {
             const userPath = path.join(usersDir, userFolder.name);
             console.log(`[local-opener] 👤 Controllo utente: ${userFolder.name}`);
             
+            // PRIORITÀ ALTA: Utente corrente per servizi
+            const isCurrentUser = userFolder.name.toLowerCase() === os.userInfo().username.toLowerCase();
+            
             // Aggiungi tutti i possibili percorsi Google Drive per questo utente
             const userMirrorPaths = [
               path.join(userPath, 'Google Drive'),
@@ -104,7 +107,13 @@ function discoverDefaultRoots() {
               path.join(userPath, 'Dropbox', 'Google Drive')  // Casi particolari
             ];
             
-            userMirrorPaths.forEach(addIfDir);
+            // Se è l'utente corrente, marca con priorità
+            userMirrorPaths.forEach(p => {
+              if (isCurrentUser) {
+                console.log(`[local-opener] 🎯 PRIORITÀ ALTA (utente corrente): ${p}`);
+              }
+              addIfDir(p);
+            });
           }
         }
       }

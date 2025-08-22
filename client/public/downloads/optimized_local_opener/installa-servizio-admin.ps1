@@ -130,12 +130,15 @@ Write-Host "Configurazione migliorata per stabilita..." -ForegroundColor Cyan
 & $NssmPath set $ServiceName AppAffinity All
 & $NssmPath set $ServiceName AppPriority NORMAL_PRIORITY_CLASS
 
-Write-Host "Configurazione sicurezza..." -ForegroundColor Cyan
-& $NssmPath set $ServiceName ObjectName LocalSystem
+Write-Host "Configurazione sicurezza come utente corrente..." -ForegroundColor Cyan
+# Usa l'utente corrente invece di LocalSystem per accesso alle cartelle Google Drive
+$CurrentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+Write-Host "   Configurazione servizio per utente: $CurrentUser" -ForegroundColor White
+& $NssmPath set $ServiceName ObjectName $CurrentUser
 
 Write-Host "Configurazione logging..." -ForegroundColor Cyan
-# Usa ProgramData per log accessibili dal servizio (LocalSystem)
-$LogDir = Join-Path $env:ProgramData "CruscottoLocalOpener"
+# Usa directory utente per log accessibili dal servizio
+$LogDir = "$env:APPDATA\.local-opener"
 New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
 & $NssmPath set $ServiceName AppStdout "$LogDir\service.log"
 & $NssmPath set $ServiceName AppStderr "$LogDir\service-error.log"
