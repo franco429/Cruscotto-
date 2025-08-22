@@ -17,11 +17,17 @@ Write-Host "INSTALLAZIONE CRUSCOTTO LOCAL OPENER - AVVIO AUTOMATICO" -Foreground
 Write-Host "====================================================================" -ForegroundColor Green
 Write-Host ""
 
-# Percorso della directory corrente dello script
+# Percorso della directory corrente dello script (con normalizzazione)
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+$ScriptDir = [System.IO.Path]::GetFullPath($ScriptDir)
+
+# Percorsi file essenziali
 $NodeScriptPath = Join-Path $ScriptDir "index.js"
 $ExePath = Join-Path $ScriptDir "local-opener.exe"
 $NssmPath = Join-Path $ScriptDir "nssm.exe"
+$SetupExePath = Join-Path $ScriptDir "cruscotto-local-opener-setup.exe"
+
+Write-Host "Directory di lavoro: $ScriptDir" -ForegroundColor Cyan
 
 # Cerca Node.js nel sistema
 $NodePath = $null
@@ -75,8 +81,45 @@ if (Test-Path $ExePath) {
     exit 1
 }
 
-if (-not (Test-Path $NssmPath)) {
-    Write-Host "ERRORE: nssm.exe non trovato!" -ForegroundColor Red
+# Verifica presenza file essenziali con controllo robusto
+$RequiredFiles = @(
+    @{ Name = "nssm.exe"; Path = $NssmPath; Description = "Service Manager Windows" },
+    @{ Name = "index.js"; Path = $NodeScriptPath; Description = "Script principale Local Opener" }
+)
+
+$MissingFiles = @()
+foreach ($File in $RequiredFiles) {
+    if (-not (Test-Path $File.Path -PathType Leaf)) {
+        $MissingFiles += $File
+    }
+}
+
+if ($MissingFiles.Count -gt 0) {
+    Write-Host "ERRORE: File essenziali mancanti!" -ForegroundColor Red
+    Write-Host "Directory script: $ScriptDir" -ForegroundColor Yellow
+    Write-Host ""
+    
+    foreach ($Missing in $MissingFiles) {
+        Write-Host "  ❌ $($Missing.Name) - $($Missing.Description)" -ForegroundColor Red
+        Write-Host "     Cercato in: $($Missing.Path)" -ForegroundColor Yellow
+    }
+    
+    Write-Host ""
+    Write-Host "File presenti nella directory:" -ForegroundColor Cyan
+    try {
+        Get-ChildItem $ScriptDir -File | ForEach-Object { 
+            Write-Host "  ✓ $($_.Name) ($([math]::Round($_.Length/1KB, 1))KB)" -ForegroundColor Green 
+        }
+    } catch {
+        Write-Host "  Impossibile leggere il contenuto della directory" -ForegroundColor Red
+    }
+    
+    Write-Host ""
+    Write-Host "SOLUZIONE:" -ForegroundColor Magenta
+    Write-Host "1. Verifica di aver estratto TUTTI i file dalla cartella optimized_local_opener" -ForegroundColor White
+    Write-Host "2. Esegui lo script dalla cartella corretta (dove sono presenti tutti i file)" -ForegroundColor White
+    Write-Host "3. Se il problema persiste, esegui cruscotto-local-opener-setup.exe per installazione manuale" -ForegroundColor White
+    
     Read-Host "Premi Invio per uscire"
     exit 1
 }
