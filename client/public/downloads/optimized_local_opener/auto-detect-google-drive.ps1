@@ -20,45 +20,55 @@ $ValidPaths = @()
 function Add-DetectedPath {
     param([string]$Path, [string]$Source)
     
-    if (Test-Path $Path -PathType Container) {
+    # Verifica che il percorso non sia vuoto
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return
+    }
+    
+    # Normalizza il percorso
+    $NormalizedPath = $Path.Trim()
+    
+    # Verifica esistenza e accesso
+    if (Test-Path $NormalizedPath -PathType Container) {
         try {
             # Test accesso rapido alla cartella
-            $testAccess = Get-ChildItem $Path -ErrorAction Stop | Select-Object -First 1
+            $testAccess = Get-ChildItem $NormalizedPath -ErrorAction Stop | Select-Object -First 1
             
-            $DetectedPaths += @{
-                Path = $Path
+            # Aggiungi ai percorsi rilevati
+            $script:DetectedPaths += @{
+                Path = $NormalizedPath
                 Source = $Source
                 Exists = $true
                 Accessible = $true
             }
             
-            # Evita duplicati
-            if ($ValidPaths -notcontains $Path) {
-                $ValidPaths += $Path
+            # Evita duplicati e aggiungi solo se valido
+            if ($script:ValidPaths -notcontains $NormalizedPath) {
+                $script:ValidPaths += $NormalizedPath
                 if (-not $Silent) {
-                    Write-Host "OK Trovato: $Path (da $Source)" -ForegroundColor Green
+                    Write-Host "OK Trovato: $NormalizedPath (da $Source)" -ForegroundColor Green
                 }
             }
         } catch {
-            $DetectedPaths += @{
-                Path = $Path
+            $script:DetectedPaths += @{
+                Path = $NormalizedPath
                 Source = $Source
                 Exists = $true
                 Accessible = $false
             }
             if (-not $Silent) {
-                Write-Host "ATTENZIONE Non accessibile: $Path (da $Source)" -ForegroundColor Yellow
+                Write-Host "ATTENZIONE Non accessibile: $NormalizedPath (da $Source)" -ForegroundColor Yellow
             }
         }
     } else {
-        $DetectedPaths += @{
-            Path = $Path
+        $script:DetectedPaths += @{
+            Path = $NormalizedPath
             Source = $Source
             Exists = $false
             Accessible = $false
         }
-        if (-not $Silent -and $VerboseOutput) {
-            Write-Host "ERRORE Non valido: $Path (da $Source)" -ForegroundColor Red
+        if (-not $Silent) {
+            Write-Host "INFO Non valido: $NormalizedPath (da $Source)" -ForegroundColor Cyan
         }
     }
 }
@@ -238,8 +248,31 @@ if ($UserProfile) {
     }
 }
 
+# Debug: mostra stato array prima della pulizia
+if (-not $Silent) {
+    Write-Host ""
+    Write-Host "DEBUG - Stato array prima pulizia:" -ForegroundColor Magenta
+    Write-Host "  DetectedPaths.Count: $($DetectedPaths.Count)" -ForegroundColor White
+    Write-Host "  ValidPaths.Count: $($ValidPaths.Count)" -ForegroundColor White
+    Write-Host "  ValidPaths contenuto:" -ForegroundColor White
+    foreach ($path in $ValidPaths) {
+        Write-Host "    - $path" -ForegroundColor Gray
+    }
+}
+
 # Rimuovi duplicati e ordina
 $ValidPaths = $ValidPaths | Sort-Object -Unique
+
+# Debug: mostra stato array dopo la pulizia
+if (-not $Silent) {
+    Write-Host ""
+    Write-Host "DEBUG - Stato array dopo pulizia:" -ForegroundColor Magenta
+    Write-Host "  ValidPaths.Count finale: $($ValidPaths.Count)" -ForegroundColor White
+    Write-Host "  ValidPaths contenuto finale:" -ForegroundColor White
+    foreach ($path in $ValidPaths) {
+        Write-Host "    - $path" -ForegroundColor Gray
+    }
+}
 
 # RISULTATI
 if (-not $Silent) {
@@ -255,6 +288,14 @@ if (-not $Silent) {
         foreach ($Path in $ValidPaths) {
             Write-Host "   - $Path" -ForegroundColor White
         }
+        
+        Write-Host ""
+        Write-Host "TUTTI I PERCORSI RILEVATI:" -ForegroundColor Cyan
+        foreach ($PathInfo in $DetectedPaths) {
+            $Status = if ($PathInfo.Exists -and $PathInfo.Accessible) { "[OK]" } elseif ($PathInfo.Exists) { "[ACCESSO LIMITATO]" } else { "[NON VALIDO]" }
+            $Color = if ($PathInfo.Exists -and $PathInfo.Accessible) { "Green" } elseif ($PathInfo.Exists) { "Yellow" } else { "Gray" }
+            Write-Host "   $Status $($PathInfo.Path) (da $($PathInfo.Source))" -ForegroundColor $Color
+        }
     } else {
         Write-Host ""
         Write-Host "ATTENZIONE NESSUN PERCORSO GOOGLE DRIVE RILEVATO" -ForegroundColor Yellow
@@ -264,6 +305,14 @@ if (-not $Silent) {
         Write-Host "   - Controlla se Google Drive e montato su lettere G:\, H:\, ecc." -ForegroundColor White
         Write-Host "   - Aggiungi manualmente i percorsi dal pannello Local Opener" -ForegroundColor White
         Write-Host "   - Esegui Google Drive e attendi la sincronizzazione completa" -ForegroundColor White
+        
+        Write-Host ""
+        Write-Host "PERCORSI TENTATI (non validi):" -ForegroundColor Cyan
+        foreach ($PathInfo in $DetectedPaths) {
+            $Status = if ($PathInfo.Exists) { "[ESISTE]" } else { "[NON ESISTE]" }
+            $Color = if ($PathInfo.Exists) { "Yellow" } else { "Gray" }
+            Write-Host "   $Status $($PathInfo.Path) (da $($PathInfo.Source))" -ForegroundColor $Color
+        }
     }
 }
 

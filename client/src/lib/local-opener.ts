@@ -27,7 +27,7 @@ function buildCandidateNames(doc: Document): string[] {
   return Array.from(candidates);
 }
 
-export async function openLocalDocument(doc: Document, abortMs = 1500): Promise<OpenResult> {
+export async function openLocalDocument(doc: Document, abortMs = 5000): Promise<OpenResult> {
   // Skip if clearly a Drive-only document
   if (doc.driveUrl) {
     return { ok: false, message: "Documento remoto (Drive)" };

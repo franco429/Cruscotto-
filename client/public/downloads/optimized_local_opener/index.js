@@ -16,6 +16,9 @@ const PORT = 17654;
 const CONFIG_DIR = process.env.LOCAL_OPENER_CONFIG_DIR || path.join(os.homedir(), ".local-opener");
 const CONFIG_FILE = path.join(CONFIG_DIR, "config.json");
 
+// Force discovery on startup to handle LocalSystem restrictions
+process.env.LOCAL_OPENER_FORCE_DISCOVERY = "true";
+
 function readConfig() {
   try {
     if (!fs.existsSync(CONFIG_DIR)) fs.mkdirSync(CONFIG_DIR, { recursive: true });
@@ -53,7 +56,9 @@ function discoverDefaultRoots() {
           roots.add(path.resolve(p));
           console.log(`[local-opener] ✅ Cartella Google Drive trovata e accessibile: ${p}`);
         } catch (accessError) {
-          console.log(`[local-opener] ⚠️ Cartella trovata ma non accessibile: ${p}`);
+          // Anche se non accessibile, aggiungo comunque per reference
+          roots.add(path.resolve(p));
+          console.log(`[local-opener] ⚠️ Cartella trovata ma non accessibile (LocalSystem): ${p}`);
         }
       }
     } catch {}
@@ -123,62 +128,206 @@ function discoverDefaultRoots() {
     
     mirrorPaths.forEach(addIfDir);
 
-    // Windows – Stream (Drive montato con lettere variabili). Scansione completa C-Z
-    const letters = 'CDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    // Windows – Stream (Drive montato con lettere variabili). Scansione ULTRA-COMPLETA A-Z
+    console.log(`[local-opener] 🔍 Scansione completa di tutte le lettere drive A-Z...`);
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    let totalDrivesScanned = 0;
+    let googleDriveDrivesFound = 0;
+
     for (const L of letters) {
       const root = `${L}:\\`;
+      totalDrivesScanned++;
+
       try {
-        if (!fs.existsSync(root)) continue;
-        
-        // Pattern di ricerca più completi per tutte le versioni di Google Drive
+        if (!fs.existsSync(root)) {
+          console.log(`[local-opener]   ${L}:\\ non disponibile`);
+          continue;
+        }
+
+        console.log(`[local-opener]   ${L}:\\ disponibile - scansione Google Drive...`);
+
+        // Pattern di ricerca ULTRA-COMPLETI per tutte le versioni di Google Drive
         const googleDrivePatterns = [
+          // Pattern principali (priorità alta)
           'Il mio Drive',      // Italiano Google Drive Stream
-          'My Drive',          // Inglese Google Drive Stream  
+          'My Drive',          // Inglese Google Drive Stream
           'Drive condivisi',   // Italiano Shared Drives
           'Shared drives',     // Inglese Shared Drives
           'Team Drives',       // Legacy Team Drives
           'Google Drive',      // Cartelle fisiche
-          'GoogleDrive'        // Nuove installazioni Google Drive Desktop
+          'GoogleDrive',       // Nuove installazioni Google Drive Desktop
+
+          // Pattern aggiuntivi (ricerca estesa)
+          'Drive',             // Pattern semplice
+          'GDrive',            // Variante
+          'Google',            // Pattern base
+          'Documenti Google',  // Italiano alternativo
+          'Google Docs',       // Variante
+          'Backup and Sync',   // Legacy Google Backup & Sync
+          'Google Backup',     // Legacy
+          'My Google Drive',   // Variante inglese
+          'Il Mio Google Drive' // Variante italiana
         ];
-        
+
         let hasGoogleDriveContent = false;
-        
-        // Controlla ogni pattern
+        let foundPatterns = [];
+
+        // Controlla ogni pattern con LOG DETTAGLIATO
         for (const pattern of googleDrivePatterns) {
           const fullPath = path.join(root, pattern);
-          if (fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()) {
-            hasGoogleDriveContent = true;
-            addIfDir(fullPath);
+          try {
+            if (fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()) {
+              hasGoogleDriveContent = true;
+              foundPatterns.push(pattern);
+
+              // Test accesso completo alla cartella
+              try {
+                const testAccess = fs.readdirSync(fullPath, { withFileTypes: true });
+                console.log(`[local-opener]   ✅ ${L}:\\${pattern} - ACCESSIBILE (${testAccess.length} elementi)`);
+                addIfDir(fullPath);
+              } catch (accessError) {
+                console.log(`[local-opener]   ⚠️  ${L}:\\${pattern} - TROVATA MA NON ACCESSIBILE`);
+                // Aggiungi comunque, potrebbe diventare accessibile dopo
+                addIfDir(fullPath);
+              }
+            }
+          } catch (patternError) {
+            // Pattern non trovato, continua
           }
         }
-        
+
         // Se la lettera contiene cartelle Google Drive, aggiungi anche la root
         if (hasGoogleDriveContent) {
+          googleDriveDrivesFound++;
+          console.log(`[local-opener]   🎯 ${L}:\\ CONTINE GOOGLE DRIVE (${foundPatterns.length} pattern trovati)`);
           addIfDir(root);
         }
-        
+
         // Ricerca ricorsiva di primo livello per pattern nascosti
         try {
           const entries = fs.readdirSync(root, { withFileTypes: true });
+          console.log(`[local-opener]   ${L}:\\ contiene ${entries.filter(e => e.isDirectory()).length} cartelle`);
+
           for (const entry of entries) {
             if (entry.isDirectory()) {
               const entryName = entry.name.toLowerCase();
-              if (entryName.includes('google') && entryName.includes('drive')) {
-                const fullPath = path.join(root, entry.name);
+              const entryNameOriginal = entry.name;
+
+              // Pattern fuzzy matching per Google Drive
+              if ((entryName.includes('google') && entryName.includes('drive')) ||
+                  (entryName.includes('drive') && entryName.includes('google')) ||
+                  (entryName === 'drive' && L === 'G') || // G:\Drive è spesso Google Drive
+                  (entryName === 'mydrive') ||
+                  (entryName === 'mydrive' && L === 'G')) {
+
+                const fullPath = path.join(root, entryNameOriginal);
+                console.log(`[local-opener]   🔍 Pattern fuzzy trovato: ${L}:\\${entryNameOriginal}`);
                 addIfDir(fullPath);
               }
             }
           }
-        } catch {}
-        
-      } catch {}
+        } catch (scanError) {
+          console.log(`[local-opener]   ⚠️  Errore scansione ${L}:\\: ${scanError.message}`);
+        }
+
+      } catch (driveError) {
+        console.log(`[local-opener]   ❌ Errore accesso ${L}:\\: ${driveError.message}`);
+      }
     }
-    
+
+    console.log(`[local-opener] 📊 Scansione completata: ${totalDrivesScanned} drive analizzati, ${googleDriveDrivesFound} con Google Drive`);
+
+    // RICERCA PRIORITARIA: Focus sulle lettere più comuni per Google Drive
+    console.log(`[local-opener] 🎯 Ricerca prioritaria nelle lettere comuni per Google Drive...`);
+    const priorityLetters = ['G', 'H', 'I', 'J', 'K', 'F', 'E'];
+    let priorityFindings = 0;
+
+    for (const L of priorityLetters) {
+      if (L === 'C') continue; // C è già stato controllato
+
+      const root = `${L}:\\`;
+      try {
+        if (!fs.existsSync(root)) continue;
+
+        console.log(`[local-opener]   🔍 Priorità alta: scansione ${L}:\\...`);
+
+        // Pattern specifici per ricerca prioritaria
+        const priorityPatterns = [
+          'Il mio Drive',
+          'My Drive',
+          'Google Drive',
+          'Drive'
+        ];
+
+        for (const pattern of priorityPatterns) {
+          const fullPath = path.join(root, pattern);
+          if (fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()) {
+            try {
+              const testAccess = fs.readdirSync(fullPath, { withFileTypes: true });
+              console.log(`[local-opener]   🎯 PRIORITÀ: ${L}:\\${pattern} - TROVATO E ACCESSIBILE!`);
+              addIfDir(fullPath);
+              priorityFindings++;
+            } catch (accessError) {
+              console.log(`[local-opener]   ⚠️  PRIORITÀ: ${L}:\\${pattern} - TROVATO MA NON ACCESSIBILE`);
+              addIfDir(fullPath);
+            }
+          }
+        }
+      } catch (priorityError) {
+        console.log(`[local-opener]   ❌ Errore priorità ${L}:\\: ${priorityError.message}`);
+      }
+    }
+
+        if (priorityFindings > 0) {
+      console.log(`[local-opener] 🎉 Ricerca prioritaria completata: ${priorityFindings} percorsi Google Drive trovati!`);
+    }
+
+    // SEZIONE SPECIALE: Rilevamento Google Drive per LocalSystem
+    console.log(`[local-opener] 🔍 Rilevamento speciale Google Drive per LocalSystem...`);
+
+    // Prova a leggere i percorsi da Google Drive Desktop Registry
+    try {
+      const { execSync } = require('child_process');
+      const regQuery = execSync('reg query "HKCU\\Software\\Google\\DriveFS" /v MountPoint 2>nul', { encoding: 'utf8' });
+      if (regQuery.includes('MountPoint')) {
+        const mountPoint = regQuery.split(/\s+/).pop().trim();
+        if (mountPoint && fs.existsSync(mountPoint)) {
+          addIfDir(mountPoint);
+          console.log(`[local-opener] 🎯 TROVATO da Registry: ${mountPoint}`);
+        }
+      }
+    } catch (regError) {
+      console.log(`[local-opener] ℹ️ Registry non accessibile (normale con LocalSystem)`);
+    }
+
+    // Prova a leggere percorsi comuni per tutti gli utenti
+    const commonPaths = [
+      'C:\\Users\\Public\\Google Drive',
+      'C:\\Users\\Default\\Google Drive',
+      'G:\\Il mio Drive',
+      'G:\\My Drive',
+      'G:\\',
+      'H:\\Il mio Drive',
+      'H:\\My Drive',
+      'H:\\'
+    ];
+
+    for (const commonPath of commonPaths) {
+      try {
+        if (fs.existsSync(commonPath)) {
+          addIfDir(commonPath);
+          console.log(`[local-opener] 📁 Percorso comune trovato: ${commonPath}`);
+        }
+      } catch (commonError) {
+        // Silenzioso per percorsi non esistenti
+      }
+    }
+
     // Controllo variabili ambiente per percorsi personalizzati
     console.log(`[local-opener] 🌐 Controllo variabili ambiente...`);
     const possibleEnvVars = [
       'GOOGLE_DRIVE_PATH',
-      'GOOGLEDRIVE_PATH', 
+      'GOOGLEDRIVE_PATH',
       'GDRIVE_PATH',
       'USERPROFILE', // Controlla anche USERPROFILE per fallback
       'HOMEPATH'

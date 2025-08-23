@@ -40,9 +40,9 @@ if ($Service) {
     Write-Host "   Tipo avvio: $($Service.StartType)" -ForegroundColor White
     
     if ($Service.Status -eq "Running") {
-        Write-Host "   SERVIZIO ATTIVO ✓" -ForegroundColor Green
+        Write-Host "   SERVIZIO ATTIVO [OK]" -ForegroundColor Green
     } else {
-        Write-Host "   SERVIZIO NON ATTIVO ✗" -ForegroundColor Red
+        Write-Host "   SERVIZIO NON ATTIVO [X]" -ForegroundColor Red
     }
 } else {
     Write-Host "   ERRORE: Servizio non trovato!" -ForegroundColor Red
@@ -76,10 +76,10 @@ Write-Host "=========================" -ForegroundColor Cyan
 Write-Host "   Test endpoint principale: $ServiceUrl" -ForegroundColor White
 $MainTest = Test-HttpEndpoint -Url $ServiceUrl
 if ($MainTest.Success) {
-    Write-Host "   OK Servizio HTTP attivo ✓" -ForegroundColor Green
+            Write-Host "   OK Servizio HTTP attivo [OK]" -ForegroundColor Green
     Write-Host "   Status Code: $($MainTest.StatusCode)" -ForegroundColor White
 } else {
-    Write-Host "   ERRORE: Servizio HTTP non raggiungibile ✗" -ForegroundColor Red
+            Write-Host "   ERRORE: Servizio HTTP non raggiungibile [X]" -ForegroundColor Red
     Write-Host "   Errore: $($MainTest.Error)" -ForegroundColor Yellow
 }
 
@@ -87,7 +87,7 @@ Write-Host ""
 Write-Host "   Test endpoint health: $ServiceUrl/health" -ForegroundColor White
 $HealthTest = Test-HttpEndpoint -Url "$ServiceUrl/health"
 if ($HealthTest.Success) {
-    Write-Host "   OK Endpoint health attivo ✓" -ForegroundColor Green
+            Write-Host "   OK Endpoint health attivo [OK]" -ForegroundColor Green
     try {
         $HealthData = $HealthTest.Content | ConvertFrom-Json
         Write-Host "   Versione: $($HealthData.version)" -ForegroundColor White
@@ -106,7 +106,7 @@ if ($HealthTest.Success) {
         Write-Host "   Risposta health ricevuta ma non parsabile" -ForegroundColor Yellow
     }
 } else {
-    Write-Host "   ERRORE: Endpoint health non raggiungibile ✗" -ForegroundColor Red
+            Write-Host "   ERRORE: Endpoint health non raggiungibile [X]" -ForegroundColor Red
 }
 
 # 4. VERIFICA PORTA DI RETE
@@ -117,12 +117,12 @@ Write-Host "==========================" -ForegroundColor Cyan
 try {
     $NetStats = netstat -an | Select-String ":$ServicePort"
     if ($NetStats) {
-        Write-Host "   OK Porta $ServicePort in ascolto ✓" -ForegroundColor Green
+        Write-Host "   OK Porta $ServicePort in ascolto [OK]" -ForegroundColor Green
         foreach ($line in $NetStats) {
             Write-Host "   $line" -ForegroundColor White
         }
     } else {
-        Write-Host "   ERRORE: Porta $ServicePort non in ascolto ✗" -ForegroundColor Red
+        Write-Host "   ERRORE: Porta $ServicePort non in ascolto [X]" -ForegroundColor Red
     }
 } catch {
     Write-Host "   ERRORE: Impossibile verificare stato porta" -ForegroundColor Red
@@ -136,7 +136,7 @@ Write-Host "=============================" -ForegroundColor Cyan
 try {
     $FirewallRules = netsh advfirewall firewall show rule name="Local Opener" 2>$null
     if ($FirewallRules -and $FirewallRules -notlike "*No rules*") {
-        Write-Host "   OK Regola firewall 'Local Opener' configurata ✓" -ForegroundColor Green
+        Write-Host "   OK Regola firewall 'Local Opener' configurata [OK]" -ForegroundColor Green
     } else {
         Write-Host "   ATTENZIONE: Regola firewall 'Local Opener' non trovata" -ForegroundColor Yellow
         Write-Host "   Il firewall potrebbe bloccare le connessioni" -ForegroundColor Yellow
@@ -154,10 +154,10 @@ $ConfigDir = "$env:APPDATA\.local-opener"
 $ConfigFile = "$ConfigDir\config.json"
 
 if (Test-Path $ConfigDir) {
-    Write-Host "   OK Directory configurazione trovata: $ConfigDir ✓" -ForegroundColor Green
+            Write-Host "   OK Directory configurazione trovata: $ConfigDir [OK]" -ForegroundColor Green
     
     if (Test-Path $ConfigFile) {
-        Write-Host "   OK File configurazione trovato ✓" -ForegroundColor Green
+        Write-Host "   OK File configurazione trovato [OK]" -ForegroundColor Green
         try {
             $Config = Get-Content $ConfigFile | ConvertFrom-Json
             Write-Host "   Percorsi configurati nel file: $($Config.roots.Count)" -ForegroundColor White
@@ -181,7 +181,7 @@ $ServiceLog = "$LogDir\service.log"
 $ErrorLog = "$LogDir\service-error.log"
 
 if (Test-Path $ServiceLog) {
-    Write-Host "   OK Log servizio trovato: $ServiceLog ✓" -ForegroundColor Green
+            Write-Host "   OK Log servizio trovato: $ServiceLog [OK]" -ForegroundColor Green
     $LogSize = (Get-Item $ServiceLog).Length
     Write-Host "   Dimensione log: $([math]::Round($LogSize/1KB, 2))KB" -ForegroundColor White
     
@@ -217,13 +217,13 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $AutoDetectScript = Join-Path $ScriptDir "auto-detect-google-drive.ps1"
 
 if (Test-Path $AutoDetectScript) {
-    Write-Host "   OK Script auto-detect trovato ✓" -ForegroundColor Green
+            Write-Host "   OK Script auto-detect trovato [OK]" -ForegroundColor Green
     Write-Host "   Esecuzione test auto-discovery..." -ForegroundColor White
     
     try {
         $AutoDetectResult = & $AutoDetectScript -Silent $true
         if ($AutoDetectResult -and $AutoDetectResult.Success) {
-            Write-Host "   OK Auto-discovery completato ✓" -ForegroundColor Green
+            Write-Host "   OK Auto-discovery completato [OK]" -ForegroundColor Green
             Write-Host "   Percorsi trovati: $($AutoDetectResult.Count)" -ForegroundColor White
             if ($AutoDetectResult.ValidPaths) {
                 foreach ($path in $AutoDetectResult.ValidPaths) {
@@ -237,7 +237,7 @@ if (Test-Path $AutoDetectScript) {
         Write-Host "   ERRORE: Impossibile eseguire auto-discovery: $($_.Exception.Message)" -ForegroundColor Red
     }
 } else {
-    Write-Host "   ERRORE: Script auto-detect non trovato ✗" -ForegroundColor Red
+            Write-Host "   ERRORE: Script auto-detect non trovato [X]" -ForegroundColor Red
 }
 
 # 9. RIEPILOGO E SUGGERIMENTI
@@ -252,10 +252,10 @@ if (-not $MainTest.Success) { $Issues += "Servizio HTTP non raggiungibile" }
 if (-not $Processes) { $Issues += "Nessun processo Local Opener attivo" }
 
 if ($Issues.Count -eq 0) {
-    Write-Host "   STATO: TUTTO OK ✓" -ForegroundColor Green
+            Write-Host "   STATO: TUTTO OK [OK]" -ForegroundColor Green
     Write-Host "   Il servizio Local Opener è installato e funzionante correttamente" -ForegroundColor Green
 } else {
-    Write-Host "   STATO: PROBLEMI RILEVATI ✗" -ForegroundColor Red
+            Write-Host "   STATO: PROBLEMI RILEVATI [X]" -ForegroundColor Red
     Write-Host "   Problemi trovati:" -ForegroundColor Yellow
     foreach ($issue in $Issues) {
         Write-Host "     - $issue" -ForegroundColor Yellow
