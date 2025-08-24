@@ -15,7 +15,6 @@ import {
   DialogTitle,
 } from "./ui/dialog";
 import {
-  Settings,
   FolderPlus,
   Trash2,
   Download,
@@ -49,8 +48,6 @@ export default function LocalOpenerConfig() {
   const [newRoot, setNewRoot] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [isTestingRoot, setIsTestingRoot] = useState(false);
-  const [isAutoDetecting, setIsAutoDetecting] = useState(false);
-  const [isReconfiguring, setIsReconfiguring] = useState(false);
   const { toast } = useToast();
 
   // Controlla lo stato del servizio
@@ -153,138 +150,7 @@ export default function LocalOpenerConfig() {
     }
   };
 
-  // Rilevazione automatica percorsi Google Drive
-  const autoDetectPaths = async () => {
-    setIsAutoDetecting(true);
-    try {
-      const response = await apiRequest("POST", "/api/local-opener/auto-detect-paths", {});
-      const data = await response.json();
-      
-      if (data.success && data.detectedPaths.length > 0) {
-        // Aggiorna la configurazione con i percorsi rilevati
-        setConfig(prev => prev ? { ...prev, roots: data.configuredPaths } : null);
-        toast({
-          title: "🎉 Rilevazione automatica riuscita!",
-          description: `Trovati ${data.detectedPaths.length} percorsi Google Drive. Configurazione aggiornata automaticamente.`,
-          duration: 8000,
-        });
-      } else if (data.success && data.detectedPaths.length === 0) {
-        toast({
-          title: "⚠️ Nessun percorso trovato",
-          description: "Non sono stati rilevati percorsi Google Drive. Configura manualmente le cartelle.",
-          variant: "destructive",
-          duration: 6000,
-        });
-      } else {
-        // Errore dal servizio - mostra dettagli più specifici
-        let errorTitle = "❌ Rilevazione fallita";
-        let errorDescription = data.error || "Impossibile rilevare automaticamente i percorsi Google Drive";
-        
-        // Se ci sono informazioni di troubleshooting, aggiungile alla descrizione
-        if (data.troubleshooting) {
-          const troubleshootingTips = Object.values(data.troubleshooting).join('. ');
-          errorDescription += `\n\nSuggerimenti: ${troubleshootingTips}`;
-        }
-        
-        toast({
-          title: errorTitle,
-          description: errorDescription,
-          variant: "destructive",
-          duration: 10000, // Timeout più lungo per leggere i suggerimenti
-        });
-      }
-    } catch (err: any) {
-      // Gestisci errori di rete o parsing
-      let errorMessage = "Impossibile rilevare automaticamente i percorsi Google Drive";
-      
-      if (err.message) {
-        errorMessage = err.message;
-      }
-      
-      // Se l'errore è di connessione al backend
-      if (err.message && err.message.includes('Failed to fetch')) {
-        errorMessage = "Errore di connessione al server. Verifica la tua connessione internet.";
-      }
-      
-      toast({
-        title: "❌ Rilevazione fallita",
-        description: errorMessage,
-        variant: "destructive",
-        duration: 8000,
-      });
-    } finally {
-      setIsAutoDetecting(false);
-    }
-  };
 
-  // Riconfigurazione forzata percorsi
-  const reconfigurePaths = async () => {
-    setIsReconfiguring(true);
-    try {
-      // Prova percorsi comuni di Google Drive
-      const commonPaths = [
-        `${process.env.USERPROFILE || 'C:\\Users\\%USERNAME%'}\\Google Drive`,
-        `${process.env.USERPROFILE || 'C:\\Users\\%USERNAME%'}\\GoogleDrive`,
-        "G:\\Il mio Drive",
-        "G:\\My Drive",
-        "H:\\Il mio Drive",
-        "H:\\My Drive"
-      ];
-
-      const response = await apiRequest("POST", "/api/local-opener/reconfigure-paths", { forcedPaths: commonPaths });
-      const data = await response.json();
-      
-      if (data.success && data.configuredPaths && data.configuredPaths.length > 0) {
-        setConfig(prev => prev ? { ...prev, roots: data.configuredPaths } : null);
-        toast({
-          title: "✅ Riconfigurazione completata",
-          description: `Configurati ${data.configuredPaths.length} percorsi Google Drive standard.`,
-          duration: 6000,
-        });
-      } else if (data.success && (!data.configuredPaths || data.configuredPaths.length === 0)) {
-        toast({
-          title: "⚠️ Riconfigurazione parziale",
-          description: "Nessun percorso Google Drive è stato trovato nei percorsi standard. Verifica manualmente.",
-          variant: "destructive",
-          duration: 8000,
-        });
-      } else {
-        // Errore dal servizio
-        let errorDescription = data.error || "Impossibile riconfigurare i percorsi Google Drive";
-        
-        if (data.troubleshooting) {
-          const troubleshootingTips = Object.values(data.troubleshooting).join('. ');
-          errorDescription += `\n\nSuggerimenti: ${troubleshootingTips}`;
-        }
-        
-        toast({
-          title: "❌ Riconfigurazione fallita",
-          description: errorDescription,
-          variant: "destructive",
-          duration: 10000,
-        });
-      }
-    } catch (err: any) {
-      let errorMessage = "Impossibile riconfigurare i percorsi Google Drive";
-      
-      if (err.message) {
-        errorMessage = err.message;
-      }
-      
-      if (err.message && err.message.includes('Failed to fetch')) {
-        errorMessage = "Errore di connessione al server. Verifica la tua connessione internet.";
-      }
-      
-      toast({
-        title: "❌ Riconfigurazione fallita",
-        description: errorMessage,
-        variant: "destructive",
-        duration: 8000,
-      });
-    } finally {
-      setIsReconfiguring(false);
-    }
-  };
 
   // Testa apertura file
   const testFileOpen = async () => {
@@ -346,7 +212,7 @@ export default function LocalOpenerConfig() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
+            <ExternalLink className="h-5 w-5" />
             Stato Servizio Local Opener
           </CardTitle>
         </CardHeader>
@@ -445,32 +311,6 @@ export default function LocalOpenerConfig() {
               </ScrollArea>
 
               <div className="flex flex-wrap gap-2">
-                <Button onClick={autoDetectPaths} disabled={isAutoDetecting}>
-                  {isAutoDetecting ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      Rilevazione...
-                    </>
-                  ) : (
-                    <>
-                      <Settings className="h-4 w-4 mr-2" />
-                      🔍 Rileva Automaticamente
-                    </>
-                  )}
-                </Button>
-                <Button variant="outline" onClick={reconfigurePaths} disabled={isReconfiguring}>
-                  {isReconfiguring ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      Configurazione...
-                    </>
-                  ) : (
-                    <>
-                      <Folder className="h-4 w-4 mr-2" />
-                      🔧 Riconfigura Percorsi
-                    </>
-                  )}
-                </Button>
                 <Button onClick={() => setShowAddDialog(true)}>
                   <FolderPlus className="h-4 w-4 mr-2" />
                   Aggiungi Cartella
@@ -544,6 +384,7 @@ export default function LocalOpenerConfig() {
             <div>
               <p className="font-medium">🔧 Risoluzione problemi</p>
               <div className="ml-4 space-y-1 text-muted-foreground">
+                <p><strong>🔴 Errore 1069:</strong> Usa "RISOLVI-ERRORE-1069.bat" per risolvere definitivamente il problema di accesso</p>
                 <p><strong>📊 Test completo:</strong> Usa "test-servizio-completo.bat" dalla cartella installata per verificare tutto</p>
                 <p><strong>🛠️ Diagnostica:</strong> Esegui "diagnostica-servizio.bat" per analisi dettagliata</p>
                 <p><strong>⚡ Riavvio semplice:</strong> Riavvia il PC e il servizio si avvia automaticamente</p>

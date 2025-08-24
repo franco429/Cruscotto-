@@ -150,25 +150,49 @@ Write-Host ""
 Write-Host "6. VERIFICA FILE DI CONFIGURAZIONE" -ForegroundColor Cyan
 Write-Host "===================================" -ForegroundColor Cyan
 
-$ConfigDir = "$env:APPDATA\.local-opener"
-$ConfigFile = "$ConfigDir\config.json"
+# Controlla entrambe le directory (utente e sistema)
+$UserConfigDir = "$env:APPDATA\.local-opener"
+$SystemConfigDir = "C:\ProgramData\.local-opener"
+$UserConfigFile = "$UserConfigDir\config.json"
+$SystemConfigFile = "$SystemConfigDir\config.json"
+$ConfigFound = $false
 
-if (Test-Path $ConfigDir) {
-            Write-Host "   OK Directory configurazione trovata: $ConfigDir [OK]" -ForegroundColor Green
+# Controlla configurazione utente
+if (Test-Path $UserConfigDir) {
+    Write-Host "   OK Directory configurazione utente trovata: $UserConfigDir [OK]" -ForegroundColor Green
     
-    if (Test-Path $ConfigFile) {
-        Write-Host "   OK File configurazione trovato [OK]" -ForegroundColor Green
+    if (Test-Path $UserConfigFile) {
+        Write-Host "   OK File configurazione utente trovato [OK]" -ForegroundColor Green
+        $ConfigFound = $true
         try {
-            $Config = Get-Content $ConfigFile | ConvertFrom-Json
-            Write-Host "   Percorsi configurati nel file: $($Config.roots.Count)" -ForegroundColor White
+            $Config = Get-Content $UserConfigFile | ConvertFrom-Json
+            Write-Host "   Percorsi configurati (utente): $($Config.roots.Count)" -ForegroundColor White
+            $Config.roots | ForEach-Object { Write-Host "     - $_" -ForegroundColor Gray }
         } catch {
-            Write-Host "   ATTENZIONE: File configurazione non parsabile" -ForegroundColor Yellow
+            Write-Host "   ATTENZIONE: File configurazione utente non parsabile" -ForegroundColor Yellow
         }
-    } else {
-        Write-Host "   INFO: File configurazione non ancora creato" -ForegroundColor Cyan
     }
-} else {
-    Write-Host "   INFO: Directory configurazione non ancora creata" -ForegroundColor Cyan
+}
+
+# Controlla configurazione sistema (LocalSystem)
+if (Test-Path $SystemConfigDir) {
+    Write-Host "   OK Directory configurazione sistema trovata: $SystemConfigDir [OK]" -ForegroundColor Green
+    
+    if (Test-Path $SystemConfigFile) {
+        Write-Host "   OK File configurazione sistema trovato [OK]" -ForegroundColor Green
+        $ConfigFound = $true
+        try {
+            $Config = Get-Content $SystemConfigFile | ConvertFrom-Json
+            Write-Host "   Percorsi configurati (sistema): $($Config.roots.Count)" -ForegroundColor White
+            $Config.roots | ForEach-Object { Write-Host "     - $_" -ForegroundColor Gray }
+        } catch {
+            Write-Host "   ATTENZIONE: File configurazione sistema non parsabile" -ForegroundColor Yellow
+        }
+    }
+}
+
+if (-not $ConfigFound) {
+    Write-Host "   INFO: File configurazione non ancora creato" -ForegroundColor Cyan
 }
 
 # 7. VERIFICA LOG

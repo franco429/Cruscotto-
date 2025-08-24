@@ -13,34 +13,74 @@ const { exec } = require("child_process");
 const PORT = 17654;
 
 // Persistent config (multi-root support)
-const CONFIG_DIR = process.env.LOCAL_OPENER_CONFIG_DIR || path.join(os.homedir(), ".local-opener");
-const CONFIG_FILE = path.join(CONFIG_DIR, "config.json");
+// Check both user and system directories for LocalSystem compatibility
+const USER_CONFIG_DIR = path.join(os.homedir(), ".local-opener");
+const SYSTEM_CONFIG_DIR = "C:\\ProgramData\\.local-opener";
+const CONFIG_DIR = process.env.LOCAL_OPENER_CONFIG_DIR || USER_CONFIG_DIR;
+
+// Determine which config file to use
+function getConfigFile() {
+  // First check if running as LocalSystem
+  const username = os.userInfo().username;
+  const isLocalSystem = username.toLowerCase() === 'system' || username.includes('$');
+  
+  if (isLocalSystem) {
+    // For LocalSystem, prefer system config if it exists
+    if (fs.existsSync(path.join(SYSTEM_CONFIG_DIR, "config.json"))) {
+      return path.join(SYSTEM_CONFIG_DIR, "config.json");
+    }
+  }
+  
+  // Check user config
+  if (fs.existsSync(path.join(USER_CONFIG_DIR, "config.json"))) {
+    return path.join(USER_CONFIG_DIR, "config.json");
+  }
+  
+  // Check system config as fallback
+  if (fs.existsSync(path.join(SYSTEM_CONFIG_DIR, "config.json"))) {
+    return path.join(SYSTEM_CONFIG_DIR, "config.json");
+  }
+  
+  // Default to CONFIG_DIR
+  return path.join(CONFIG_DIR, "config.json");
+}
+
+const CONFIG_FILE = getConfigFile();
 
 // Force discovery on startup to handle LocalSystem restrictions
 process.env.LOCAL_OPENER_FORCE_DISCOVERY = "true";
 
 function readConfig() {
   try {
-    if (!fs.existsSync(CONFIG_DIR)) fs.mkdirSync(CONFIG_DIR, { recursive: true });
-    if (!fs.existsSync(CONFIG_FILE)) {
-      const initial = {
-        roots: process.env.LOCAL_OPENER_ROOT ? [process.env.LOCAL_OPENER_ROOT] : [],
-      };
-      fs.writeFileSync(CONFIG_FILE, JSON.stringify(initial, null, 2));
-      return initial;
+    // Try to read from determined config file
+    if (fs.existsSync(CONFIG_FILE)) {
+      const raw = fs.readFileSync(CONFIG_FILE, "utf-8");
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed.roots)) parsed.roots = [];
+      console.log(`[local-opener] 📂 Configurazione caricata da: ${CONFIG_FILE}`);
+      return parsed;
     }
-    const raw = fs.readFileSync(CONFIG_FILE, "utf-8");
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed.roots)) parsed.roots = [];
-    return parsed;
+    
+    // If no config exists, create initial config
+    const configDir = path.dirname(CONFIG_FILE);
+    if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
+    
+    const initial = {
+      roots: process.env.LOCAL_OPENER_ROOT ? [process.env.LOCAL_OPENER_ROOT] : [],
+    };
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(initial, null, 2));
+    return initial;
   } catch (e) {
+    console.log(`[local-opener] ⚠️ Errore lettura config: ${e.message}`);
     return { roots: [] };
   }
 }
 
 function writeConfig(cfg) {
-  if (!fs.existsSync(CONFIG_DIR)) fs.mkdirSync(CONFIG_DIR, { recursive: true });
+  const configDir = path.dirname(CONFIG_FILE);
+  if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2));
+  console.log(`[local-opener] 💾 Configurazione salvata in: ${CONFIG_FILE}`);
 }
 
 let CONFIG = readConfig();
@@ -665,21 +705,23 @@ app.post("/auto-detect-paths", (_req, res) => {
   try {
     console.log(`[local-opener] 🔍 Richiesta rilevazione automatica percorsi...`);
     
+    // Salva configurazione esistente
+    const oldRoots = [...CONFIG.roots];
+    
     // Riesegui auto-discovery
-    const detectedPaths = discoverDefaultRoots();
+    discoverDefaultRoots();
     
-    // Aggiorna configurazione
-    CONFIG.roots = detectedPaths;
-    writeConfig(CONFIG);
+    // Rileva nuovi percorsi aggiunti
+    const newDetectedPaths = CONFIG.roots.filter(root => !oldRoots.includes(root));
     
-    console.log(`[local-opener] ✅ Rilevazione completata: ${detectedPaths.length} percorsi trovati`);
-    detectedPaths.forEach(path => console.log(`[local-opener]   - ${path}`));
+    console.log(`[local-opener] ✅ Rilevazione completata: ${CONFIG.roots.length} percorsi totali, ${newDetectedPaths.length} nuovi`);
+    CONFIG.roots.forEach(path => console.log(`[local-opener]   - ${path}`));
     
     res.json({
       success: true,
-      detectedPaths: detectedPaths,
-      configuredPaths: detectedPaths,
-      message: `Rilevati automaticamente ${detectedPaths.length} percorsi Google Drive`
+      detectedPaths: newDetectedPaths,
+      configuredPaths: CONFIG.roots,
+      message: `Rilevati ${newDetectedPaths.length} nuovi percorsi Google Drive`
     });
     
   } catch (error) {
