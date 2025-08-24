@@ -1,19 +1,25 @@
 {
   "name": "cruscotto-local-opener",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Local companion service to open documents directly on the OS - Cruscotto SGI",
   "main": "index.js",
   "bin": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "dev": "node index.js",
+    "test": "node index.js --test"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.19.2"
   },
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=16.0.0"
+  },
+  "pkg": {
+    "targets": ["win"],
+    "outputPath": "dist"
   },
   "keywords": ["local-opener", "cruscotto", "document-opener", "windows-service"],
   "author": "Cruscotto SGI Team",

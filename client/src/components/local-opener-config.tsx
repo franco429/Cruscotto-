@@ -24,9 +24,6 @@ import {
   RefreshCw,
   Folder,
   ExternalLink,
-  Wrench,
-  Activity,
-  AlertTriangle,
 } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { apiRequest } from "../lib/queryClient";
@@ -381,35 +378,15 @@ export default function LocalOpenerConfig() {
 
             <div className="flex flex-wrap gap-2">
               {!status.isRunning && (
-                <>
-                  <Button asChild variant="default">
-                    <a
-                      href="/downloads/cruscotto-local-opener-portable-OTTIMIZZATO.zip"
-                      download="cruscotto-local-opener-portable-OTTIMIZZATO.zip"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Scarica Local Opener OTTIMIZZATO (Avvio Automatico)
-                    </a>
-                  </Button>
-                  <Button asChild variant="outline">
-                    <a
-                      href="/downloads/diagnostica-servizio-avanzata.bat"
-                      download="diagnostica-servizio-avanzata.bat"
-                    >
-                      <Activity className="h-4 w-4 mr-2" />
-                      Script Diagnostica
-                    </a>
-                  </Button>
-                  <Button asChild variant="outline">
-                    <a
-                      href="/downloads/ripara-servizio-automatico.bat"
-                      download="ripara-servizio-automatico.bat"
-                    >
-                      <Wrench className="h-4 w-4 mr-2" />
-                      Script Riparazione
-                    </a>
-                  </Button>
-                </>
+                <Button asChild variant="default">
+                  <a
+                    href="/downloads/optimized_local_opener.zip"
+                    download="optimized_local_opener.zip"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Scarica Local Opener
+                  </a>
+                </Button>
               )}
               <Button
                 variant="outline"
@@ -424,42 +401,7 @@ export default function LocalOpenerConfig() {
         </CardContent>
       </Card>
 
-      {/* Troubleshooting Alert */}
-      {!status.isRunning && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Servizio Local Opener non disponibile</AlertTitle>
-          <AlertDescription className="space-y-3">
-            <p>Il servizio non è attivo. Questo può essere causato da:</p>
-            <ul className="list-disc list-inside space-y-1 text-sm">
-              <li>Servizio Windows non installato o arrestato</li>
-              <li>Configurazione NSSM non corretta (problema DelayedAutoStart risolto)</li>
-              <li>Interferenza antivirus o firewall</li>
-              <li>Conflitti di porta (17654 già in uso)</li>
-            </ul>
-            <div className="flex flex-wrap gap-2 mt-3">
-              <Button asChild size="sm" variant="outline">
-                <a
-                  href="/downloads/diagnostica-servizio-avanzata.bat"
-                  download="diagnostica-servizio-avanzata.bat"
-                >
-                  <Activity className="h-4 w-4 mr-2" />
-                  Diagnostica Completa
-                </a>
-              </Button>
-              <Button asChild size="sm" variant="outline">
-                <a
-                  href="/downloads/ripara-servizio-automatico.bat"
-                  download="ripara-servizio-automatico.bat"
-                >
-                  <Wrench className="h-4 w-4 mr-2" />
-                  Riparazione Automatica
-                </a>
-              </Button>
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
+
 
       {/* Configuration Card */}
       {status.isRunning && config && (
@@ -550,24 +492,24 @@ export default function LocalOpenerConfig() {
         <CardContent>
           <div className="space-y-3 text-sm">
             <div>
-              <p className="font-medium">1. Scarica e installa Local Opener OTTIMIZZATO</p>
+              <p className="font-medium">1. Scarica e installa Local Opener SISTEMATO</p>
               <div className="ml-4 space-y-1 text-muted-foreground">
-                <p><strong>✅ Versione Ottimizzata:</strong> Ridotte le dimensioni del 51% per download più veloce</p>
-                <p><strong>🚀 Avvio Automatico:</strong> Si installa come servizio Windows e si avvia automaticamente ad ogni accensione del PC</p>
-                <p><strong>🧠 Rilevamento Intelligente:</strong> Trova automaticamente tutti i percorsi Google Drive</p>
-                <p><strong>📦 Zero Dipendenze:</strong> Pacchetto completo e autonomo, funziona subito</p>
-                <p><strong>🔧 Diagnostica Integrata:</strong> Script avanzati per troubleshooting automatico</p>
+                <p><strong>✅ Tutti i problemi risolti:</strong> Auto-discovery completo A-Z, servizio sempre attivo, logging migliorato</p>
+                <p><strong>🚀 Avvio Automatico:</strong> Si installa come servizio Windows e resta attivo 24/7, si riavvia automaticamente ad ogni accensione del PC</p>
+                <p><strong>🔍 Rilevamento Intelligente Completo:</strong> Trova TUTTI i percorsi Google Drive possibili con scansione A-Z completa</p>
+                <p><strong>📦 Pacchetto Ottimizzato:</strong> File ZIP con tutti i componenti necessari, funziona immediatamente</p>
+                <p><strong>⚡ Apertura Istantanea:</strong> Click sull'icona occhio → documento si apre immediatamente</p>
               </div>
             </div>
             <Separator />
             <div>
-              <p className="font-medium">2. Procedura di installazione SEMPLIFICATA</p>
+              <p className="font-medium">2. Procedura di installazione DEFINITIVA</p>
               <div className="ml-4 space-y-1 text-muted-foreground">
-                <p>1. Scarica il file "Local Opener OTTIMIZZATO (Avvio Automatico)"</p>
-                <p>2. Estrai l'archivio ZIP in una cartella qualsiasi</p>
-                <p>3. Doppio click su "INSTALLA-COME-AMMINISTRATORE.bat"</p>
+                <p>1. Scarica il file "optimized_local_opener.zip"</p>
+                <p>2. Estrai l'archivio ZIP in una cartella del PC</p>
+                <p>3. Clic destro su "installa-servizio-finale.bat" → "Esegui come amministratore"</p>
                 <p>4. Clicca "Sì" quando richiesto per i privilegi amministratore</p>
-                <p>5. ✅ INSTALLAZIONE AUTOMATICA completata in 30 secondi!</p>
+                <p>5. ✅ INSTALLAZIONE DEFINITIVA completata! Il servizio resta attivo per sempre</p>
               </div>
             </div>
             <Separator />
@@ -582,11 +524,12 @@ export default function LocalOpenerConfig() {
             </div>
             <Separator />
             <div>
-              <p className="font-medium">4. Configura le cartelle (AUTOMATICO!)</p>
+              <p className="font-medium">4. Configura le cartelle (COMPLETAMENTE AUTOMATICO!)</p>
               <div className="ml-4 space-y-1 text-muted-foreground">
-                <p><strong>🔍 Rilevazione Automatica:</strong> Clicca "Rileva Automaticamente" per trovare i percorsi Google Drive automaticamente</p>
-                <p><strong>🔧 Riconfigurazione:</strong> Se hai problemi, usa "Riconfigura Percorsi" per impostare i percorsi standard</p>
-                <p><strong>➕ Configurazione Manuale:</strong> In alternativa, aggiungi manualmente le cartelle con i documenti ISO</p>
+                <p><strong>🔍 Auto-Discovery Potenziato:</strong> Il servizio rileva automaticamente TUTTI i percorsi Google Drive (A-Z completo)</p>
+                <p><strong>🔄 Retry Automatico:</strong> Retry ogni 30 secondi per 5 minuti per rilevare drive che si montano dopo l'avvio</p>
+                <p><strong>🎯 Trova Tutto:</strong> Il mio Drive, My Drive, Drive condivisi, tutte le lettere e configurazioni possibili</p>
+                <p><strong>➕ Configurazione Manuale:</strong> Solo se necessario, aggiungi manualmente cartelle aggiuntive</p>
               </div>
             </div>
             <Separator />
@@ -601,11 +544,11 @@ export default function LocalOpenerConfig() {
             <div>
               <p className="font-medium">🔧 Risoluzione problemi</p>
               <div className="ml-4 space-y-1 text-muted-foreground">
-                <p><strong>📊 Diagnostica avanzata:</strong> Scarica e esegui "diagnostica-servizio-avanzata.bat" per un'analisi completa del sistema</p>
-                <p><strong>🛠️ Riparazione automatica:</strong> Se il servizio non funziona, usa "ripara-servizio-automatico.bat" per reinstallazione completa</p>
-                <p><strong>⚡ Avvio manuale:</strong> Se il servizio è in stato PAUSED, riavvia il PC o esegui: <code>sc start CruscottoLocalOpener</code></p>
-                <p><strong>🛡️ Antivirus:</strong> Aggiungi eccezione per la cartella Local Opener in Windows Defender/Antivirus</p>
-                <p><strong>🔐 Privilegi:</strong> Esegui sempre gli script come Amministratore (click destro → "Esegui come amministratore")</p>
+                <p><strong>📊 Test completo:</strong> Usa "test-servizio-completo.bat" dalla cartella installata per verificare tutto</p>
+                <p><strong>🛠️ Diagnostica:</strong> Esegui "diagnostica-servizio.bat" per analisi dettagliata</p>
+                <p><strong>⚡ Riavvio semplice:</strong> Riavvia il PC e il servizio si avvia automaticamente</p>
+                <p><strong>🔄 Aggiornamento:</strong> Usa "AGGIORNA-CODICE-SERVIZIO.bat" per aggiornare i percorsi</p>
+                <p><strong>🔐 Privilegi:</strong> Esegui sempre come Amministratore (click destro → "Esegui come amministratore")</p>
               </div>
             </div>
           </div>

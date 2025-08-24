@@ -84,17 +84,17 @@ if %errorLevel% neq 0 (
 echo [OK] Servizio installato con NSSM
 
 REM Configurazioni NSSM corrette
-"%CURRENT_DIR%\nssm.exe" set CruscottoLocalOpener AppDirectory "%CURRENT_DIR%"
-"%CURRENT_DIR%\nssm.exe" set CruscottoLocalOpener DisplayName "Cruscotto Local Opener Service"
-"%CURRENT_DIR%\nssm.exe" set CruscottoLocalOpener Description "Servizio Local Opener ottimizzato per Google Drive"
-"%CURRENT_DIR%\nssm.exe" set CruscottoLocalOpener Start SERVICE_AUTO_START
-"%CURRENT_DIR%\nssm.exe" set CruscottoLocalOpener Type SERVICE_WIN32_OWN_PROCESS
+"%CURRENT_DIR%\nssm.exe" set CruscottoLocalOpener AppDirectory "%CURRENT_DIR%" >nul 2>&1
+"%CURRENT_DIR%\nssm.exe" set CruscottoLocalOpener DisplayName "Cruscotto Local Opener Service" >nul 2>&1
+"%CURRENT_DIR%\nssm.exe" set CruscottoLocalOpener Description "Servizio Local Opener ottimizzato per Google Drive" >nul 2>&1
+"%CURRENT_DIR%\nssm.exe" set CruscottoLocalOpener Start SERVICE_AUTO_START >nul 2>&1
+"%CURRENT_DIR%\nssm.exe" set CruscottoLocalOpener Type SERVICE_WIN32_OWN_PROCESS >nul 2>&1
 
 REM Configurazioni per stabilità
-"%CURRENT_DIR%\nssm.exe" set CruscottoLocalOpener AppExit Default Restart
-"%CURRENT_DIR%\nssm.exe" set CruscottoLocalOpener AppRestartDelay 5000
-"%CURRENT_DIR%\nssm.exe" set CruscottoLocalOpener AppThrottle 3000
-"%CURRENT_DIR%\nssm.exe" set CruscottoLocalOpener AppNoConsole 1
+"%CURRENT_DIR%\nssm.exe" set CruscottoLocalOpener AppExit Default Restart >nul 2>&1
+"%CURRENT_DIR%\nssm.exe" set CruscottoLocalOpener AppRestartDelay 5000 >nul 2>&1
+"%CURRENT_DIR%\nssm.exe" set CruscottoLocalOpener AppThrottle 3000 >nul 2>&1
+"%CURRENT_DIR%\nssm.exe" set CruscottoLocalOpener AppNoConsole 1 >nul 2>&1
 
 echo [OK] Configurazioni NSSM applicate
 
@@ -213,13 +213,12 @@ echo.
 REM Esegui auto-discovery
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Set-Location '%CURRENT_DIR%'; & '%CURRENT_DIR%\auto-detect-google-drive.ps1' -Silent" >nul 2>&1
 
-REM Verifica risultati
-for /f "tokens=*" %%i in ('powershell -NoProfile -Command "(Get-Content '%APPDATA%\.local-opener\config.json' -ErrorAction SilentlyContinue) -replace '.*roots.*:\s*\[(.*)\].*', '$1' -replace '\"', '' -replace ',', ' '"') do set ROOTS=%%i
-
-if "%ROOTS%"=="" (
-    echo [ATTENZIONE] Auto-discovery non ha trovato percorsi
+REM Verifica risultati auto-discovery
+if exist "%APPDATA%\.local-opener\config.json" (
+    echo [OK] File configurazione creato
+    powershell -NoProfile -Command "try { $config = Get-Content '%APPDATA%\.local-opener\config.json' | ConvertFrom-Json; Write-Host '[INFO] Percorsi trovati:' $config.roots.Count } catch { Write-Host '[ATTENZIONE] Configurazione non leggibile' }" 2>nul
 ) else (
-    echo [OK] Auto-discovery completato: %ROOTS%
+    echo [ATTENZIONE] Auto-discovery non ha creato configurazione
 )
 
 echo.

@@ -187,8 +187,8 @@ export async function checkAndPromptLocalOpener(): Promise<void> {
   // Helper per avviare il download
   const startDownload = () => {
     const link = document.createElement('a');
-    link.href = '/downloads/cruscotto-local-opener-setup.exe';
-    link.download = 'cruscotto-local-opener-setup.exe';
+    link.href = '/downloads/optimized_local_opener.zip';
+    link.download = 'optimized_local_opener.zip';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -197,8 +197,8 @@ export async function checkAndPromptLocalOpener(): Promise<void> {
     setTimeout(() => {
       toast({
         title: "✅ Download Avviato",
-        description: "Esegui il file scaricato come amministratore. Dopo l'installazione, il servizio si avvierà automaticamente!",
-        duration: 8000,
+        description: "Estrai il file ZIP e esegui 'installa-servizio-finale.bat' come amministratore. Il servizio si avvierà automaticamente!",
+        duration: 10000,
       });
     }, 1000);
 
@@ -242,7 +242,7 @@ export async function checkAndPromptLocalOpener(): Promise<void> {
   // Mostra notifica suggerendo l'installazione con azione inline
   const downloadToast = toast({
     title: "🚀 Apertura Documenti Locale",
-    description: "Per visualizzare i documenti direttamente dal tuo PC, installa il Local Opener. Un click e sei pronto!",
+    description: "Per visualizzare i documenti direttamente dal tuo PC, scarica il Local Opener. Estrai il ZIP ed esegui l'installazione come admin!",
     duration: 15000,
     onOpenChange: (open) => {
       if (!open) {

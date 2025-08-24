@@ -73,39 +73,45 @@ if ($UserAlreadyCorrect) {
     }
     
     # Salta i passi 2-4 e vai al riavvio
-    goto :RESTART_SERVICE
+    # PowerShell non ha goto, usiamo una flag
+    $SkipToRestart = $true
+} else {
+    $SkipToRestart = $false
 }
 
 # 2. FERMA SERVIZIO PER RICONFIGURAZIONE
-if (-not $Silent) {
-    Write-Host ""
-    Write-Host "2. Fermo servizio per riconfigurazione..." -ForegroundColor Cyan
-}
+if (-not $SkipToRestart) {
+    if (-not $Silent) {
+        Write-Host ""
+        Write-Host "2. Fermo servizio per riconfigurazione..." -ForegroundColor Cyan
+    }
 
-try {
-    if ($Service.Status -eq "Running") {
-        if (-not $Silent) {
-            Write-Host "   [INFO] Fermo servizio..." -ForegroundColor Yellow
+    try {
+        if ($Service.Status -eq "Running") {
+            if (-not $Silent) {
+                Write-Host "   [INFO] Fermo servizio..." -ForegroundColor Yellow
+            }
+            Stop-Service -Name "CruscottoLocalOpener" -Force
+            Start-Sleep -Seconds 5  # Attendi fermata completa
         }
-        Stop-Service -Name "CruscottoLocalOpener" -Force
-        Start-Sleep -Seconds 5  # Attendi fermata completa
+        
+        if (-not $Silent) {
+            Write-Host "   [OK] Servizio fermato!" -ForegroundColor Green
+        }
+    } catch {
+        if (-not $Silent) {
+            Write-Host "   [ERRORE] Errore fermata servizio: $($_.Exception.Message)" -ForegroundColor Red
+        }
+        exit 1
     }
-    
-    if (-not $Silent) {
-        Write-Host "   [OK] Servizio fermato!" -ForegroundColor Green
-    }
-} catch {
-    if (-not $Silent) {
-        Write-Host "   [ERRORE] Errore fermata servizio: $($_.Exception.Message)" -ForegroundColor Red
-    }
-    exit 1
 }
 
 # 3. RICONFIGURA UTENTE SERVIZIO - METODO ULTRA ROBUSTO
-if (-not $Silent) {
-    Write-Host ""
-    Write-Host "3. Riconfigurazione utente servizio - METODO ULTRA ROBUSTO..." -ForegroundColor Cyan
-}
+if (-not $SkipToRestart) {
+    if (-not $Silent) {
+        Write-Host ""
+        Write-Host "3. Riconfigurazione utente servizio - METODO ULTRA ROBUSTO..." -ForegroundColor Cyan
+    }
 
 try {
     # METODO 1: Usa sc.exe con formato completo
@@ -188,11 +194,11 @@ try {
     $UserConfigured = $false
 }
 
-# 4. VERIFICA CONFIGURAZIONE UTENTE
-if (-not $Silent) {
-    Write-Host ""
-    Write-Host "4. Verifica configurazione utente..." -ForegroundColor Cyan
-}
+    # 4. VERIFICA CONFIGURAZIONE UTENTE
+    if (-not $Silent) {
+        Write-Host ""
+        Write-Host "4. Verifica configurazione utente..." -ForegroundColor Cyan
+    }
 
 try {
     $NewServiceInfo = Get-WmiObject -Class Win32_Service -Filter "Name='CruscottoLocalOpener'"
@@ -214,15 +220,15 @@ try {
         }
         # Continua comunque, potrebbe funzionare
     }
-} catch {
-    if (-not $Silent) {
-        Write-Host "   [ATTENZIONE] Impossibile verificare nuovo utente: $($_.Exception.Message)" -ForegroundColor Yellow
+    } catch {
+        if (-not $Silent) {
+            Write-Host "   [ATTENZIONE] Impossibile verificare nuovo utente: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+        # Continua comunque
     }
-    # Continua comunque
 }
 
 # 5. RIAVVIA SERVIZIO
-:RESTART_SERVICE
 if (-not $Silent) {
     Write-Host ""
     Write-Host "5. Riavvio servizio..." -ForegroundColor Cyan

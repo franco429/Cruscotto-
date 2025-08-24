@@ -34,10 +34,11 @@ echo.
 echo 1. Health: http://127.0.0.1:17654/health
 echo 2. Config: http://127.0.0.1:17654/config
 echo.
-echo Dovresti vedere TUTTI i 3 percorsi:
-echo  - G:\Il mio Drive
-echo  - G:\
-echo  - C:\Users\teoni\Desktop\SGI - Copia
+echo Dovresti vedere i percorsi rilevati automaticamente, come:
+echo  - G:\Il mio Drive (o My Drive)
+echo  - H:\Il mio Drive (se presente)
+echo  - C:\Users\[utente]\Google Drive (se presente)
+echo  - Altri percorsi Google Drive rilevati automaticamente
 echo.
 echo Se funziona, il Local Opener e ora PERFETTO al 100%!
 echo.
