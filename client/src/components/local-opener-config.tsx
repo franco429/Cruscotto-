@@ -332,24 +332,24 @@ export default function LocalOpenerConfig() {
         <CardContent>
           <div className="space-y-3 text-sm">
             <div>
-              <p className="font-medium">1. Scarica e installa Local Opener SISTEMATO</p>
+              <p className="font-medium">1. Scarica e installa Local Opener come SERVIZIO WINDOWS</p>
               <div className="ml-4 space-y-1 text-muted-foreground">
-                <p><strong>✅ Tutti i problemi risolti:</strong> Auto-discovery completo A-Z, servizio sempre attivo, logging migliorato</p>
-                <p><strong>🚀 Avvio Automatico:</strong> Si installa come servizio Windows e resta attivo 24/7, si riavvia automaticamente ad ogni accensione del PC</p>
-                <p><strong>🔍 Rilevamento Intelligente Completo:</strong> Trova TUTTI i percorsi Google Drive possibili con scansione A-Z completa</p>
-                <p><strong>📦 Pacchetto Ottimizzato:</strong> File ZIP con tutti i componenti necessari, funziona immediatamente</p>
-                <p><strong>⚡ Apertura Istantanea:</strong> Click sull'icona occhio → documento si apre immediatamente</p>
+                <p><strong>✅ SOLUZIONE DEFINITIVA:</strong> Servizio Windows nativo che si avvia automaticamente al boot</p>
+                <p><strong>🚀 SEMPRE ATTIVO 24/7:</strong> Continua a funzionare anche se chiudi la sessione utente o riavvii il PC</p>
+                <p><strong>🔍 AUTO-DISCOVERY COMPLETO:</strong> Rileva automaticamente TUTTI i percorsi Google Drive Desktop</p>
+                <p><strong>📦 INSTALLAZIONE AUTOMATICA:</strong> Script che configura tutto automaticamente</p>
+                <p><strong>⚡ FUNZIONAMENTO PERMANENTE:</strong> Una volta installato, funziona per sempre</p>
               </div>
             </div>
             <Separator />
             <div>
-              <p className="font-medium">2. Procedura di installazione DEFINITIVA</p>
+              <p className="font-medium">2. Procedura di installazione SERVIZIO WINDOWS</p>
               <div className="ml-4 space-y-1 text-muted-foreground">
                 <p>1. Scarica il file "optimized_local_opener.zip"</p>
                 <p>2. Estrai l'archivio ZIP in una cartella del PC</p>
-                <p>3. Clic destro su "installa-servizio-finale.bat" → "Esegui come amministratore"</p>
+                <p>3. <strong>CLIC DESTRO</strong> su "INSTALLA-SERVIZIO-AMMINISTRATORE.bat" → "Esegui come amministratore"</p>
                 <p>4. Clicca "Sì" quando richiesto per i privilegi amministratore</p>
-                <p>5. ✅ INSTALLAZIONE DEFINITIVA completata! Il servizio resta attivo per sempre</p>
+                <p>5. ✅ INSTALLAZIONE SERVIZIO COMPLETATA! Il servizio si avvia automaticamente ad ogni boot</p>
               </div>
             </div>
             <Separator />
@@ -382,14 +382,14 @@ export default function LocalOpenerConfig() {
             </div>
             <Separator />
             <div>
-              <p className="font-medium">🔧 Risoluzione problemi</p>
+              <p className="font-medium">🔧 Gestione e risoluzione problemi</p>
               <div className="ml-4 space-y-1 text-muted-foreground">
-                <p><strong>🔴 Errore 1069:</strong> Usa "RISOLVI-ERRORE-1069.bat" per risolvere definitivamente il problema di accesso</p>
-                <p><strong>📊 Test completo:</strong> Usa "test-servizio-completo.bat" dalla cartella installata per verificare tutto</p>
-                <p><strong>🛠️ Diagnostica:</strong> Esegui "diagnostica-servizio.bat" per analisi dettagliata</p>
-                <p><strong>⚡ Riavvio semplice:</strong> Riavvia il PC e il servizio si avvia automaticamente</p>
-                <p><strong>🔄 Aggiornamento:</strong> Usa "AGGIORNA-CODICE-SERVIZIO.bat" per aggiornare i percorsi</p>
-                <p><strong>🔐 Privilegi:</strong> Esegui sempre come Amministratore (click destro → "Esegui come amministratore")</p>
+                <p><strong>🔄 Gestione servizio:</strong> Usa "GESTISCI-SERVIZIO.bat" per avviare/fermare/riavviare il servizio</p>
+                <p><strong>📊 Diagnostica completa:</strong> Esegui "diagnostica-servizio.bat" per analisi dettagliata del sistema</p>
+                <p><strong>⚡ Riavvio automatico:</strong> Il servizio si riavvia automaticamente ad ogni boot del PC</p>
+                <p><strong>🛠️ Disinstallazione:</strong> Usa "DISINSTALLA-SERVIZIO.bat" se necessario rimuovere tutto</p>
+                <p><strong>🔐 Privilegi richiesti:</strong> L'installazione richiede privilegi amministratore (click destro → "Esegui come amministratore")</p>
+                <p><strong>🌐 Verifica funzionamento:</strong> Dopo l'installazione, apri http://127.0.0.1:17654 nel browser</p>
               </div>
             </div>
           </div>

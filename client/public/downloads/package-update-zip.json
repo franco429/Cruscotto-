@@ -1,0 +1,26 @@
+{
+  "name": "local-opener-zip-updater",
+  "version": "1.0.0",
+  "description": "Script per aggiornare il file ZIP di Local Opener con tutti i nuovi file per il servizio Windows",
+  "main": "update-optimized-local-opener.js",
+  "scripts": {
+    "update-zip": "node update-optimized-local-opener.js",
+    "install-deps": "npm install",
+    "build": "npm run install-deps && npm run update-zip"
+  },
+  "dependencies": {
+    "archiver": "^6.0.1"
+  },
+  "devDependencies": {},
+  "keywords": [
+    "local-opener",
+    "zip",
+    "windows-service",
+    "auto-update"
+  ],
+  "author": "Local Opener Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
