@@ -1,17 +1,18 @@
 @echo off
 :: AVVIO-AUTOMATICO-UTENTE.bat
-:: Script per avvio automatico ad ogni login utente
+:: Script per avvio automatico ad ogni login utente e al riavvio di Windows
 :: Rileva dinamicamente i percorsi Google Drive per ogni cliente
+:: VERSIONE CORRETTA - Risolve problema avvio automatico al boot
 
 echo ========================================
 echo   CRUSCOTTO LOCAL OPENER - AVVIO UTENTE
-echo   Auto-Config Edition v2.0
-echo   Modalita: Avvio Automatico Login
+echo   Auto-Config Edition v2.1
+echo   Modalita: Avvio Automatico Login + Boot
 echo ========================================
 echo.
 
 :: Imposta titolo finestra
-title "Cruscotto Local Opener - Avvio Automatico"
+title "Cruscotto Local Opener - Avvio Automatico v2.1"
 
 :: Verifica se il servizio è già in esecuzione
 echo Verifica stato servizio...

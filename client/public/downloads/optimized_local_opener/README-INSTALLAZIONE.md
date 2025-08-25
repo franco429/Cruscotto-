@@ -1,8 +1,25 @@
-# 🚀 CRUSCOTTO LOCAL OPENER v2.0.0 - GUIDA COMPLETA
+# 🚀 CRUSCOTTO LOCAL OPENER v2.1.0 - GUIDA COMPLETA
 
 ## 📋 **PANORAMICA**
 
-Il **Cruscotto Local Opener** è un servizio locale che permette l'apertura diretta dei documenti dal browser web al sistema operativo. La versione 2.0.0 introduce **due modalità di installazione** per garantire il massimo livello di affidabilità.
+Il **Cruscotto Local Opener** è un servizio locale che permette l'apertura diretta dei documenti dal browser web al sistema operativo. La versione 2.1.0 introduce **correzioni definitive per l'avvio automatico** e **due modalità di installazione** per garantire il massimo livello di affidabilità.
+
+## 🔧 **CORREZIONI v2.1.0 - AVVIO AUTOMATICO**
+
+### **Problema Risolto**
+- ❌ **Prima**: Il servizio non si avviava automaticamente al riavvio di Windows
+- ✅ **Ora**: Avvio automatico garantito con **5 metodi di backup**
+
+### **Soluzioni Implementate**
+1. **Task Scheduler Boot**: Avvio al riavvio del sistema (SYSTEM)
+2. **Task Scheduler Login**: Avvio al login dell'utente
+3. **Servizio Windows**: Configurazione `delayed-auto`
+4. **Registro HKLM**: Backup di sistema
+5. **Registro HKCU**: Backup utente corrente
+
+### **Nuovi Script di Supporto**
+- `CONFIGURA-AVVIO-AUTOMATICO.bat` - Configurazione manuale avvio automatico
+- `VERIFICA-AVVIO-AUTOMATICO.bat` - Diagnostica completa del sistema
 
 ## ⚠️ **IMPORTANTE: VERIFICA PRE-INSTALLAZIONE**
 

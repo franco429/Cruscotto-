@@ -246,34 +246,53 @@ try {
     throw
 }
 
-# 6. CONFIGURA AVVIO AUTOMATICO DOPPIO (BELT AND SUSPENDERS)
-Write-Log "Configurazione avvio automatico multiplo..." "STEP6" "Yellow"
+# 6. CONFIGURA AVVIO AUTOMATICO COMPLETO (FIX DEFINITIVO)
+Write-Log "Configurazione avvio automatico completo..." "STEP6" "Yellow"
 
 try {
     # Metodo 1: Configura il servizio per avvio automatico ritardato
-    Write-Verbose "Configurazione avvio automatico ritardato..."
+    Write-Verbose "Configurazione servizio per avvio automatico ritardato..."
     sc.exe config $serviceName start= delayed-auto 2>$null
-    Write-Log "✓ Avvio automatico ritardato configurato" "STEP6" "Green"
+    Write-Log "✓ Servizio configurato per avvio automatico ritardato" "STEP6" "Green"
     
-    # Metodo 2: Crea task scheduler come backup
-    Write-Verbose "Creazione task scheduler backup..."
-    $taskName = "CruscottoLocalOpenerBackup"
-    Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
+    # Metodo 2: Crea task scheduler per avvio al boot (SYSTEM)
+    Write-Verbose "Creazione task scheduler per avvio al boot..."
+    $taskBootName = "CruscottoLocalOpenerBoot"
+    Unregister-ScheduledTask -TaskName $taskBootName -Confirm:$false -ErrorAction SilentlyContinue
     
-    $action = New-ScheduledTaskAction -Execute "$InstallPath\local-opener.exe"
+    $actionBoot = New-ScheduledTaskAction -Execute "$InstallPath\local-opener.exe"
     $triggerBoot = New-ScheduledTaskTrigger -AtStartup
-    $triggerLogon = New-ScheduledTaskTrigger -AtLogOn
-    $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
-    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
+    $principalBoot = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+    $settingsBoot = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
     
-    Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $triggerBoot,$triggerLogon -Principal $principal -Settings $settings -Force | Out-Null
-    Write-Log "✓ Task scheduler backup creato" "STEP6" "Green"
+    Register-ScheduledTask -TaskName $taskBootName -Action $actionBoot -Trigger $triggerBoot -Principal $principalBoot -Settings $settingsBoot -Force | Out-Null
+    Write-Log "✓ Task scheduler per avvio al boot creato" "STEP6" "Green"
     
-    # Metodo 3: Aggiungi al registro per avvio automatico (ulteriore backup)
+    # Metodo 3: Crea task scheduler per avvio al login (utente corrente)
+    Write-Verbose "Creazione task scheduler per avvio al login..."
+    $taskLoginName = "CruscottoLocalOpenerLogin"
+    Unregister-ScheduledTask -TaskName $taskLoginName -Confirm:$false -ErrorAction SilentlyContinue
+    
+    $actionLogin = New-ScheduledTaskAction -Execute "$InstallPath\local-opener.exe"
+    $triggerLogin = New-ScheduledTaskTrigger -AtLogOn
+    $principalLogin = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Highest
+    $settingsLogin = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
+    
+    Register-ScheduledTask -TaskName $taskLoginName -Action $actionLogin -Trigger $triggerLogin -Principal $principalLogin -Settings $settingsLogin -Force | Out-Null
+    Write-Log "✓ Task scheduler per avvio al login creato" "STEP6" "Green"
+    
+    # Metodo 4: Aggiungi al registro per avvio automatico (backup finale)
     Write-Verbose "Configurazione registro Windows..."
     $regPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
     Set-ItemProperty -Path $regPath -Name "CruscottoLocalOpener" -Value "`"$InstallPath\local-opener.exe`"" -Force
     Write-Log "✓ Backup registro Windows configurato" "STEP6" "Green"
+    
+    # Metodo 5: Configura anche per utente corrente (HKCU)
+    Write-Verbose "Configurazione registro utente corrente..."
+    $regPathUser = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
+    Set-ItemProperty -Path $regPathUser -Name "CruscottoLocalOpener" -Value "`"$InstallPath\local-opener.exe`"" -Force
+    Write-Log "✓ Backup registro utente configurato" "STEP6" "Green"
+    
 } catch {
     Write-Log "⚠ Errore configurazione avvio automatico: $($_.Exception.Message)" "WARNING" "Yellow"
 }

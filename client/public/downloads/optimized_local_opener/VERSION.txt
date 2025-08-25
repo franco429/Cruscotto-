@@ -1,6 +1,7 @@
-CRUSCOTTO LOCAL OPENER v2.0.2
+CRUSCOTTO LOCAL OPENER v2.1.0
 Build: 2024-12-19T10:00:00.000Z
-Build Version: 2.0.2-20241219
+Build Version: 2.1.0-20241219
+Fix: Avvio Automatico al Riavvio Windows
 
 CHANGELOG v2.0.2:
 - ✅ Aggiornamento cache busting per download browser
