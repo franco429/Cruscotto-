@@ -1,20 +1,24 @@
 @echo off
-:: AVVIO-AUTOMATICO-UTENTE.bat - VERSIONE OTTIMIZZATA v2.1.1
-:: Script per avvio automatico ad ogni login utente e al riavvio di Windows
+setlocal enabledelayedexpansion
+:: AVVIO-AUTOMATICO-UTENTE-CACHE.bat - VERSIONE CON CACHE v2.1.1
+:: Script per avvio automatico con cache del percorso per massima velocità
 :: Rileva dinamicamente i percorsi Google Drive per ogni cliente
-:: OTTIMIZZAZIONI: Ricerca veloce, cache percorsi, avvio rapido
+:: OTTIMIZZAZIONI: Cache percorso, ricerca ultra-veloce, avvio istantaneo
 
 echo ========================================
 echo   CRUSCOTTO LOCAL OPENER - AVVIO UTENTE
-echo   Auto-Config Edition v2.1.1 OPTIMIZED
-echo   Modalita: Avvio Automatico Login + Boot
+echo   Auto-Config Edition v2.1.1 CACHE
+echo   Modalita: Avvio Automatico con Cache
 echo ========================================
 echo.
 
 :: Imposta titolo finestra
-title "Cruscotto Local Opener - Avvio Automatico v2.1.1 OPTIMIZED"
+title "Cruscotto Local Opener - Avvio Automatico v2.1.1 CACHE"
 
-:: Verifica rapida se il servizio è già in esecuzione (timeout ridotto)
+:: Percorso del file di cache
+set "CACHE_FILE=%TEMP%\local_opener_path.cache"
+
+:: Verifica rapida se il servizio è già in esecuzione
 echo Verifica stato servizio...
 sc query CruscottoLocalOpener | find "RUNNING" >nul 2>&1
 if %errorlevel% == 0 (
@@ -29,7 +33,7 @@ if %errorlevel% neq 0 (
     goto :standalone_mode
 )
 
-:: Avvia il servizio se installato (timeout ridotto)
+:: Avvia il servizio se installato
 echo Avvio servizio CruscottoLocalOpener...
 net start CruscottoLocalOpener >nul 2>&1
 if %errorlevel% == 0 (
@@ -43,44 +47,56 @@ if %errorlevel% == 0 (
 :standalone_mode
 echo.
 echo ========================================
-echo   MODALITA STANDALONE - AVVIO DIRETTO
+echo   MODALITA STANDALONE - AVVIO CON CACHE
 echo ========================================
 echo.
+
+:: CONTROLLO CACHE - Verifica se abbiamo già il percorso salvato
+if exist "%CACHE_FILE%" (
+    set /p OPENER_PATH=<"%CACHE_FILE%"
+    if exist "!OPENER_PATH!" (
+        echo ✓ Percorso trovato in cache: !OPENER_PATH!
+        goto :start_standalone
+    ) else (
+        echo ⚠ Percorso in cache non valido, ricerca aggiornata...
+        del "%CACHE_FILE%" >nul 2>&1
+    )
+)
 
 :: RICERCA VELOCE OTTIMIZZATA - Controlla prima i percorsi più probabili
 :: 1. Directory corrente (più veloce)
 if exist "local-opener.exe" (
     echo ✓ Trovato local-opener.exe (directory corrente)
     set "OPENER_PATH=%~dp0local-opener.exe"
-    goto :start_standalone
+    goto :save_cache
 )
 
 :: 2. Program Files (percorso standard)
 if exist "%ProgramFiles%\CruscottoLocalOpener\local-opener.exe" (
     echo ✓ Trovato local-opener.exe in Program Files
     set "OPENER_PATH=%ProgramFiles%\CruscottoLocalOpener\local-opener.exe"
-    goto :start_standalone
+    goto :save_cache
 )
 
 :: 3. Desktop (percorso comune)
 if exist "%USERPROFILE%\Desktop\local-opener.exe" (
     echo ✓ Trovato local-opener.exe sul Desktop
     set "OPENER_PATH=%USERPROFILE%\Desktop\local-opener.exe"
-    goto :start_standalone
+    goto :save_cache
 )
 
 :: 4. Downloads (percorso comune)
 if exist "%USERPROFILE%\Downloads\local-opener.exe" (
     echo ✓ Trovato local-opener.exe in Downloads
     set "OPENER_PATH=%USERPROFILE%\Downloads\local-opener.exe"
-    goto :start_standalone
+    goto :save_cache
 )
 
 :: 5. Documents (percorso comune)
 if exist "%USERPROFILE%\Documents\local-opener.exe" (
     echo ✓ Trovato local-opener.exe in Documents
     set "OPENER_PATH=%USERPROFILE%\Documents\local-opener.exe"
-    goto :start_standalone
+    goto :save_cache
 )
 
 :: 6. Ricerca rapida in Program Files (solo directory principali)
@@ -89,7 +105,7 @@ for %%d in ("%ProgramFiles%" "%ProgramFiles(x86)%") do (
     if exist "%%~d\local-opener.exe" (
         echo ✓ Trovato: %%~d\local-opener.exe
         set "OPENER_PATH=%%~d\local-opener.exe"
-        goto :start_standalone
+        goto :save_cache
     )
 )
 
@@ -99,7 +115,7 @@ for %%d in ("%USERPROFILE%\Desktop" "%USERPROFILE%\Downloads" "%USERPROFILE%\Doc
     if exist "%%~d\local-opener.exe" (
         echo ✓ Trovato: %%~d\local-opener.exe
         set "OPENER_PATH=%%~d\local-opener.exe"
-        goto :start_standalone
+        goto :save_cache
     )
 )
 
@@ -110,7 +126,7 @@ if %errorlevel% == 0 (
     for /f "delims=" %%i in ('where local-opener.exe') do (
         echo ✓ Trovato con where: %%i
         set "OPENER_PATH=%%i"
-        goto :start_standalone
+        goto :save_cache
     )
 )
 
@@ -119,7 +135,7 @@ echo Ricerca completa nel sistema (puo' richiedere tempo)...
 for /f "delims=" %%i in ('dir /s /b "%ProgramFiles%\local-opener.exe" 2^>nul ^| findstr /i "local-opener.exe"') do (
     echo ✓ Trovato: %%i
     set "OPENER_PATH=%%i"
-    goto :start_standalone
+    goto :save_cache
 )
 
 echo ❌ local-opener.exe non trovato nel sistema
@@ -133,6 +149,11 @@ echo - Downloads: %USERPROFILE%\Downloads
 echo - Documents: %USERPROFILE%\Documents
 pause
 exit /b 1
+
+:save_cache
+:: Salva il percorso trovato nella cache per i prossimi avvii
+echo %OPENER_PATH% > "%CACHE_FILE%"
+echo ✓ Percorso salvato in cache per avvii futuri
 
 :start_standalone
 echo.
