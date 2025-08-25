@@ -246,8 +246,8 @@ export default function LocalOpenerConfig() {
               {!status.isRunning && (
                 <Button asChild variant="default">
                   <a
-                    href="/downloads/optimized_local_opener.zip"
-                    download="optimized_local_opener.zip"
+                    href="/downloads/optimized_local_opener_v2.1.0.zip"
+                    download="optimized_local_opener_v2.1.0.zip"
                   >
                     <Download className="h-4 w-4 mr-2" />
                     Scarica Local Opener
@@ -345,7 +345,7 @@ export default function LocalOpenerConfig() {
             <div>
               <p className="font-medium">2. Procedura di installazione SERVIZIO WINDOWS</p>
               <div className="ml-4 space-y-1 text-muted-foreground">
-                <p>1. Scarica il file "optimized_local_opener.zip"</p>
+                <p>1. Scarica il file "optimized_local_opener_v2.1.0.zip"</p>
                 <p>2. Estrai l'archivio ZIP in una cartella del PC</p>
                 <p>3. <strong>CLIC DESTRO</strong> su "INSTALLA-SERVIZIO-AMMINISTRATORE.bat" → "Esegui come amministratore"</p>
                 <p>4. Clicca "Sì" quando richiesto per i privilegi amministratore</p>

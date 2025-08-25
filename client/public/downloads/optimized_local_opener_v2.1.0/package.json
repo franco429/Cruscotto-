@@ -1,0 +1,40 @@
+{
+  "name": "cruscotto-local-opener",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Local companion service to open documents directly on the OS - Cruscotto SGI - Auto-Config Edition",
+  "main": "index.js",
+  "bin": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js",
+    "test": "node index.js --test",
+    "build": "pkg . --targets win --output dist/local-opener.exe",
+    "install-service": "powershell -ExecutionPolicy Bypass -File installer-definitivo.ps1",
+    "verify": "powershell -ExecutionPolicy Bypass -File verifica-installazione.ps1"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "pkg": {
+    "targets": ["win"],
+    "outputPath": "dist",
+    "assets": [
+      "auto-config.js"
+    ]
+  },
+  "keywords": ["local-opener", "cruscotto", "document-opener", "windows-service", "auto-config", "google-drive"],
+  "author": "Cruscotto SGI Team",
+  "license": "UNLICENSED",
+  "features": [
+    "Auto-start at boot",
+    "Google Drive auto-detection",
+    "Triple redundancy",
+    "Zero configuration",
+    "Multi-tenant ready"
+  ]
+}
