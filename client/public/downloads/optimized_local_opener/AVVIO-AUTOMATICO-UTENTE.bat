@@ -1,130 +1,92 @@
 @echo off
-:: AVVIO-AUTOMATICO-UTENTE.bat
-:: Script per avvio automatico ad ogni login utente
-:: Rileva dinamicamente i percorsi Google Drive per ogni cliente
+chcp 65001 >nul
+title CRUSCOTTO LOCAL OPENER - Avvio Manuale Utente v2.0.0
 
+echo.
 echo ========================================
-echo   CRUSCOTTO LOCAL OPENER - AVVIO UTENTE
-echo   Auto-Config Edition v2.0
-echo   Modalita: Avvio Automatico Login
+echo   CRUSCOTTO LOCAL OPENER v2.0.0
+echo   Avvio Manuale Modalità Utente
 echo ========================================
 echo.
 
-:: Imposta titolo finestra
-title "Cruscotto Local Opener - Avvio Automatico"
-
-:: Verifica se il servizio è già in esecuzione
-echo Verifica stato servizio...
-sc query CruscottoLocalOpener | find "RUNNING" >nul
-if %errorlevel% == 0 (
-    echo ✓ Servizio gia attivo
-    goto :end
-)
-
-:: Verifica se il servizio è installato
-sc query CruscottoLocalOpener | find "SERVICE_NAME" >nul
+:: Verifica se Node.js è installato
+where node >nul 2>&1
 if %errorlevel% neq 0 (
-    echo ⚠ Servizio non installato, avvio modalita standalone...
-    goto :standalone_mode
+    echo ❌ ERRORE: Node.js non trovato!
+    echo.
+    echo Per installare Node.js:
+    echo 1. Vai su https://nodejs.org/
+    echo 2. Scarica la versione LTS
+    echo 3. Installa e riavvia questo script
+    echo.
+    pause
+    exit /b 1
 )
 
-:: Avvia il servizio se installato
-echo Avvio servizio CruscottoLocalOpener...
-net start CruscottoLocalOpener
-if %errorlevel% == 0 (
-    echo ✓ Servizio avviato con successo
-    goto :end
+:: Verifica se il file auto-config.js esiste
+if not exist "%~dp0auto-config.js" (
+    echo ❌ ERRORE: File auto-config.js non trovato!
+    echo Assicurati di eseguire questo script dalla cartella corretta.
+    echo.
+    pause
+    exit /b 1
+)
+
+echo ✅ Node.js trovato: 
+node --version
+echo.
+
+echo 🔍 Verifica configurazione Google Drive...
+echo.
+
+:: Esegui auto-config.js per rilevare Google Drive
+node "%~dp0auto-config.js" --check-only
+
+if %errorlevel% neq 0 (
+    echo.
+    echo ⚠️  ATTENZIONE: Google Drive non rilevato automaticamente
+    echo.
+    echo Possibili cause:
+    echo - Google Drive Desktop non è installato
+    echo - Google Drive non è configurato
+    echo - I percorsi sono personalizzati
+    echo.
+    echo Vuoi continuare comunque? (S/N)
+    set /p choice=
+    if /i "%choice%" neq "S" (
+        echo Operazione annullata.
+        pause
+        exit /b 0
+    )
+)
+
+echo.
+echo 🚀 Avvio Local Opener in modalità utente...
+echo.
+
+:: Avvia il servizio local-opener.exe
+if exist "%~dp0local-opener.exe" (
+    echo ✅ Avvio local-opener.exe...
+    start "" "%~dp0local-opener.exe"
+    
+    echo.
+    echo ✅ Local Opener avviato con successo!
+    echo.
+    echo 📋 Informazioni:
+    echo - Il servizio è ora attivo in background
+    echo - Monitora automaticamente i file Google Drive
+    echo - Si riavvia automaticamente in caso di errori
+    echo.
+    echo 🔧 Per fermare il servizio:
+    echo - Chiudi questa finestra
+    echo - Oppure usa Task Manager
+    echo.
 ) else (
-    echo ⚠ Errore avvio servizio, modalita standalone...
-    goto :standalone_mode
+    echo ❌ ERRORE: local-opener.exe non trovato!
+    echo Assicurati che tutti i file siano presenti.
+    echo.
 )
 
-:standalone_mode
 echo.
-echo ========================================
-echo   MODALITA STANDALONE - AVVIO DIRETTO
-echo ========================================
-echo.
-
-:: Cerca local-opener.exe nella directory corrente
-if exist "local-opener.exe" (
-    echo ✓ Trovato local-opener.exe
-    goto :start_standalone
-)
-
-:: Cerca in Program Files
-if exist "%ProgramFiles%\CruscottoLocalOpener\local-opener.exe" (
-    echo ✓ Trovato local-opener.exe in Program Files
-    set "OPENER_PATH=%ProgramFiles%\CruscottoLocalOpener\local-opener.exe"
-    goto :start_standalone
-)
-
-:: Cerca in directory utente
-if exist "%USERPROFILE%\Desktop\local-opener.exe" (
-    echo ✓ Trovato local-opener.exe sul Desktop
-    set "OPENER_PATH=%USERPROFILE%\Desktop\local-opener.exe"
-    goto :start_standalone
-)
-
-:: Cerca in Downloads
-if exist "%USERPROFILE%\Downloads\local-opener.exe" (
-    echo ✓ Trovato local-opener.exe in Downloads
-    set "OPENER_PATH=%USERPROFILE%\Downloads\local-opener.exe"
-    goto :start_standalone
-)
-
-:: Cerca in tutto il sistema (ultima risorsa)
-echo Ricerca local-opener.exe nel sistema...
-for /f "delims=" %%i in ('dir /s /b "%ProgramFiles%\local-opener.exe" 2^>nul') do (
-    echo ✓ Trovato: %%i
-    set "OPENER_PATH=%%i"
-    goto :start_standalone
-)
-
-for /f "delims=" %%i in ('dir /s /b "%USERPROFILE%\local-opener.exe" 2^>nul') do (
-    echo ✓ Trovato: %%i
-    set "OPENER_PATH=%%i"
-    goto :start_standalone
-)
-
-echo ❌ local-opener.exe non trovato nel sistema
-echo Esegui l'installazione completa prima di usare questo script
-pause
-exit /b 1
-
-:start_standalone
-echo.
-echo Avvio Local Opener in modalita standalone...
-echo Percorso: %OPENER_PATH%
-echo.
-
-:: Avvia local-opener.exe in background
-start "" /min "%OPENER_PATH%"
-
-:: Attendi un momento per l'avvio
-timeout /t 3 /nobreak >nul
-
-:: Verifica se la porta è in ascolto
-echo Verifica avvio...
-netstat -an | find ":17654" >nul
-if %errorlevel% == 0 (
-    echo ✓ Local Opener avviato e in ascolto sulla porta 17654
-) else (
-    echo ⚠ Local Opener potrebbe non essere ancora pronto
-    echo Attendi qualche secondo e riprova
-)
-
-:end
-echo.
-echo ========================================
-echo   AVVIO COMPLETATO
-echo ========================================
-echo.
-echo Il Local Opener e' ora attivo e funzionante.
-echo Si avviera' automaticamente ad ogni login di questo utente.
-echo.
-echo Per verificare lo stato, apri il browser e vai su:
-echo http://127.0.0.1:17654/health
-echo.
-echo Premi un tasto per chiudere questa finestra...
+echo Premere un tasto per chiudere...
 pause >nul

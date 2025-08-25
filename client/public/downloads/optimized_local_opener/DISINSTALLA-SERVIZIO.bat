@@ -1,209 +1,141 @@
 @echo off
-:: DISINSTALLA-SERVIZIO.bat
-:: Disinstallazione completa del servizio CruscottoLocalOpener
-:: CORREZIONE DEFINITIVA - Gestione percorsi corretta
+chcp 65001 >nul
+title CRUSCOTTO LOCAL OPENER - Disinstallazione Servizio v2.0.0
 
-:: Cambia alla directory dello script
-cd /d "%~dp0"
-
+echo.
 echo ========================================
-echo   DISINSTALLAZIONE CRUSCOTTO LOCAL OPENER
-echo   Versione 2.0.0 - Servizio Windows
+echo   CRUSCOTTO LOCAL OPENER v2.0.0
+echo   Disinstallazione Completa Servizio
 echo ========================================
 echo.
 
-:: Verifica se siamo admin
+:: Verifica privilegi amministratore
 net session >nul 2>&1
-if %errorlevel% == 0 (
-    echo ✓ Privilegi amministratore verificati
+if %errorlevel% neq 0 (
+    echo ❌ ERRORE: Privilegi amministratore richiesti!
     echo.
-) else (
-    echo ❌ Privilegi amministratore insufficienti
-    echo Richiesta elevazione privilegi...
+    echo Per disinstallare il servizio:
+    echo 1. CLIC DESTRO su questo file
+    echo 2. Seleziona "Esegui come amministratore"
+    echo 3. Conferma l'operazione
     echo.
-    powershell.exe -Command "Start-Process '%~f0' -Verb RunAs"
-    exit /b
+    pause
+    exit /b 1
 )
 
-echo 🔍 VERIFICA STATO SERVIZIO:
-echo =============================
+echo ✅ Privilegi amministratore verificati
+echo.
 
-:: Verifica se il servizio esiste
-sc query CruscottoLocalOpener >nul 2>&1
-if %errorlevel% == 0 (
-    echo ✓ Servizio CruscottoLocalOpener trovato
+:: Nome del servizio
+set SERVICE_NAME=LocalOpenerService
+
+echo 🔍 Verifica stato servizio...
+sc query "%SERVICE_NAME%" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo ⚠️  Servizio %SERVICE_NAME% non trovato
     echo.
-    
-    :: Verifica stato servizio
-    for /f "tokens=3 delims=: " %%i in ('sc query CruscottoLocalOpener ^| find "STATE"') do set SERVICE_STATE=%%i
-    
-    echo 📊 Stato servizio: %SERVICE_STATE%
+    echo Il servizio potrebbe essere già disinstallato
+    echo o non essere mai stato installato.
     echo.
-    
-    if "%SERVICE_STATE%"=="RUNNING" (
-        echo ⏹️ Fermando servizio...
-        sc stop CruscottoLocalOpener
-        timeout /t 3 /nobreak >nul
-        echo ✓ Servizio fermato
-        echo.
-    )
-) else (
-    echo ⚠ Servizio CruscottoLocalOpener non trovato
-    echo.
+    goto :cleanup_files
 )
 
-echo 🗑️ DISINSTALLAZIONE SERVIZIO:
-echo ===============================
+echo ✅ Servizio %SERVICE_NAME% trovato
+echo.
 
-:: Rimuovi servizio con NSSM se disponibile
-if exist "nssm.exe" (
-    echo 🔧 Rimozione con NSSM...
-    nssm.exe remove CruscottoLocalOpener confirm
-    if %errorlevel% == 0 (
-        echo ✓ Servizio rimosso con NSSM
-    ) else (
-        echo ⚠ Errore rimozione NSSM, tentativo con SC...
-    )
-    echo.
-)
-
-:: Rimuovi servizio con SC (metodo alternativo)
-echo 🔧 Rimozione con SC...
-sc.exe delete CruscottoLocalOpener
-if %errorlevel% == 0 (
-    echo ✓ Servizio rimosso con SC
+:: Ferma il servizio se è in esecuzione
+echo 🛑 Arresto servizio...
+sc stop "%SERVICE_NAME%" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo ✅ Servizio arrestato con successo
 ) else (
-    echo ⚠ Errore rimozione SC
+    echo ⚠️  Servizio già fermo o errore nell'arresto
 )
 echo.
 
-echo 🧹 PULIZIA FILE E CONFIGURAZIONI:
-echo ===================================
-
-:: Rimuovi directory di sistema
-if exist "%ProgramFiles%\CruscottoLocalOpener" (
-    echo 📁 Rimozione directory sistema...
-    rmdir /s /q "%ProgramFiles%\CruscottoLocalOpener"
-    if %errorlevel% == 0 (
-        echo ✓ Directory sistema rimossa
-    ) else (
-        echo ⚠ Errore rimozione directory sistema
-    )
+:: Elimina il servizio
+echo 🗑️  Disinstallazione servizio...
+sc delete "%SERVICE_NAME%" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo ✅ Servizio disinstallato con successo
 ) else (
-    echo ✓ Directory sistema non trovata
+    echo ❌ ERRORE: Impossibile disinstallare il servizio
+    echo.
+    echo Possibili cause:
+    echo - Il servizio è ancora in uso
+    echo - Privilegi insufficienti
+    echo - Errore di sistema
+    echo.
+    goto :cleanup_files
 )
 echo.
 
-:: Rimuovi configurazioni utente
-if exist "%APPDATA%\.local-opener" (
-    echo 📁 Rimozione configurazioni utente...
-    rmdir /s /q "%APPDATA%\.local-opener"
-    if %errorlevel% == 0 (
-        echo ✓ Configurazioni utente rimosse
-    ) else (
-        echo ⚠ Errore rimozione configurazioni utente
-    )
-) else (
-    echo ✓ Configurazioni utente non trovate
-)
+:cleanup_files
+echo 🧹 Pulizia file e configurazioni...
 echo.
 
-echo 🔄 PULIZIA AVVIO AUTOMATICO:
-echo ==============================
-
-:: Rimuovi task scheduler
+:: Rimuovi task scheduler se esistente
 echo 🔧 Rimozione Task Scheduler...
-schtasks /delete /tn "CruscottoLocalOpenerBackup" /f >nul 2>&1
-schtasks /delete /tn "CruscottoLocalOpenerUser" /f >nul 2>&1
-echo ✓ Task Scheduler rimossi
-echo.
-
-:: Rimuovi registro Windows
-echo 🔧 Rimozione registro Windows...
-reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "CruscottoLocalOpener" /f >nul 2>&1
-reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "CruscottoLocalOpenerUser" /f >nul 2>&1
-echo ✓ Registro Windows pulito
-echo.
-
-:: Rimuovi startup folder
-if exist "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\CruscottoLocalOpener.bat" (
-    echo 🔧 Rimozione startup folder...
-    del "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\CruscottoLocalOpener.bat" >nul 2>&1
-    echo ✓ Startup folder pulito
+schtasks /delete /tn "LocalOpenerStartup" /f >nul 2>&1
+if %errorlevel% equ 0 (
+    echo ✅ Task Scheduler rimosso
 ) else (
-    echo ✓ Startup folder già pulito
+    echo ⚠️  Task Scheduler non trovato o già rimosso
 )
 echo.
 
-echo 🧪 VERIFICA PROCESSI ATTIVI:
-echo =============================
+:: Rimuovi chiavi registro se esistenti
+echo 🔧 Pulizia registro Windows...
+reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "LocalOpener" /f >nul 2>&1
+reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "LocalOpener" /f >nul 2>&1
+echo ✅ Registro Windows pulito
+echo.
 
-:: Termina processi local-opener.exe attivi
-tasklist /fi "imagename eq local-opener.exe" >nul 2>&1
-if %errorlevel% == 0 (
-    echo 🔧 Terminazione processi attivi...
-    taskkill /f /im local-opener.exe >nul 2>&1
-    echo ✓ Processi terminati
+:: Rimuovi file di configurazione se esistenti
+echo 🔧 Rimozione file di configurazione...
+if exist "%PROGRAMDATA%\LocalOpener" (
+    rmdir /s /q "%PROGRAMDATA%\LocalOpener" >nul 2>&1
+    echo ✅ Cartella configurazione rimossa
 ) else (
-    echo ✓ Nessun processo attivo trovato
+    echo ⚠️  Cartella configurazione non trovata
 )
 echo.
 
-echo 🔍 VERIFICA PORTA 17654:
-echo ==========================
-
-:: Verifica se la porta è ancora in uso
-netstat -an | find ":17654" >nul 2>&1
-if %errorlevel% == 0 (
-    echo ⚠ Porta 17654 ancora in uso
-    echo 🔧 Identificazione processo...
-    netstat -ano | find ":17654"
-    echo.
-    echo 💡 Se la porta è ancora in uso, riavvia il PC
+if exist "%APPDATA%\LocalOpener" (
+    rmdir /s /q "%APPDATA%\LocalOpener" >nul 2>&1
+    echo ✅ Cartella dati utente rimossa
 ) else (
-    echo ✓ Porta 17654 libera
+    echo ⚠️  Cartella dati utente non trovata
 )
 echo.
 
-echo 🧹 PULIZIA FINALE:
-echo ===================
-
-:: Rimuovi file temporanei e log
-if exist "%TEMP%\local-opener*" (
-    echo 📁 Rimozione file temporanei...
-    del /q "%TEMP%\local-opener*" >nul 2>&1
-    echo ✓ File temporanei rimossi
+:: Rimuovi file temporanei se esistenti
+echo 🔧 Pulizia file temporanei...
+if exist "%TEMP%\local-opener-*" (
+    del /q "%TEMP%\local-opener-*" >nul 2>&1
+    echo ✅ File temporanei rimossi
 ) else (
-    echo ✓ Nessun file temporaneo trovato
+    echo ⚠️  File temporanei non trovati
 )
 echo.
 
-:: Rimuovi regole firewall
-echo 🔧 Rimozione regole firewall...
-netsh advfirewall firewall delete rule name="Cruscotto Local Opener" >nul 2>&1
-echo ✓ Regole firewall rimosse
 echo.
-
 echo ========================================
-echo   DISINSTALLAZIONE COMPLETATA!
+echo   DISINSTALLAZIONE COMPLETATA
 echo ========================================
 echo.
-echo ✅ Servizio CruscottoLocalOpener rimosso
-echo ✅ File di sistema eliminati
-echo ✅ Configurazioni utente pulite
-echo ✅ Avvio automatico disabilitato
-echo ✅ Processi terminati
-echo ✅ Porta 17654 liberata
-echo ✅ Firewall pulito
+echo ✅ Servizio Local Opener disinstallato
+echo ✅ Task Scheduler rimosso
+echo ✅ Registro Windows pulito
+echo ✅ File di configurazione rimossi
 echo.
-echo 💡 PROSSIMI PASSI:
-echo    1. Riavvia il PC per completare la pulizia
-echo    2. Se necessario, reinstallare con INSTALLA-DEFINITIVO.bat
+echo 📋 Informazioni:
+echo - Il servizio non si avvierà più automaticamente
+echo - Tutti i file di configurazione sono stati rimossi
+echo - Il sistema è tornato allo stato originale
 echo.
-echo 🔧 VERIFICA:
-echo    - Controlla Services.msc (servizio non deve essere presente)
-echo    - Verifica che la porta 17654 sia libera
-echo    - Controlla che non ci siano processi local-opener.exe
+echo 🔄 Per reinstallare:
+echo - Esegui INSTALLA-DEFINITIVO.bat come amministratore
 echo.
-echo Premi un tasto per chiudere...
+echo Premere un tasto per chiudere...
 pause >nul

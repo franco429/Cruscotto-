@@ -6,6 +6,8 @@ STRUTTURA FINALE DEL PACCHETTO OPTIMIZED_LOCAL_OPENER v2.0
 ├── 🔧 nssm.exe                           # Gestore servizi Windows (324KB)
 ├── ⚡ installer-definitivo.ps1            # Installer PowerShell avanzato
 ├── 🎯 INSTALLA-DEFINITIVO.bat            # Wrapper batch per admin automatico
+├── 👤 AVVIO-AUTOMATICO-UTENTE.bat        # Avvio manuale modalità utente
+├── 🗑️ DISINSTALLA-SERVIZIO.bat           # Disinstallazione completa servizio
 ├── ✅ verifica-installazione.ps1          # Script di verifica post-installazione
 ├── 🔍 auto-config.js                     # Modulo auto-configurazione Google Drive
 ├── 📋 package.json                       # Configurazione progetto v2.0.0
