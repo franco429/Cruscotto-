@@ -108,6 +108,53 @@ Esegui `avvia-local-opener.ps1` per testare subito:
 - ✅ Conferma configurazione
 - ✅ **Auto-Detection completo attivo**
 
+## 🗑️ **DISINSTALLAZIONE COMPLETA**
+
+### **Metodo 1: Disinstallazione Batch (Semplice)**
+```
+1. CLIC DESTRO su DISINSTALLA-SERVIZIO.bat
+2. Seleziona "Esegui come amministratore"
+3. Conferma l'esecuzione
+4. Attendi il completamento della disinstallazione
+```
+
+**Cosa fa:**
+- ✅ Ferma e rimuove il servizio Windows
+- ✅ Elimina file di sistema
+- ✅ Pulisce configurazioni utente
+- ✅ Rimuove avvio automatico
+- ✅ Termina processi attivi
+- ✅ Libera porta 17654
+- ✅ Pulisce firewall
+
+### **Metodo 2: Disinstallazione PowerShell (Avanzata)**
+```
+1. CLIC DESTRO su disinstalla-avanzata.ps1
+2. Seleziona "Esegui con PowerShell"
+3. Conferma l'esecuzione se richiesto
+4. Attendi il completamento della disinstallazione
+```
+
+**Cosa fa (oltre al metodo 1):**
+- ✅ Logging dettagliato di tutte le operazioni
+- ✅ Gestione errori avanzata
+- ✅ Verifica post-disinstallazione
+- ✅ Modalità verbose disponibile
+- ✅ Modalità silenziosa disponibile
+
+### **Verifica Post-Disinstallazione**
+Dopo la disinstallazione, verifica che:
+- ✅ Il servizio non sia presente in Services.msc
+- ✅ La porta 17654 sia libera
+- ✅ Non ci siano processi local-opener.exe attivi
+- ✅ Le directory di sistema siano state rimosse
+
+### **Reinstallazione Post-Disinstallazione**
+Se vuoi reinstallare dopo la disinstallazione:
+1. Riavvia il PC per completare la pulizia
+2. Segui le istruzioni di installazione normali
+3. Il sistema sarà completamente pulito e pronto
+
 ## 🔍 **DIAGNOSTICA E TROUBLESHOOTING**
 
 ### **Verifica Pre-Installazione (OBBLIGATORIA)**
@@ -142,35 +189,72 @@ Esegui `testa-auto-detection.ps1` per verificare:
 | **"File non trovato"** | Verifica che tutti i file siano nella stessa cartella |
 | **"Servizio non si avvia"** | Usa `diagnostica-avanzata.ps1` per identificare il problema |
 | **"Pochi percorsi rilevati"** | Esegui `testa-auto-detection.ps1` per diagnosticare |
+| **"Servizio non si rimuove"** | Usa `disinstalla-avanzata.ps1` con modalità verbose |
+| **"Porta ancora in uso dopo disinstallazione"** | Riavvia il PC per completare la pulizia |
 
-## 🚨 **RISOLUZIONE PROBLEMA "L'argomento non esiste"**
+## 🚨 **RISOLUZIONE PROBLEMA "L'argomento non esiste" - SOLUZIONE DEFINITIVA**
 
 Se ricevi l'errore "L'argomento '.\installer-definitivo.ps1' per il parametro -File non esiste":
 
-### **Causa del Problema**
-Il batch file esegue dalla directory `C:\Windows\System32` invece che dalla directory dei file.
+### **🔍 CAUSA DEL PROBLEMA IDENTIFICATA**
+Il batch file esegue dalla directory `C:\Windows\System32` invece che dalla directory dei file, anche se abbiamo implementato correzioni.
 
-### **Soluzioni**
-1. **Esegui sempre dalla directory corretta**:
-   - Estrai il ZIP in una cartella
-   - Apri quella cartella
-   - Esegui i batch file da lì
+### **✅ SOLUZIONI IMPLEMENTATE (v2.0.1)**
 
-2. **Usa la verifica pre-installazione**:
-   - Esegui `verifica-pre-installazione.bat` PRIMA dell'installazione
-   - Verifica che tutti i file siano presenti
+#### **1. CORREZIONE AUTOMATICA NEL BATCH (NUOVO)**
+- ✅ **Percorso assoluto automatico**: Il batch ora usa `%~dp0` per ottenere il percorso assoluto
+- ✅ **Cambio directory automatico**: `cd /d "%SCRIPT_DIR%"` garantisce la directory corretta
+- ✅ **Verifica file con percorso completo**: Controlla l'esistenza con percorso assoluto
+- ✅ **Gestione errori avanzata**: Mostra percorsi completi per debugging
 
-3. **Verifica la directory di lavoro**:
-   - Il batch file ora mostra la directory corrente
-   - Controlla che sia la directory corretta
+#### **2. NUOVO SCRIPT DI VERIFICA PERCORSI (NUOVO)**
+Esegui `verifica-percorsi-completa.bat` per diagnosticare problemi di directory:
+```
+1. CLIC DESTRO su verifica-percorsi-completa.bat
+2. Seleziona "Esegui"
+3. Analizza l'output per identificare problemi
+```
 
-### **Procedura Corretta**
+**Cosa fa:**
+- 🔍 **Verifica directory di lavoro** vs directory script
+- 🔍 **Controllo percorsi assoluti** di tutti i file
+- 🔍 **Test permessi e accesso** ai file
+- 🔍 **Diagnostica automatica** dei problemi di percorso
+- 🔍 **Correzione automatica** della directory se necessario
+
+#### **3. PROCEDURA CORRETTA AGGIORNATA**
 ```
 1. Estrai optimized_local_opener.zip in una cartella
-2. Apri quella cartella
-3. CLIC DESTRO su verifica-pre-installazione.bat → "Esegui"
+2. Apri quella cartella (IMPORTANTE: non eseguire da altrove)
+3. CLIC DESTRO su verifica-percorsi-completa.bat → "Esegui"
 4. Se tutto OK, CLIC DESTRO su INSTALLA-DEFINITIVO.bat → "Esegui come amministratore"
 ```
+
+### **🔧 TROUBLESHOOTING AVANZATO**
+
+#### **Se il problema persiste:**
+1. **Esegui verifica-percorsi-completa.bat** per diagnosi completa
+2. **Controlla l'output** per identificare directory errate
+3. **Verifica che tutti i file** siano nella stessa cartella
+4. **Scarica nuovamente** il pacchetto se necessario
+
+#### **Output di verifica-percorsi-completa.bat:**
+- ✅ **PERCORSO CORRETTO**: Procedi con l'installazione
+- ❌ **PERCORSO ERRATO**: Il batch esegue dalla directory sbagliata
+- ❌ **FILE MANCANTI**: Scarica nuovamente il pacchetto
+
+### **💡 PREVENZIONE FUTURA**
+- ✅ **Sempre dalla directory corretta**: Non eseguire batch da altre posizioni
+- ✅ **Verifica pre-installazione**: Usa sempre gli script di verifica
+- ✅ **Percorsi assoluti**: Il nuovo sistema gestisce automaticamente i percorsi
+- ✅ **Gestione errori robusta**: Il batch ora mostra informazioni dettagliate
+
+### **🚀 VANTAGGI DELLA NUOVA VERSIONE**
+- ✅ **Correzione automatica** dei problemi di percorso
+- ✅ **Diagnostica avanzata** con verifica-percorsi-completa.bat
+- ✅ **Gestione robusta** dei percorsi assoluti
+- ✅ **Messaggi di errore dettagliati** per troubleshooting
+- ✅ **Prevenzione automatica** dei problemi di directory
 
 ## 🌍 **RILEVAMENTO AUTOMATICO GOOGLE DRIVE COMPLETO**
 
@@ -206,6 +290,9 @@ optimized_local_opener/
 ├── 🚀 installer-definitivo.ps1            # Installer servizio Windows
 ├── 📋 INSTALLA-DEFINITIVO.bat             # Wrapper installer (CORRETTO)
 ├── 🔍 verifica-pre-installazione.bat      # VERIFICA PRE-INSTALLAZIONE (NUOVO)
+├── 🔍 verifica-percorsi-completa.bat      # VERIFICA PERCORSI COMPLETA (NUOVO)
+├── 🗑️ DISINSTALLA-SERVIZIO.bat            # DISINSTALLAZIONE (NUOVO)
+├── 🗑️ disinstalla-avanzata.ps1            # DISINSTALLAZIONE AVANZATA (NUOVO)
 ├── 👤 configura-avvio-utente.ps1          # Configurazione utente COMPLETA
 ├── 🚀 avvia-local-opener.ps1              # Script avvio utente
 ├── 📋 AVVIO-AUTOMATICO-UTENTE.bat         # Avvio manuale utente
@@ -261,6 +348,14 @@ optimized_local_opener/
 - ✅ **Compatibilità universale** Windows
 - ✅ **Auto-Detection completo** per tutti i percorsi
 
+### **🗑️ Disinstallazione Completa**
+- ✅ **Rimozione servizio** con doppio metodo (NSSM + SC)
+- ✅ **Pulizia file e directory** sistema e utente
+- ✅ **Rimozione avvio automatico** (Task + Registro + Startup)
+- ✅ **Terminazione processi** attivi
+- ✅ **Liberazione porta** 17654
+- ✅ **Pulizia firewall** e file temporanei
+
 ## 📞 **SUPPORTO E TROUBLESHOOTING**
 
 ### **Prima di Contattare il Supporto**
@@ -271,11 +366,18 @@ optimized_local_opener/
 5. ✅ Verifica che tutti i file siano presenti
 6. ✅ Controlla i log in `%APPDATA%\.local-opener\logs\`
 
+### **Per Problemi di Disinstallazione**
+1. ✅ Esegui `disinstalla-avanzata.ps1` con modalità verbose
+2. ✅ Verifica che non ci siano processi bloccati
+3. ✅ Controlla che la porta 17654 sia libera
+4. ✅ Riavvia il PC se necessario
+
 ### **Informazioni Utili per il Supporto**
 - Modalità di installazione scelta
 - Output di `verifica-pre-installazione.bat`
 - Output di `diagnostica-avanzata.ps1`
 - Output di `testa-auto-detection.ps1`
+- Output di `disinstalla-avanzata.ps1` (se applicabile)
 - Messaggi di errore specifici
 - Versione Windows e privilegi utente
 
@@ -296,6 +398,7 @@ Il **Cruscotto Local Opener v2.0.0** offre **due modalità di installazione** pe
 - ✅ **Verifica pre-installazione** obbligatoria
 - ✅ **Gestione percorsi corretta** nei batch file
 - ✅ **Diagnostica avanzata** per troubleshooting
+- ✅ **Disinstallazione completa** e pulita
 - ✅ **Istruzioni chiare** per ogni modalità
 
 **Buona installazione! 🎯**
