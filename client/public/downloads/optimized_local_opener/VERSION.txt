@@ -1,0 +1,16 @@
+CRUSCOTTO LOCAL OPENER v2.0.2
+Build: 2024-12-19T10:00:00.000Z
+Build Version: 2.0.2-20241219
+
+CHANGELOG v2.0.2:
+- ✅ Aggiornamento cache busting per download browser
+- ✅ File di versione per verifica installazione
+- ✅ Timestamp di build per identificazione univoca
+- ✅ Prevenzione problemi di cache browser/CDN
+
+Per verificare la versione installata:
+1. Controlla questo file VERSION.txt
+2. Esegui: verifica-installazione.ps1
+3. Controlla il package.json
+
+Ultimo aggiornamento: 19 Dicembre 2024
