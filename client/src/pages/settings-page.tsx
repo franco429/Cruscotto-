@@ -446,7 +446,7 @@ export default function SettingsPage() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <FolderOpen className="h-5 w-5" />
-                      Apertura File Locali (v2.1.1)
+                      Apertura File Locali (v3.1.0)
                     </CardTitle>
                     <CardDescription>
                       Configura il servizio per aprire i documenti direttamente dal tuo PC con ottimizzazioni performance avanzate

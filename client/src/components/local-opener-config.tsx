@@ -246,8 +246,8 @@ export default function LocalOpenerConfig() {
               {!status.isRunning && (
                 <Button asChild variant="default">
                   <a
-                    href="/downloads/optimized_local_opener_v2.1.0.zip"
-                    download="optimized_local_opener_v2.1.0.zip"
+                    href="/downloads/optimized_local_opener_v3.1.0.zip"
+                    download="optimized_local_opener_v3.1.0.zip"
                   >
                     <Download className="h-4 w-4 mr-2" />
                     Scarica Local Opener
@@ -327,7 +327,7 @@ export default function LocalOpenerConfig() {
       {/* Help Card */}
       <Card>
         <CardHeader>
-          <CardTitle>Come configurare l'apertura locale (v2.1.1)</CardTitle>
+          <CardTitle>Come configurare l'apertura locale (v3.1.0)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3 text-sm">
@@ -339,14 +339,14 @@ export default function LocalOpenerConfig() {
                 <p><strong>🔍 AUTO-DISCOVERY COMPLETO:</strong> Rileva automaticamente TUTTI i percorsi Google Drive Desktop</p>
                 <p><strong>📦 INSTALLAZIONE AUTOMATICA:</strong> Script che configura tutto automaticamente</p>
                 <p><strong>⚡ FUNZIONAMENTO PERMANENTE:</strong> Una volta installato, funziona per sempre</p>
-                <p><strong>⚡ OTTIMIZZAZIONI PERFORMANCE:</strong> Avvio ultra-veloce con cache intelligente (90-98% più veloce)</p>
+                                 <p><strong>⚡ OTTIMIZZAZIONI PERFORMANCE:</strong> Avvio ultra-veloce con cache intelligente (90-98% più veloce) - v3.1.0</p>
               </div>
             </div>
             <Separator />
             <div>
               <p className="font-medium">2. Procedura di installazione SERVIZIO WINDOWS</p>
               <div className="ml-4 space-y-1 text-muted-foreground">
-                <p>1. Scarica il file "optimized_local_opener_v2.1.0.zip"</p>
+                                 <p>1. Scarica il file "optimized_local_opener_v3.1.0.zip"</p>
                 <p>2. Estrai l'archivio ZIP in una cartella del PC</p>
                 <p>3. <strong>CLIC DESTRO</strong> su "INSTALLA-SERVIZIO-AMMINISTRATORE.bat" → "Esegui come amministratore"</p>
                 <p>4. Clicca "Sì" quando richiesto per i privilegi amministratore</p>
@@ -360,7 +360,7 @@ export default function LocalOpenerConfig() {
                 <p>✅ Windows 7 SP1+ / Windows 10 / Windows 11</p>
                 <p>✅ Architetture: x86, x64, ARM64</p>
                 <p>✅ Auto-rilevamento cartelle Google Drive</p>
-                <p>✅ Ottimizzazioni performance avanzate (v2.1.1)</p>
+                                 <p>✅ Ottimizzazioni performance avanzate (v3.1.0)</p>
                 <p>⚠️ Richiede privilegi amministratore per l'installazione servizio</p>
               </div>
             </div>
@@ -376,7 +376,7 @@ export default function LocalOpenerConfig() {
             </div>
             <Separator />
             <div>
-              <p className="font-medium">5. Ottimizzazioni Performance (v2.1.1)</p>
+                             <p className="font-medium">5. Ottimizzazioni Performance (v3.1.0)</p>
               <div className="ml-4 space-y-1 text-muted-foreground">
                 <p><strong>⚡ AVVIO ULTRA-VELOCE:</strong> Ricerca file ottimizzata (95% più veloce)</p>
                 <p><strong>⚡ CACHE INTELLIGENTE:</strong> Avvio istantaneo dopo il primo utilizzo (99% più veloce)</p>
