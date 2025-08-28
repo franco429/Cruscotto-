@@ -724,6 +724,25 @@ export default function AuthPage() {
                   permessi e notifiche per adattare il sistema alle esigenze della tua azienda.
                 </p>
               </div>
+              <div className="text-center mb-8">
+                <h1 className="text-3xl xs:text-4xl sm:text-5xl font-bold text-primary-foreground mb-4">
+                  Pannello SGI
+                </h1>
+                <p className="text-lg xs:text-xl text-primary-foreground/80 max-w-2xl mx-auto leading-relaxed">
+                  Unisciti alle aziende che hanno già scelto la gestione intelligente dei documenti ISO
+                </p>
+                {/* Privacy Policy Link - Richiesto da Google Cloud Console */}
+                <div className="mt-4 flex items-center justify-center">
+                  <a
+                    href="/privacy"
+                    className="inline-flex items-center text-sm text-primary-foreground/70 hover:text-primary-foreground transition-colors underline decoration-dotted underline-offset-2"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Norme sulla Privacy
+                  </a>
+                </div>
+              </div>
             </div>
           )}
         </div>

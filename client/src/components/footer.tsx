@@ -140,7 +140,7 @@ export default function Footer() {
             <a href="/terms" className="hover:text-primary transition-colors">
               Terms of Service
             </a>
-            <a href="#" className="hover:text-primary transition-colors">
+            <a href="/cookie" className="hover:text-primary transition-colors">
               Cookie
             </a>
           </div>

@@ -21,6 +21,7 @@ import ClientsPage from "../src/pages/clients-page";
 import BackupPage from "../src/pages/backup-page";
 import PrivacyPage from "./pages/privacy-page";
 import TermsPage from "./pages/terms-page";
+import CookiePage from "./pages/cookie-page";
 import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
@@ -57,6 +58,7 @@ function Router() {
       <Route path="/chi-siamo" component={AboutPage} />
       <Route path="/privacy" component={PrivacyPage} />
       <Route path="/terms" component={TermsPage} />
+      <Route path="/cookie" component={CookiePage} />
 
       {/* Fallback to 404 */}
       <Route component={NotFound} />
