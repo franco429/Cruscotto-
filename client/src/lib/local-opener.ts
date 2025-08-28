@@ -6,6 +6,19 @@ import type { DocumentDocument as Document } from "../../../shared-types/schema"
 
 type OpenResult = { ok: boolean; message?: string };
 
+// Interfacce per configurazioni multi-cliente
+interface ClientConfig {
+  clientId: string;
+  drivePaths: string[];
+  roots: string[];
+}
+
+interface DriveDetectionResult {
+  paths: string[];
+  success: boolean;
+  message?: string;
+}
+
 function buildCandidateNames(doc: Document): string[] {
   const base = doc.title || "";
   const rev = doc.revision || "";
@@ -82,6 +95,75 @@ export async function checkLocalOpenerAvailability(): Promise<boolean> {
   }
 }
 
+// Funzione per rilevare automaticamente i percorsi di Google Drive
+export async function detectGoogleDrivePaths(): Promise<DriveDetectionResult> {
+  try {
+    const response = await fetch("http://127.0.0.1:17654/detect-drive-paths", {
+      method: "GET",
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return {
+        paths: data.paths || [],
+        success: true,
+        message: `Rilevati ${data.paths?.length || 0} percorsi di Google Drive`
+      };
+    } else {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        paths: [],
+        success: false,
+        message: errorData.message || "Errore nel rilevamento dei percorsi"
+      };
+    }
+  } catch (err: any) {
+    return {
+      paths: [],
+      success: false,
+      message: err?.message || "Errore di connessione al servizio locale"
+    };
+  }
+}
+
+// Funzione per salvare la configurazione di un cliente
+export async function saveClientConfig(clientId: string, drivePaths: string[]): Promise<boolean> {
+  try {
+    const response = await fetch("http://127.0.0.1:17654/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        clientId,
+        drivePaths,
+        action: "saveClientConfig"
+      }),
+    });
+
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+// Funzione per caricare la configurazione di un cliente
+export async function loadClientConfig(clientId: string): Promise<ClientConfig | null> {
+  try {
+    const response = await fetch(`http://127.0.0.1:17654/config/${clientId}`, {
+      method: "GET",
+      signal: AbortSignal.timeout(3000),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return data;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 // Controlla disponibilità del servizio e propone automaticamente l'installazione
 export async function checkAndPromptLocalOpener(): Promise<void> {
   // Controlla se l'utente ha già rifiutato l'installazione in questa sessione
@@ -112,8 +194,8 @@ export async function checkAndPromptLocalOpener(): Promise<void> {
   // Helper per avviare il download
   const startDownload = () => {
     const link = document.createElement('a');
-    link.href = '/downloads/cruscotto-local-opener-setup.exe';
-    link.download = 'cruscotto-local-opener-setup.exe';
+    link.href = '/downloads/local-opener-complete-package.zip';
+    link.download = 'local-opener-complete-package.zip';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -122,7 +204,7 @@ export async function checkAndPromptLocalOpener(): Promise<void> {
     setTimeout(() => {
       toast({
         title: "✅ Download Avviato",
-        description: "Esegui il file scaricato come amministratore. Dopo l'installazione, il servizio si avvierà automaticamente!",
+        description: "Estrai il ZIP e esegui install-local-opener.bat come amministratore. Dopo l'installazione, il servizio si avvierà automaticamente!",
         duration: 8000,
       });
     }, 1000);

@@ -11,6 +11,8 @@ export default defineConfig({
       "@assets": path.resolve(__dirname, "..", "attached_assets"),
     },
   },
+  // Configurazione per i file statici
+  publicDir: "public",
   server: {
     port: 5173,
     proxy: {

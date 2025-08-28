@@ -27,7 +27,95 @@ interface LocalOpenerTelemetryData {
   }>;
 }
 
+// Interfacce per configurazioni multi-cliente
+interface ClientConfig {
+  clientId: string;
+  drivePaths: string[];
+  roots: string[];
+}
+
 export function registerLocalOpenerRoutes(app: Express) {
+
+  // Endpoint per rilevamento automatico dei percorsi di Google Drive
+  app.get('/api/local-opener/detect-drive-paths', async (req: Request, res: Response) => {
+    try {
+      const drivePaths = await detectGoogleDrivePaths();
+      res.json({ paths: drivePaths });
+      
+      logger.info('Google Drive paths detected', {
+        clientIP: req.ip,
+        userAgent: req.get('User-Agent'),
+        pathsFound: drivePaths.length
+      });
+      
+    } catch (error) {
+      logger.error('Error detecting Google Drive paths', { 
+        error: error instanceof Error ? error.message : String(error),
+        clientIP: req.ip 
+      });
+      res.status(500).json({ error: 'Errore nel rilevamento dei percorsi' });
+    }
+  });
+
+  // Endpoint per salvare configurazione cliente
+  app.post('/api/local-opener/save-client-config', async (req: Request, res: Response) => {
+    try {
+      const { clientId, drivePaths, roots } = req.body;
+      
+      if (!clientId || !Array.isArray(drivePaths)) {
+        return res.status(400).json({ error: 'Dati configurazione invalidi' });
+      }
+
+      const config: ClientConfig = {
+        clientId,
+        drivePaths,
+        roots: roots || []
+      };
+
+      await saveClientConfig(config);
+      
+      logger.info('Client configuration saved', {
+        clientId,
+        drivePathsCount: drivePaths.length,
+        clientIP: req.ip
+      });
+
+      res.json({ success: true, message: 'Configurazione salvata con successo' });
+      
+    } catch (error) {
+      logger.error('Error saving client configuration', { 
+        error: error instanceof Error ? error.message : String(error),
+        body: req.body 
+      });
+      res.status(500).json({ error: 'Errore nel salvataggio della configurazione' });
+    }
+  });
+
+  // Endpoint per caricare configurazione cliente
+  app.get('/api/local-opener/client-config/:clientId', async (req: Request, res: Response) => {
+    try {
+      const { clientId } = req.params;
+      
+      if (!clientId) {
+        return res.status(400).json({ error: 'Client ID richiesto' });
+      }
+
+      const config = await loadClientConfig(clientId);
+      
+      if (!config) {
+        return res.status(404).json({ error: 'Configurazione non trovata' });
+      }
+
+      res.json(config);
+      
+    } catch (error) {
+      logger.error('Error loading client configuration', { 
+        error: error instanceof Error ? error.message : String(error),
+        clientId: req.params.clientId 
+      });
+      res.status(500).json({ error: 'Errore nel caricamento della configurazione' });
+    }
+  });
 
   // Endpoint semplificato per statistiche documenti (opzionale per admin/debug)
   app.get('/api/documents/local-count', async (req: Request, res: Response) => {
@@ -68,13 +156,16 @@ export function registerLocalOpenerRoutes(app: Express) {
       res.json({
         version: currentVersion,
         latestVersion: currentVersion,
-        downloadUrl: '/downloads/cruscotto-local-opener-setup.exe',
+        downloadUrl: '/downloads/local-opener-complete-package.zip',
         releaseNotes: [
           'Installazione silenziosa automatica',
           'Sistema di telemetria per diagnostica',
           'Auto-aggiornamento integrato',
           'Rilevamento automatico Google Drive migliorato',
-          'Script di debug automatico'
+          'Script di debug automatico',
+          'Avvio automatico all\'avvio di Windows',
+          'Rilevamento automatico percorsi Google Drive',
+          'Gestione configurazioni multi-cliente'
         ],
         releaseDate: new Date().toISOString()
       });
@@ -170,7 +261,11 @@ export function registerLocalOpenerRoutes(app: Express) {
       const allowedFiles = [
         'cruscotto-local-opener-setup.exe',
         'cruscotto-local-opener-portable.zip',
-        'debug-local-opener.bat'
+        'local-opener-complete-package.zip',
+        'debug-local-opener.bat',
+        'install-local-opener.bat',
+        'nssm.exe',
+        'README.txt'
       ];
 
       if (!allowedFiles.includes(filename)) {
@@ -197,6 +292,8 @@ export function registerLocalOpenerRoutes(app: Express) {
         res.setHeader('Content-Type', 'application/zip');
       } else if (filename.endsWith('.bat')) {
         res.setHeader('Content-Type', 'application/x-msdos-program');
+      } else if (filename.endsWith('.txt')) {
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
       }
 
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -250,6 +347,68 @@ export function registerLocalOpenerRoutes(app: Express) {
       res.status(500).json({ error: 'Errore invio segnalazione' });
     }
   });
+}
+
+// Funzione per rilevare automaticamente i percorsi di Google Drive
+async function detectGoogleDrivePaths(): Promise<string[]> {
+  const drives = ['G:', 'H:', 'I:', 'J:', 'K:', 'L:', 'M:', 'N:', 'O:', 'P:'];
+  const drivePaths: string[] = [];
+
+  for (const drive of drives) {
+    try {
+      const paths = [
+        `${drive}\\IL MIO DRIVE`,
+        `${drive}\\MY DRIVE`,
+        `${drive}\\Google Drive`,
+        `${drive}\\GoogleDrive`,
+        `${drive}\\Google Drive File Stream`,
+        `${drive}\\GDrive`
+      ];
+
+      for (const path of paths) {
+        if (fs.existsSync(path)) {
+          drivePaths.push(path);
+        }
+      }
+    } catch (err) {
+      logger.warn(`Error scanning drive ${drive}:`, { error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+
+  return drivePaths;
+}
+
+// Funzione helper per salvare configurazioni cliente
+async function saveClientConfig(config: ClientConfig): Promise<void> {
+  try {
+    const configDir = path.join(__dirname, '..', 'config', 'local-opener');
+    if (!fs.existsSync(configDir)) {
+      fs.mkdirSync(configDir, { recursive: true });
+    }
+
+    const configPath = path.join(configDir, `${config.clientId}.json`);
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    
+    logger.info('Client configuration saved', { clientId: config.clientId, configPath });
+  } catch (error) {
+    logger.error('Error saving client configuration', { error: error instanceof Error ? error.message : String(error) });
+    throw error;
+  }
+}
+
+// Funzione helper per caricare configurazioni cliente
+async function loadClientConfig(clientId: string): Promise<ClientConfig | null> {
+  try {
+    const configPath = path.join(__dirname, '..', 'config', 'local-opener', `${clientId}.json`);
+    if (fs.existsSync(configPath)) {
+      const content = fs.readFileSync(configPath, 'utf-8');
+      return JSON.parse(content) as ClientConfig;
+    }
+    return null;
+  } catch (error) {
+    logger.error('Error loading client configuration', { error: error instanceof Error ? error.message : String(error), clientId });
+    return null;
+  }
 }
 
 // Funzione helper per salvare metriche telemetria

@@ -172,6 +172,49 @@ export default function DocumentTable({
     setDocumentToDelete(null);
   };
 
+  const handlePreview = async (document: Document) => {
+    if (document.driveUrl) {
+      // Documento remoto - usa preview esistente
+      setSelectedDocument(document);
+      setShowPreview(true);
+    } else {
+      // Documento locale - prova ad aprirlo con Local Opener
+      try {
+        const { openLocalDocument } = await import("../lib/local-opener");
+        const result = await openLocalDocument(document);
+        
+        if (result.ok) {
+          toast({
+            title: "✅ Documento aperto",
+            description: "Il documento è stato aperto con successo nell'applicazione locale.",
+          });
+        } else {
+          // Fallback: offri download
+          toast({
+            title: "⚠️ Impossibile aprire localmente",
+            description: result.message || "Il documento non può essere aperto localmente. Vuoi scaricarlo?",
+            action: (
+              <ToastAction altText="Scarica documento" onClick={() => handleDownload(document)}>
+                Scarica
+              </ToastAction>
+            ),
+          });
+        }
+      } catch (error) {
+        // Errore nel caricamento di Local Opener - fallback a download
+        toast({
+          title: "⚠️ Errore apertura locale",
+          description: "Impossibile aprire il documento localmente. Vuoi scaricarlo?",
+          action: (
+            <ToastAction altText="Scarica documento" onClick={() => handleDownload(document)}>
+              Scarica
+            </ToastAction>
+          ),
+        });
+      }
+    }
+  };
+
   return (
     <>
       <div className="bg-white dark:bg-slate-800 shadow overflow-hidden rounded-md">
