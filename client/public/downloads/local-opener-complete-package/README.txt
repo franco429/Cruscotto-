@@ -80,14 +80,46 @@ Per massimizzare la velocità di avvio:
 
 🆕 NUOVE FUNZIONALITÀ - APERTURA AUTOMATICA TERMINALE
 
-Il sistema ora include un Task Scheduler che garantisce che il terminale
-si apra automaticamente ad ogni avvio di Windows:
+✅ **Task Scheduler Automatico**
+- Crea automaticamente un task Windows che si avvia ad ogni login utente
+- Apre automaticamente il terminale del servizio Local Opener
+- Funziona anche se Google Drive Desktop non è ancora montato
 
-✅ Task Scheduler "LocalOpenerTerminal"
-✅ Esecuzione automatica all'avvio di Windows
-✅ Verifica automatica dello stato del servizio
-✅ Apertura forzata del terminale se necessario
-✅ Configurazione per tutti gli utenti del sistema
+✅ **Rilevamento Completo Percorsi Google Drive**
+- **SCANSIONE COMPLETA**: Controlla TUTTE le unità da A: a Z:
+- **Percorsi Supportati**:
+  • A:\IL MIO DRIVE, A:\MY DRIVE, A:\Google Drive, A:\GoogleDrive
+  • B:\IL MIO DRIVE, B:\MY DRIVE, B:\Google Drive, B:\GoogleDrive
+  • C:\Users\[Username]\Google Drive, C:\Users\[Username]\My Drive
+  • D:\Users\[Username]\Google Drive, D:\Users\[Username]\My Drive
+  • E:\Users\[Username]\Google Drive, E:\Users\[Username]\My Drive
+  • F:\Users\[Username]\Google Drive, F:\Users\[Username]\My Drive
+  • G:\IL MIO DRIVE, G:\MY DRIVE, G:\Google Drive, G:\GoogleDrive
+  • H:\IL MIO DRIVE, H:\MY DRIVE, H:\Google Drive, H:\GoogleDrive
+  • I:\IL MIO DRIVE, I:\MY DRIVE, I:\Google Drive, I:\GoogleDrive
+  • J:\IL MIO DRIVE, J:\MY DRIVE, J:\Google Drive, J:\GoogleDrive
+  • K:\IL MIO DRIVE, K:\MY DRIVE, K:\Google Drive, K:\GoogleDrive
+  • L:\IL MIO DRIVE, L:\MY DRIVE, L:\Google Drive, L:\GoogleDrive
+  • M:\IL MIO DRIVE, M:\MY DRIVE, M:\Google Drive, M:\GoogleDrive
+  • N:\IL MIO DRIVE, N:\MY DRIVE, N:\Google Drive, N:\GoogleDrive
+  • O:\IL MIO DRIVE, O:\MY DRIVE, O:\Google Drive, O:\GoogleDrive
+  • P:\IL MIO DRIVE, P:\MY DRIVE, P:\Google Drive, P:\GoogleDrive
+  • Q:\IL MIO DRIVE, Q:\MY DRIVE, Q:\Google Drive, Q:\GoogleDrive
+  • R:\IL MIO DRIVE, R:\MY DRIVE, R:\Google Drive, R:\GoogleDrive
+  • S:\IL MIO DRIVE, S:\MY DRIVE, S:\Google Drive, S:\GoogleDrive
+  • T:\IL MIO DRIVE, T:\MY DRIVE, T:\Google Drive, T:\GoogleDrive
+  • U:\IL MIO DRIVE, U:\MY DRIVE, U:\Google Drive, U:\GoogleDrive
+  • V:\IL MIO DRIVE, V:\MY DRIVE, V:\Google Drive, V:\GoogleDrive
+  • W:\IL MIO DRIVE, W:\MY DRIVE, W:\Google Drive, W:\GoogleDrive
+  • X:\IL MIO DRIVE, X:\MY DRIVE, X:\Google Drive, X:\GoogleDrive
+  • Y:\IL MIO DRIVE, Y:\MY DRIVE, Y:\Google Drive, Y:\GoogleDrive
+  • Z:\IL MIO DRIVE, Z:\MY DRIVE, Z:\Google Drive, Z:\GoogleDrive
+
+✅ **Rilevamento Avanzato**
+- Controlla anche percorsi come: GDrive, DriveFS, GoogleDriveFS
+- Verifica File Stream, Desktop, Sync, Backup, Mirror, Clone
+- Scansione registro Windows per percorsi nascosti
+- Rilevamento automatico con retry per avvio automatico
 
 🔍 TROUBLESHOOTING
 

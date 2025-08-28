@@ -127,6 +127,42 @@ export async function detectGoogleDrivePaths(): Promise<DriveDetectionResult> {
   }
 }
 
+// Funzione per rilevare automaticamente i percorsi di Google Drive con retry
+// Utile per l'avvio automatico quando Google Drive Desktop potrebbe non essere ancora montato
+export async function detectGoogleDrivePathsWithRetry(
+  maxRetries: number = 5,
+  retryDelay: number = 2000
+): Promise<DriveDetectionResult> {
+  try {
+    const response = await fetch(`http://127.0.0.1:17654/detect-drive-paths-with-retry?retries=${maxRetries}&delay=${retryDelay}`, {
+      method: "GET",
+      signal: AbortSignal.timeout(30000), // Timeout più lungo per i retry
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return {
+        paths: data.paths || [],
+        success: data.success || false,
+        message: data.message || `Rilevamento completato dopo ${data.attempts || maxRetries} tentativi`
+      };
+    } else {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        paths: [],
+        success: false,
+        message: errorData.message || "Errore nel rilevamento dei percorsi con retry"
+      };
+    }
+  } catch (err: any) {
+    return {
+      paths: [],
+      success: false,
+      message: err?.message || "Errore di connessione al servizio locale durante il retry"
+    };
+  }
+}
+
 // Funzione per salvare la configurazione di un cliente
 export async function saveClientConfig(clientId: string, drivePaths: string[]): Promise<boolean> {
   try {
