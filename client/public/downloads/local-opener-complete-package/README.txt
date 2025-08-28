@@ -25,14 +25,18 @@ ORA CON APERTURA AUTOMATICA DEL TERMINALE ALL'AVVIO DI WINDOWS!
 1. cruscotto-local-opener-setup.exe - Eseguibile principale del servizio
 2. nssm.exe - Utility per gestione servizi Windows
 3. install-local-opener.bat - Script di installazione principale
-4. start-local-opener.bat - Script di avvio ottimizzato (VELOCE)
+4. start-local-opener.bat - Script di avvio personalizzato con loop infinito
 5. start-local-opener-fast.bat - Script ultra-veloce per avvio automatico
 6. configure-terminal-mode.bat - Configurazione modalità terminale
 7. test-terminal-mode.bat - Test configurazione servizio
 8. uninstall-local-opener.bat - Disinstallazione completa
 9. force-uninstall-local-opener.bat - Rimozione forzata
 10. debug-local-opener.bat - Diagnostica completa
-11. README.txt - Questa guida
+11. verify-installation.bat - Verifica rapida installazione
+12. fix-installation.bat - Ripristino rapido installazione difettosa
+13. auto-open-terminal.bat - Script per task scheduler automatico
+14. configure-google-drive-paths.bat - Configurazione automatica Google Drive
+15. README.txt - Questa guida
 
 🔧 INSTALLAZIONE PASSO-PASSO
 
@@ -48,10 +52,10 @@ STEP 2: INSTALLAZIONE
 - IL TASK SCHEDULER PER APERTURA AUTOMATICA SARÀ CONFIGURATO
 
 STEP 3: VERIFICA
+- Esegui verify-installation.bat per controllo completo
 - Verifica che il terminale del servizio sia visibile
 - Controlla che il servizio sia attivo in Servizi Windows
 - Verifica che il task scheduler sia configurato
-- Testa l'apertura di un documento locale
 
 STEP 4: CONFIGURAZIONE GOOGLE DRIVE
 - Apri la web app SGI Cruscotto
@@ -202,13 +206,18 @@ In caso di problemi:
 - Il task scheduler garantisce l'apertura automatica del terminale
 - Il servizio mantiene il terminale sempre aperto con loop infinito
 
-🎯 PROSSIMI PASSI
-1. Installa il servizio con install-local-opener.bat
-2. Riavvia il computer per testare l'avvio automatico
-3. Verifica che il terminale si apri automaticamente
-4. Verifica il funzionamento del servizio
-5. Configura Google Drive nella web app
-6. Testa l'apertura di documenti locali
+🚀 PROSSIMI PASSI
+echo 1. Verifica che il terminale del servizio sia visibile
+echo 2. Riavvia il computer per testare l'avvio automatico
+echo 3. Verifica che il terminale si apra automaticamente
+echo 4. Apri la pagina Impostazioni → Apertura File Locali
+echo 5. Clicca "Rileva Percorsi Automaticamente"
+echo 6. Clicca "Aggiungi Tutti" per configurare Google Drive
+echo.
+echo 🔍 VERIFICA RAPIDA:
+echo - Esegui verify-installation.bat per controllo completo
+echo - Verifica tutti i componenti in una volta sola
+echo - Identifica eventuali problemi di configurazione
 
 🔧 VERIFICA INSTALLAZIONE COMPLETA
 Dopo l'installazione, verifica che:
@@ -222,3 +231,17 @@ Dopo l'installazione, verifica che:
     FINE GUIDA - LOCAL OPENER SERVICE
     CON APERTURA AUTOMATICA DEL TERMINALE
 ========================================
+
+🚨 PROBLEMI COMUNI E SOLUZIONI
+
+❌ PROBLEMA: "Il servizio si avvia ma il terminale non si apre"
+✅ SOLUZIONE: Esegui fix-installation.bat come amministratore
+
+❌ PROBLEMA: "Il servizio non si avvia automaticamente con Windows"
+✅ SOLUZIONE: Verifica con verify-installation.bat e ripara con fix-installation.bat
+
+❌ PROBLEMA: "Google Drive non viene rilevato automaticamente"
+✅ SOLUZIONE: Esegui configure-google-drive-paths.bat per scansione completa
+
+❌ PROBLEMA: "Installazione precedente difettosa"
+✅ SOLUZIONE: Esegui force-uninstall-local-opener.bat e poi install-local-opener.bat

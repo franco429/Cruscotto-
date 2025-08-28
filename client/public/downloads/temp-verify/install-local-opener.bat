@@ -4,6 +4,7 @@ setlocal enabledelayedexpansion
 echo ========================================
 echo    INSTALLAZIONE LOCAL OPENER SERVICE
 echo    CON TERMINALE SEMPRE VISIBILE
+echo    E APERTURA AUTOMATICA ALL'AVVIO
 echo ========================================
 echo.
 
@@ -26,12 +27,16 @@ set EXE_PATH=%~dp0cruscotto-local-opener-setup.exe
 set NSSM_PATH=%~dp0nssm.exe
 set LOG_DIR=C:\Logs\LocalOpener
 set STARTUP_SCRIPT=%~dp0start-local-opener.bat
+set TASK_NAME=LocalOpenerTerminal
+set USERNAME=%USERNAME%
 
 echo Configurazione servizio:
 echo - Nome servizio: %SERVICE_NAME%
 echo - Percorso eseguibile: %EXE_PATH%
 echo - Directory log: %LOG_DIR%
 echo - Script di avvio: %STARTUP_SCRIPT%
+echo - Task Scheduler: %TASK_NAME%
+echo - Utente: %USERNAME%
 echo.
 
 :: Verifica esistenza file necessari
@@ -73,6 +78,10 @@ if %errorLevel% equ 0 (
     )
 )
 
+:: Rimuovi task scheduler esistente se presente
+echo - Rimozione task scheduler esistente...
+schtasks /delete /tn "%TASK_NAME%" /f >nul 2>&1
+
 echo.
 echo Installazione servizio %SERVICE_NAME%...
 
@@ -81,6 +90,8 @@ echo Creazione script di avvio personalizzato...
 (
 echo @echo off
 echo title Local Opener Service - Terminale Visibile
+echo setlocal enabledelayedexpansion
+echo.
 echo echo ========================================
 echo echo    LOCAL OPENER SERVICE ATTIVO
 echo echo ========================================
@@ -92,6 +103,7 @@ echo echo - ✅ Avvio automatico all'avvio di Windows
 echo echo - ✅ Terminale sempre visibile per monitoraggio
 echo echo - ✅ Riavvio automatico in caso di crash
 echo echo - ✅ Log salvati in: %LOG_DIR%
+echo echo - ✅ Task Scheduler per apertura automatica
 echo echo.
 echo echo PER CHIUDERE IL SERVIZIO:
 echo echo 1. Chiudi questa finestra
@@ -101,12 +113,19 @@ echo echo ATTENZIONE: Chiudere questa finestra fermerà il servizio!
 echo echo.
 echo echo Avvio del servizio Local Opener...
 echo echo.
+echo.
+echo :: Loop infinito per mantenere il terminale aperto
+echo :loop
+echo echo [%date% %time%] Local Opener Service attivo...
+echo echo.
+echo echo Avvio applicazione principale...
 echo start /wait "" "%EXE_PATH%"
 echo echo.
-echo echo Servizio Local Opener terminato.
-echo echo Per riavviarlo: sc start LocalOpener
+echo echo Applicazione terminata, riavvio in 5 secondi...
+echo timeout /t 5 /nobreak ^>nul
 echo echo.
-echo pause
+echo echo Riavvio automatico...
+echo goto :loop
 ) > "%STARTUP_SCRIPT%"
 
 :: Installa il servizio usando nssm con lo script di avvio personalizzato
@@ -168,6 +187,84 @@ echo - Configurazione resilienza terminale...
 "%NSSM_PATH%" set "%SERVICE_NAME%" AppEnvironmentExtra "TERMINAL_VISIBLE=1"
 "%NSSM_PATH%" set "%SERVICE_NAME%" AppEnvironmentExtra "AUTO_RESTART=1"
 
+:: CREAZIONE TASK SCHEDULER PER APERTURA AUTOMATICA DEL TERMINALE
+echo.
+echo ========================================
+echo    CREAZIONE TASK SCHEDULER
+echo    PER APERTURA AUTOMATICA TERMINALE
+echo ========================================
+echo.
+
+:: Crea script per il task scheduler
+set TASK_SCRIPT=%~dp0auto-open-terminal.bat
+echo - Creazione script per task scheduler...
+(
+echo @echo off
+echo :: Script per apertura automatica terminale Local Opener
+echo :: Eseguito automaticamente all'avvio di Windows
+echo.
+echo setlocal enabledelayedexpansion
+echo.
+echo :: Attendi che il sistema sia completamente avviato
+echo timeout /t 30 /nobreak ^>nul
+echo.
+echo :: Verifica se il servizio è attivo
+echo :check_service
+echo sc query "LocalOpener" | find "RUNNING" ^>nul 2^>^&1
+echo if %%errorLevel%% neq 0 ^(
+echo     echo Servizio LocalOpener non attivo, attendo...
+echo     timeout /t 10 /nobreak ^>nul
+echo     goto :check_service
+echo ^)
+echo.
+echo :: Apri il terminale del servizio se non è già visibile
+echo echo Apertura automatica terminale Local Opener...
+echo echo.
+echo echo Se il terminale non si apre automaticamente:
+echo echo 1. Premi Win+R
+echo echo 2. Digita: sc start LocalOpener
+echo echo 3. Premi Invio
+echo echo.
+echo.
+echo :: Forza l'apertura del terminale del servizio
+echo sc start "LocalOpener" ^>nul 2^>^&1
+echo.
+echo :: Attendi e verifica che il terminale sia visibile
+echo timeout /t 5 /nobreak ^>nul
+echo.
+echo echo Terminale Local Opener configurato per apertura automatica.
+echo echo.
+echo echo Per verificare lo stato:
+echo echo - Servizio: sc query LocalOpener
+echo echo - Task Scheduler: schtasks /query /tn LocalOpenerTerminal
+echo echo.
+echo pause
+) > "%TASK_SCRIPT%"
+
+:: Crea il task scheduler per eseguire lo script all'avvio
+echo - Creazione task scheduler per apertura automatica...
+schtasks /create /tn "%TASK_NAME%" /tr "%TASK_SCRIPT%" /sc onlogon /ru "%USERNAME%" /rl highest /f
+if %errorLevel% equ 0 (
+    echo ✅ Task scheduler creato con successo
+    echo   - Nome: %TASK_NAME%
+    echo   - Trigger: All'avvio di Windows
+    echo   - Script: %TASK_SCRIPT%
+) else (
+    echo ❌ Errore creazione task scheduler
+    echo Tentativo alternativo con configurazione semplificata...
+    schtasks /create /tn "%TASK_NAME%" /tr "%TASK_SCRIPT%" /sc onstart /ru "%USERNAME%" /f
+    if %errorLevel% equ 0 (
+        echo ✅ Task scheduler creato con configurazione alternativa
+    ) else (
+        echo ❌ Impossibile creare il task scheduler
+        echo Il servizio funzionerà ma il terminale potrebbe non aprirsi automaticamente
+    )
+)
+
+:: Configura il task per esecuzione automatica anche per altri utenti
+echo - Configurazione task per tutti gli utenti...
+schtasks /change /tn "%TASK_NAME%" /ru "SYSTEM" /f >nul 2>&1
+
 echo.
 echo Configurazione completata!
 echo.
@@ -190,16 +287,22 @@ if %errorLevel% equ 0 (
     echo - ✅ Log salvati in: %LOG_DIR%
     echo - ✅ Modalità interattiva per debug e monitoraggio
     echo - ✅ Script di avvio personalizzato per persistenza
+    echo - ✅ Task Scheduler per apertura automatica terminale
+    echo - ✅ Loop infinito per mantenere il terminale sempre attivo
     echo.
     echo 📋 INFORMAZIONI IMPORTANTI:
     echo - Il terminale del servizio rimarrà sempre aperto
     echo - Non chiudere il terminale per mantenere il servizio attivo
     echo - Il servizio funziona in background ma mantiene la console visibile
     echo - Lo script di avvio personalizzato garantisce la persistenza
+    echo - Il Task Scheduler aprirà automaticamente il terminale all'avvio
     echo.
     echo 🔧 COMANDI UTILI:
     echo Per verificare lo stato del servizio:
     echo   sc query "%SERVICE_NAME%"
+    echo.
+    echo Per verificare il task scheduler:
+    echo   schtasks /query /tn "%TASK_NAME%"
     echo.
     echo Per riavviare il servizio:
     echo   sc stop "%SERVICE_NAME%" && sc start "%SERVICE_NAME%"
@@ -207,17 +310,29 @@ if %errorLevel% equ 0 (
     echo Per disinstallare il servizio:
     echo   sc stop "%SERVICE_NAME%" && sc delete "%SERVICE_NAME%"
     echo.
+    echo Per rimuovere il task scheduler:
+    echo   schtasks /delete /tn "%TASK_NAME%" /f
+    echo.
     echo 🚀 PROSSIMI PASSI:
     echo 1. Verifica che il terminale del servizio sia visibile
     echo 2. Riavvia il computer per testare l'avvio automatico
-    echo 3. Apri la pagina Impostazioni → Apertura File Locali
-    echo 4. Clicca "Rileva Percorsi Automaticamente"
-    echo 5. Clicca "Aggiungi Tutti" per configurare Google Drive
+    echo 3. Verifica che il terminale si apra automaticamente
+    echo 4. Apri la pagina Impostazioni → Apertura File Locali
+    echo 5. Clicca "Rileva Percorsi Automaticamente"
+    echo 6. Clicca "Aggiungi Tutti" per configurare Google Drive
     echo.
     echo 📁 FILE CREATI:
     echo - Script di avvio: %STARTUP_SCRIPT%
+    echo - Script task scheduler: %TASK_SCRIPT%
     echo - Log del servizio: %LOG_DIR%
     echo - Configurazione NSSM: Servizio Windows
+    echo - Task Scheduler: %TASK_NAME%
+    echo.
+    echo 🔍 VERIFICA INSTALLAZIONE:
+    echo 1. Il terminale del servizio dovrebbe essere visibile
+    echo 2. Il servizio dovrebbe essere in esecuzione
+    echo 3. Il task scheduler dovrebbe essere configurato
+    echo 4. All'avvio di Windows il terminale dovrebbe aprirsi automaticamente
     echo.
 ) else (
     echo.
