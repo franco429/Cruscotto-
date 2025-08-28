@@ -24,11 +24,9 @@ import {
   RefreshCw,
   Folder,
   ExternalLink,
-  Search,
-  Zap,
 } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
-import { detectGoogleDrivePaths, saveClientConfig } from "../lib/local-opener";
+import { saveClientConfig } from "../lib/local-opener";
 import { useAuth } from "../hooks/use-auth";
 
 interface LocalOpenerConfig {
@@ -52,8 +50,7 @@ export default function LocalOpenerConfig() {
   const [newRoot, setNewRoot] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [isTestingRoot, setIsTestingRoot] = useState(false);
-  const [isDetectingPaths, setIsDetectingPaths] = useState(false);
-  const [detectedPaths, setDetectedPaths] = useState<string[]>([]);
+
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -95,91 +92,7 @@ export default function LocalOpenerConfig() {
     }
   };
 
-  // Rileva automaticamente i percorsi di Google Drive
-  const handleAutoDetectPaths = async () => {
-    setIsDetectingPaths(true);
-    try {
-      const result = await detectGoogleDrivePaths();
-      
-      if (result.success && result.paths.length > 0) {
-        setDetectedPaths(result.paths);
-        toast({
-          title: "✅ Percorsi rilevati automaticamente",
-          description: `Trovati ${result.paths.length} percorsi di Google Drive. Clicca "Aggiungi Tutti" per configurarli.`,
-          duration: 8000,
-        });
-      } else {
-        toast({
-          title: "⚠️ Nessun percorso rilevato",
-          description: result.message || "Nessun percorso di Google Drive trovato automaticamente.",
-          variant: "destructive",
-        });
-      }
-    } catch (err) {
-      toast({
-        title: "❌ Errore nel rilevamento",
-        description: "Impossibile rilevare i percorsi automaticamente. Riprova più tardi.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDetectingPaths(false);
-    }
-  };
 
-  // Aggiungi tutti i percorsi rilevati
-  const addAllDetectedPaths = async () => {
-    if (detectedPaths.length === 0) return;
-
-    setIsTestingRoot(true);
-    try {
-      let addedCount = 0;
-      
-      for (const path of detectedPaths) {
-        try {
-          const response = await fetch("http://127.0.0.1:17654/config", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ addRoot: path }),
-          });
-
-          if (response.ok) {
-            addedCount++;
-          }
-        } catch (err) {
-          console.error(`Failed to add path ${path}:`, err);
-        }
-      }
-
-      // Ricarica la configurazione
-      await loadConfig();
-      
-      if (addedCount > 0) {
-        toast({
-          title: "✅ Percorsi aggiunti",
-          description: `${addedCount} percorsi di Google Drive sono stati aggiunti con successo.`,
-        });
-        
-        // Salva la configurazione per questo cliente se disponibile
-        if (user?.clientId) {
-          try {
-            await saveClientConfig(user.clientId, detectedPaths);
-          } catch (err) {
-            console.error("Failed to save client config:", err);
-          }
-        }
-        
-        setDetectedPaths([]);
-      }
-    } catch (err) {
-      toast({
-        title: "❌ Errore nell'aggiunta",
-        description: "Si è verificato un errore nell'aggiunta dei percorsi rilevati.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsTestingRoot(false);
-    }
-  };
 
   // Aggiungi nuova root
   const addRoot = async () => {
@@ -342,16 +255,7 @@ export default function LocalOpenerConfig() {
                       download="local-opener-complete-package.zip"
                     >
                       <Download className="h-4 w-4 mr-2" />
-                      Scarica Pacchetto Completo
-                    </a>
-                  </Button>
-                  <Button asChild variant="outline" className="w-full sm:w-auto">
-                    <a
-                      href="/downloads/cruscotto-local-opener-setup.exe"
-                      download="cruscotto-local-opener-setup.exe"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Solo Eseguibile
+                      Scarica Local Opener
                     </a>
                   </Button>
                 </div>
@@ -370,83 +274,7 @@ export default function LocalOpenerConfig() {
         </CardContent>
       </Card>
 
-      {/* Auto-Detection Card */}
-      {status.isRunning && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-blue-600" />
-              Rilevamento Automatico Google Drive
-            </CardTitle>
-            <CardDescription>
-              Rileva automaticamente i percorsi di Google Drive Desktop per un setup istantaneo
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Button 
-                  onClick={handleAutoDetectPaths}
-                  disabled={isDetectingPaths}
-                  className="w-full sm:w-auto"
-                  variant="outline"
-                >
-                  {isDetectingPaths ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      Rilevamento in corso...
-                    </>
-                  ) : (
-                    <>
-                      <Search className="h-4 w-4 mr-2" />
-                      Rileva Percorsi Automaticamente
-                    </>
-                  )}
-                </Button>
-                
-                {detectedPaths.length > 0 && (
-                  <Button 
-                    onClick={addAllDetectedPaths}
-                    disabled={isTestingRoot}
-                    className="w-full sm:w-auto"
-                    variant="default"
-                  >
-                    {isTestingRoot ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Aggiunta in corso...
-                      </>
-                    ) : (
-                      <>
-                        <FolderPlus className="h-4 w-4 mr-2" />
-                        Aggiungi Tutti ({detectedPaths.length})
-                      </>
-                    )}
-                  </Button>
-                )}
-              </div>
 
-              {detectedPaths.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-green-700 dark:text-green-300">
-                    Percorsi rilevati:
-                  </p>
-                  <ScrollArea className="h-[120px] w-full rounded-md border p-3 bg-green-50 dark:bg-green-950">
-                    {detectedPaths.map((path, index) => (
-                      <div key={index} className="flex items-center gap-2 py-1">
-                        <Folder className="h-4 w-4 text-green-600" />
-                        <span className="text-sm font-mono text-green-800 dark:text-green-200">
-                          {path}
-                        </span>
-                      </div>
-                    ))}
-                  </ScrollArea>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Configuration Card */}
       {status.isRunning && config && (
@@ -462,7 +290,7 @@ export default function LocalOpenerConfig() {
               <ScrollArea className="h-[200px] w-full rounded-md border p-4">
                 {config.roots.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    Nessuna cartella configurata. Usa il rilevamento automatico o aggiungi manualmente le cartelle
+                    Nessuna cartella configurata. Aggiungi manualmente le cartelle
                     contenenti i documenti ISO.
                   </p>
                 ) : (
@@ -513,10 +341,9 @@ export default function LocalOpenerConfig() {
             <div>
               <p className="font-medium">1. Scarica e installa Local Opener</p>
               <div className="ml-2 sm:ml-4 space-y-1 text-muted-foreground">
-                <p><strong>Pacchetto Completo (Raccomandato):</strong> Contiene tutti i file necessari per installazione automatica</p>
-                <p><strong>Solo Eseguibile:</strong> Per installazione manuale avanzata</p>
+                <p><strong>Pacchetto Completo:</strong> Contiene tutti i file necessari per installazione automatica</p>
                 <p className="text-xs text-blue-600 dark:text-blue-400">
-                  💡 Il pacchetto completo include script di installazione automatica, debug e gestione servizi Windows
+                  💡 Il pacchetto include script di installazione automatica, debug e gestione servizi Windows
                 </p>
               </div>
             </div>
@@ -534,9 +361,7 @@ export default function LocalOpenerConfig() {
             <div>
               <p className="font-medium">3. Configura le cartelle</p>
               <p className="text-muted-foreground">
-                <strong>Raccomandato:</strong> Usa il rilevamento automatico per trovare Google Drive Desktop
-                <br />
-                <strong>Manuale:</strong> Aggiungi le cartelle dove sono salvati i documenti ISO
+                Aggiungi manualmente le cartelle dove sono salvati i documenti ISO
               </p>
             </div>
             <Separator />
