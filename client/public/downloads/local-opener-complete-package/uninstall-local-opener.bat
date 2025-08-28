@@ -2,8 +2,8 @@
 setlocal enabledelayedexpansion
 
 echo ========================================
-echo    DISINSTALLAZIONE LOCAL OPENER
-echo    SERVIZIO E CONFIGURAZIONI
+echo    DISINSTALLAZIONE LOCAL OPENER SERVICE
+echo    RIMOZIONE COMPLETA SERVIZIO E TASK
 echo ========================================
 echo.
 
@@ -22,93 +22,177 @@ if %errorLevel% neq 0 (
 
 :: Imposta variabili
 set SERVICE_NAME=LocalOpener
-set NSSM_PATH=%~dp0nssm.exe
+set TASK_NAME=LocalOpenerTerminal
 set LOG_DIR=C:\Logs\LocalOpener
 set STARTUP_SCRIPT=%~dp0start-local-opener.bat
+set TASK_SCRIPT=%~dp0auto-open-terminal.bat
 
-echo Disinstallazione del servizio %SERVICE_NAME%
+echo Configurazione disinstallazione:
+echo - Nome servizio: %SERVICE_NAME%
+echo - Nome task scheduler: %TASK_NAME%
+echo - Directory log: %LOG_DIR%
+echo - Script di avvio: %STARTUP_SCRIPT%
+echo - Script task scheduler: %TASK_SCRIPT%
 echo.
 
 :: Verifica se il servizio esiste
 sc query "%SERVICE_NAME%" >nul 2>&1
 if %errorLevel% neq 0 (
     echo Il servizio %SERVICE_NAME% non esiste.
-    echo Non c'è nulla da disinstallare.
-    pause
-    exit /b 0
-)
-
-:: Conferma disinstallazione
-set /p choice="Sei sicuro di voler disinstallare il servizio? (S/N): "
-if /i "!choice!" neq "S" (
-    echo Disinstallazione annullata.
-    pause
-    exit /b 0
+    goto :remove_task
 )
 
 echo.
-echo Inizio disinstallazione...
+echo ========================================
+echo    RIMOZIONE SERVIZIO WINDOWS
+echo ========================================
 echo.
 
-:: 1. Ferma il servizio
-echo - Arresto del servizio...
+:: Ferma il servizio
+echo - Arresto del servizio %SERVICE_NAME%...
 sc stop "%SERVICE_NAME%" >nul 2>&1
-timeout /t 3 >nul
+if %errorLevel% equ 0 (
+    echo ✅ Servizio fermato con successo
+) else (
+    echo ⚠️  Servizio già fermo o non avviato
+)
 
-:: 2. Rimuovi il servizio
-echo - Rimozione servizio da Windows...
+:: Attendi che il servizio si fermi completamente
+echo - Attesa completamento arresto servizio...
+timeout /t 5 /nobreak >nul
+
+:: Rimuovi il servizio
+echo - Rimozione servizio %SERVICE_NAME%...
 sc delete "%SERVICE_NAME%" >nul 2>&1
 if %errorLevel% equ 0 (
-    echo ✅ Servizio rimosso da Windows
+    echo ✅ Servizio rimosso con successo
 ) else (
-    echo ❌ Errore rimozione servizio Windows
+    echo ❌ Errore rimozione servizio
+    echo Tentativo di rimozione forzata...
+    sc delete "%SERVICE_NAME%" /force >nul 2>&1
+    if %errorLevel% equ 0 (
+        echo ✅ Servizio rimosso con rimozione forzata
+    ) else (
+        echo ❌ Impossibile rimuovere il servizio
+        echo Potrebbe essere necessario riavviare il computer
+    )
 )
 
-:: 3. Rimuovi configurazioni NSSM se esiste
-if exist "%NSSM_PATH%" (
-    echo - Rimozione configurazioni NSSM...
-    "%NSSM_PATH%" remove "%SERVICE_NAME%" confirm >nul 2>&1
-    echo ✅ Configurazioni NSSM rimosse
+:remove_task
+echo.
+echo ========================================
+echo    RIMOZIONE TASK SCHEDULER
+echo ========================================
+echo.
+
+:: Verifica se il task scheduler esiste
+schtasks /query /tn "%TASK_NAME%" >nul 2>&1
+if %errorLevel% neq 0 (
+    echo Il task scheduler %TASK_NAME% non esiste.
+    goto :cleanup_files
 )
 
-:: 4. Rimuovi directory log
-if exist "%LOG_DIR%" (
-    echo - Rimozione directory log...
-    rmdir /s /q "%LOG_DIR%" >nul 2>&1
-    echo ✅ Directory log rimossa
+:: Rimuovi il task scheduler
+echo - Rimozione task scheduler %TASK_NAME%...
+schtasks /delete /tn "%TASK_NAME%" /f >nul 2>&1
+if %errorLevel% equ 0 (
+    echo ✅ Task scheduler rimosso con successo
+) else (
+    echo ❌ Errore rimozione task scheduler
+    echo Tentativo di rimozione forzata...
+    schtasks /delete /tn "%TASK_NAME%" /f /force >nul 2>&1
+    if %errorLevel% equ 0 (
+        echo ✅ Task scheduler rimosso con rimozione forzata
+    ) else (
+        echo ❌ Impossibile rimuovere il task scheduler
+        echo Potrebbe essere necessario riavviare il computer
+    )
 )
 
-:: 5. Rimuovi script di avvio personalizzato
+:cleanup_files
+echo.
+echo ========================================
+echo    PULIZIA FILE E DIRECTORY
+echo ========================================
+echo.
+
+:: Rimuovi script di avvio se esistono
 if exist "%STARTUP_SCRIPT%" (
-    echo - Rimozione script di avvio personalizzato...
+    echo - Rimozione script di avvio...
     del "%STARTUP_SCRIPT%" >nul 2>&1
-    echo ✅ Script di avvio rimosso
+    if %errorLevel% equ 0 (
+        echo ✅ Script di avvio rimosso
+    ) else (
+        echo ❌ Errore rimozione script di avvio
+    )
 )
 
-:: 6. Rimuovi da avvio automatico Windows
-echo - Rimozione da avvio automatico Windows...
-reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "LocalOpener" /f >nul 2>&1
-reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "LocalOpener" /f >nul 2>&1
-echo ✅ Avvio automatico rimosso
+:: Rimuovi script task scheduler se esistono
+if exist "%TASK_SCRIPT%" (
+    echo - Rimozione script task scheduler...
+    del "%TASK_SCRIPT%" >nul 2>&1
+    if %errorLevel% equ 0 (
+        echo ✅ Script task scheduler rimosso
+    ) else (
+        echo ❌ Errore rimozione script task scheduler
+    )
+)
+
+:: Rimuovi directory log se vuota
+if exist "%LOG_DIR%" (
+    echo - Verifica directory log...
+    dir "%LOG_DIR%" /b >nul 2>&1
+    if %errorLevel% equ 0 (
+        echo - Directory log contiene file, verifica manuale necessaria
+        echo   Percorso: %LOG_DIR%
+    ) else (
+        echo - Directory log vuota, rimozione...
+        rmdir "%LOG_DIR%" >nul 2>&1
+        if %errorLevel% equ 0 (
+            echo ✅ Directory log rimossa
+        ) else (
+            echo ❌ Errore rimozione directory log
+        )
+    )
+)
 
 echo.
 echo ========================================
 echo    DISINSTALLAZIONE COMPLETATA!
 echo ========================================
 echo.
-echo ✅ Il servizio Local Opener è stato disinstallato con successo.
+
+echo ✅ Servizio Local Opener rimosso
+echo ✅ Task Scheduler rimosso
+echo ✅ File temporanei puliti
 echo.
-echo 🗑️ OPERAZIONI ESEGUITE:
-echo - Servizio Windows rimosso
-echo - Configurazioni NSSM rimosse
-echo - Directory log rimossa
-echo - Script di avvio rimossi
-echo - Avvio automatico rimosso
+
+echo 📋 INFORMAZIONI IMPORTANTI:
+echo - Il servizio Local Opener è stato completamente rimosso
+echo - Il task scheduler per apertura automatica è stato rimosso
+echo - I file temporanei sono stati puliti
+echo - I log potrebbero essere ancora presenti in: %LOG_DIR%
 echo.
-echo 🔄 PER REINSTALLARE:
-echo 1. Esegui install-local-opener.bat
-echo 2. Riavvia il computer
-echo 3. Verifica il funzionamento
+
+echo 🔧 VERIFICA RIMOZIONE:
+echo Per verificare che tutto sia stato rimosso:
 echo.
+echo 1. Verifica servizio:
+echo    sc query "%SERVICE_NAME%"
+echo.
+echo 2. Verifica task scheduler:
+echo    schtasks /query /tn "%TASK_NAME%"
+echo.
+echo 3. Verifica file:
+echo    - Script di avvio: %STARTUP_SCRIPT%
+echo    - Script task scheduler: %TASK_SCRIPT%
+echo.
+
+echo 🚀 PROSSIMI PASSI:
+echo 1. Riavvia il computer per completare la pulizia
+echo 2. Verifica che non ci siano più riferimenti al servizio
+echo 3. Se necessario, reinstallare con install-local-opener.bat
+echo.
+
 echo Premere un tasto per chiudere...
 pause >nul

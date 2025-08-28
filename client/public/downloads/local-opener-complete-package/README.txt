@@ -1,12 +1,14 @@
 ========================================
     LOCAL OPENER SERVICE - SGI CRUSCOTTO
     Guida Completa all'Installazione e Configurazione
+    CON APERTURA AUTOMATICA DEL TERMINALE
 ========================================
 
 📋 DESCRIZIONE
 Local Opener è un servizio Windows che permette l'apertura automatica
 dei documenti locali direttamente dall'interfaccia web SGI Cruscotto.
 Il servizio mantiene sempre visibile un terminale per monitoraggio e debug.
+ORA CON APERTURA AUTOMATICA DEL TERMINALE ALL'AVVIO DI WINDOWS!
 
 🚀 CARATTERISTICHE PRINCIPALI
 ✅ Avvio automatico all'avvio di Windows
@@ -15,6 +17,9 @@ Il servizio mantiene sempre visibile un terminale per monitoraggio e debug.
 ✅ Log salvati in C:\Logs\LocalOpener
 ✅ Modalità interattiva per debug
 ✅ Script di avvio personalizzato per affidabilità
+✅ Task Scheduler per apertura automatica del terminale
+✅ Loop infinito per mantenere il terminale sempre attivo
+✅ Apertura automatica del terminale ad ogni avvio di Windows
 
 📁 FILE INCLUSI NEL PACCHETTO
 1. cruscotto-local-opener-setup.exe - Eseguibile principale del servizio
@@ -24,7 +29,7 @@ Il servizio mantiene sempre visibile un terminale per monitoraggio e debug.
 5. start-local-opener-fast.bat - Script ultra-veloce per avvio automatico
 6. configure-terminal-mode.bat - Configurazione modalità terminale
 7. test-terminal-mode.bat - Test configurazione servizio
-8. uninstall-local-opener.bat - Disinstallazione normale
+8. uninstall-local-opener.bat - Disinstallazione completa
 9. force-uninstall-local-opener.bat - Rimozione forzata
 10. debug-local-opener.bat - Diagnostica completa
 11. README.txt - Questa guida
@@ -40,10 +45,12 @@ STEP 2: INSTALLAZIONE
 - Esegui install-local-opener.bat come amministratore
 - Segui le istruzioni a schermo
 - Il servizio verrà installato e avviato automaticamente
+- IL TASK SCHEDULER PER APERTURA AUTOMATICA SARÀ CONFIGURATO
 
 STEP 3: VERIFICA
 - Verifica che il terminale del servizio sia visibile
 - Controlla che il servizio sia attivo in Servizi Windows
+- Verifica che il task scheduler sia configurato
 - Testa l'apertura di un documento locale
 
 STEP 4: CONFIGURAZIONE GOOGLE DRIVE
@@ -71,6 +78,17 @@ Per massimizzare la velocità di avvio:
 - Dopo ottimizzazione: ~0.5-1 secondo
 - Miglioramento: 80-90% più veloce
 
+🆕 NUOVE FUNZIONALITÀ - APERTURA AUTOMATICA TERMINALE
+
+Il sistema ora include un Task Scheduler che garantisce che il terminale
+si apra automaticamente ad ogni avvio di Windows:
+
+✅ Task Scheduler "LocalOpenerTerminal"
+✅ Esecuzione automatica all'avvio di Windows
+✅ Verifica automatica dello stato del servizio
+✅ Apertura forzata del terminale se necessario
+✅ Configurazione per tutti gli utenti del sistema
+
 🔍 TROUBLESHOOTING
 
 PROBLEMA: Servizio non si avvia
@@ -85,6 +103,13 @@ SOLUZIONE:
 - Verifica configurazione NSSM
 - Riavvia il servizio
 
+PROBLEMA: Terminale non si apre automaticamente all'avvio
+SOLUZIONE:
+- Verifica che il task scheduler sia configurato
+- Esegui: schtasks /query /tn LocalOpenerTerminal
+- Se mancante, esegui configure-terminal-mode.bat
+- Riavvia il computer per testare
+
 PROBLEMA: Avvio lento
 SOLUZIONE:
 - Usa start-local-opener-fast.bat per avvio automatico
@@ -96,10 +121,16 @@ SOLUZIONE:
 Verifica stato servizio:
   sc query LocalOpener
 
+Verifica task scheduler:
+  schtasks /query /tn LocalOpenerTerminal
+
 Riavvio servizio:
   sc stop LocalOpener && sc start LocalOpener
 
-Disinstallazione:
+Esegui task scheduler manualmente:
+  schtasks /run /tn LocalOpenerTerminal
+
+Disinstallazione completa:
   uninstall-local-opener.bat
 
 Rimozione forzata:
@@ -107,6 +138,9 @@ Rimozione forzata:
 
 Diagnostica:
   debug-local-opener.bat
+
+Test configurazione:
+  test-terminal-mode.bat
 
 📁 STRUTTURA LOG
 C:\Logs\LocalOpener\
@@ -126,20 +160,33 @@ In caso di problemi:
 2. Salva l'output per il supporto
 3. Controlla i log in C:\Logs\LocalOpener
 4. Verifica la configurazione NSSM
+5. Verifica il task scheduler
 
 ⚠️ NOTE IMPORTANTI
 - NON chiudere il terminale del servizio
 - Il servizio funziona in background ma mantiene la console visibile
 - Riavvia sempre il computer dopo l'installazione
 - Verifica che l'antivirus non blocchi l'esecuzione
+- Il task scheduler garantisce l'apertura automatica del terminale
+- Il servizio mantiene il terminale sempre aperto con loop infinito
 
 🎯 PROSSIMI PASSI
 1. Installa il servizio con install-local-opener.bat
-2. Riavvia il computer
-3. Verifica il funzionamento
-4. Configura Google Drive nella web app
-5. Testa l'apertura di documenti locali
+2. Riavvia il computer per testare l'avvio automatico
+3. Verifica che il terminale si apri automaticamente
+4. Verifica il funzionamento del servizio
+5. Configura Google Drive nella web app
+6. Testa l'apertura di documenti locali
+
+🔧 VERIFICA INSTALLAZIONE COMPLETA
+Dopo l'installazione, verifica che:
+1. Il servizio LocalOpener sia attivo
+2. Il terminale del servizio sia visibile
+3. Il task scheduler LocalOpenerTerminal sia configurato
+4. All'avvio di Windows il terminale si apra automaticamente
+5. Il servizio mantenga il terminale sempre aperto
 
 ========================================
     FINE GUIDA - LOCAL OPENER SERVICE
+    CON APERTURA AUTOMATICA DEL TERMINALE
 ========================================
