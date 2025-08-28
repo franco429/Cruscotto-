@@ -57,16 +57,16 @@ function Generate-WixFile {
            Name="Cruscotto Local Opener" 
            Language="1040" 
            Version="$Version" 
-           Manufacturer="Cruscotto SGI" 
+           Manufacturer="Pannello SGI" 
            UpgradeCode="{B8C9D3E4-4F5A-6B7C-8D9E-0F1A2B3C4D5E}">
     
     <Package InstallerVersion="200" 
              Compressed="yes" 
              InstallScope="perMachine" 
              Platform="x64"
-             Description="Servizio per aprire documenti locali da Cruscotto SGI"
+             Description="Servizio per aprire documenti locali da Pannello SGI"
              Comments="Installazione enterprise con configurazione automatica"
-             Manufacturer="Cruscotto SGI" />
+             Manufacturer="Pannello SGI" />
 
     <!-- Supporto major upgrade -->
     <MajorUpgrade DowngradeErrorMessage="Una versione più recente è già installata." />

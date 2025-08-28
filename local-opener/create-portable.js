@@ -74,7 +74,7 @@ echo 🔧 Installazione servizio con configurazione avanzata...
 nssm.exe install !SERVICE_NAME! "%~dp0local-opener.exe"
 nssm.exe set !SERVICE_NAME! AppDirectory "%~dp0"
 nssm.exe set !SERVICE_NAME! DisplayName "Cruscotto Local Opener Service"
-nssm.exe set !SERVICE_NAME! Description "Servizio per aprire documenti locali da Cruscotto SGI - Avvio automatico all'accensione PC"
+nssm.exe set !SERVICE_NAME! Description "Servizio per aprire documenti locali da Pannello SGI - Avvio automatico all'accensione PC"
 
 echo ⚙️  Configurazione avvio automatico...
 nssm.exe set !SERVICE_NAME! Start SERVICE_AUTO_START
@@ -197,7 +197,7 @@ Per assistenza, visita: https://cruscotto-sgi.onrender.com
 
 ## Requisiti
 - Windows 10/11
-- Connessione internet per la comunicazione con Cruscotto SGI
+- Connessione internet per la comunicazione con Pannello SGI
 `;
 
 fs.writeFileSync(path.join(portableDir, 'README.txt'), readmeContent);

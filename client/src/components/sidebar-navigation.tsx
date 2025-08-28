@@ -202,9 +202,15 @@ export default function SidebarNavigation({
         <ScrollArea className="h-full">
           <div className="py-4 px-3">
             <div className="flex items-center px-2 py-2">
-              <FileText className="h-6 w-6 text-primary-600 dark:text-primary-400 mr-2" />
+              <img
+                src="/logo/logo sgi.jpg"
+                alt="Logo SGI"
+                className="h-10 w-10 object-cover mr-2"
+                width="40"
+                height="40"
+              />
               <h2 className="text-lg font-semibold text-slate-800 dark:text-white">
-                Cruscotto SGI
+                Pannello SGI
               </h2>
             </div>
 

@@ -250,7 +250,7 @@ Se hai problemi, contatta il supporto tecnico con:
 - Architettura sistema
 - Messaggi di errore completi
 
-Cruscotto SGI © 2024
+Pannello SGI © 2024
 https://cruscotto-sgi.onrender.com
 `;
 

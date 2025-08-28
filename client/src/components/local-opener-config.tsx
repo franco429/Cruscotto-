@@ -215,24 +215,24 @@ export default function LocalOpenerConfig() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 lg:gap-0">
             <div className="flex items-center gap-3">
               {status.isRunning ? (
                 <>
-                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
                   <div>
-                    <p className="font-medium">Servizio attivo</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm sm:text-base font-medium">Servizio attivo</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
                       Versione {status.version || "1.0.0"}
                     </p>
                   </div>
                 </>
               ) : (
                 <>
-                  <AlertCircle className="h-5 w-5 text-red-600" />
+                  <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
                   <div>
-                    <p className="font-medium">Servizio non disponibile</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm sm:text-base font-medium">Servizio non disponibile</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
                       {status.error}
                     </p>
                   </div>
@@ -240,58 +240,26 @@ export default function LocalOpenerConfig() {
               )}
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
               {!status.isRunning && (
-                <>
-                  <Button asChild variant="default">
-                    <a
-                      href="/downloads/cruscotto-local-opener-setup.exe"
-                      download="cruscotto-local-opener-setup.exe"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Installer Universale
-                    </a>
-                  </Button>
-                  <Button asChild variant="outline" size="sm">
-                    <a
-                      href="/downloads/cruscotto-local-opener-portable.zip"
-                      download="cruscotto-local-opener-portable.zip"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Versione Portable
-                    </a>
-                  </Button>
-                </>
+                <Button asChild variant="default" className="w-full sm:w-auto">
+                  <a
+                    href="/downloads/cruscotto-local-opener-setup.exe"
+                    download="cruscotto-local-opener-setup.exe"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Scarica Local Opener
+                  </a>
+                </Button>
               )}
               <Button
                 variant="outline"
                 onClick={checkServiceStatus}
                 disabled={isLoading}
+                className="w-full sm:w-auto"
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Ricontrolla
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const link = document.createElement('a');
-                  link.href = '/downloads/debug-local-opener.bat';
-                  link.download = 'debug-local-opener.bat';
-                  link.setAttribute('target', '_blank');
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
-                  
-                  toast({
-                    title: "📋 Script Debug Scaricato",
-                    description: "Esegui debug-local-opener.bat per diagnosticare problemi",
-                    duration: 5000,
-                  });
-                }}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Debug Script
               </Button>
             </div>
           </div>
@@ -339,12 +307,12 @@ export default function LocalOpenerConfig() {
                 )}
               </ScrollArea>
 
-              <div className="flex gap-2">
-                <Button onClick={() => setShowAddDialog(true)}>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button onClick={() => setShowAddDialog(true)} className="w-full sm:w-auto">
                   <FolderPlus className="h-4 w-4 mr-2" />
                   Aggiungi Cartella
                 </Button>
-                <Button variant="outline" onClick={testFileOpen}>
+                <Button variant="outline" onClick={testFileOpen} className="w-full sm:w-auto">
                   Testa Apertura File
                 </Button>
               </div>
@@ -359,18 +327,17 @@ export default function LocalOpenerConfig() {
           <CardTitle>Come configurare l'apertura locale</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3 text-sm">
+          <div className="space-y-3 text-xs sm:text-sm">
             <div>
-              <p className="font-medium">1. Scegli la versione adatta</p>
-              <div className="ml-4 space-y-1 text-muted-foreground">
-                <p><strong>Installer Universale:</strong> Per installazione permanente con servizio Windows (raccomandato)</p>
-                <p><strong>Versione Portable:</strong> Per esecuzione diretta senza installazione</p>
+              <p className="font-medium">1. Scarica e installa Local Opener</p>
+              <div className="ml-2 sm:ml-4 space-y-1 text-muted-foreground">
+                <p><strong>Installer Windows:</strong> Per installazione permanente con servizio Windows (raccomandato)</p>
               </div>
             </div>
             <Separator />
             <div>
               <p className="font-medium">2. Compatibilità Sistema</p>
-              <div className="ml-4 space-y-1 text-muted-foreground">
+              <div className="ml-2 sm:ml-4 space-y-1 text-muted-foreground">
                 <p>✅ Windows 10 (versione 1903+) / Windows 11</p>
                 <p>✅ Architetture: Intel/AMD x64, ARM64</p>
                 <p>✅ Supporto automatico rilevamento architettura</p>
@@ -396,8 +363,7 @@ export default function LocalOpenerConfig() {
             <Separator />
             <div>
               <p className="font-medium">🔧 Problemi di compatibilità?</p>
-              <div className="ml-4 space-y-1 text-muted-foreground">
-                <p>• Se l'installer non funziona, prova la versione portable</p>
+              <div className="ml-2 sm:ml-4 space-y-1 text-muted-foreground">
                 <p>• Disabilita temporaneamente l'antivirus durante l'installazione</p>
                 <p>• Esegui come amministratore se richiesto</p>
                 <p>• Verifica che Windows Defender non blocchi l'esecuzione</p>
@@ -432,15 +398,16 @@ export default function LocalOpenerConfig() {
               </p>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
             <Button
               variant="outline"
               onClick={() => setShowAddDialog(false)}
               disabled={isTestingRoot}
+              className="w-full sm:w-auto"
             >
               Annulla
             </Button>
-            <Button onClick={addRoot} disabled={isTestingRoot || !newRoot.trim()}>
+            <Button onClick={addRoot} disabled={isTestingRoot || !newRoot.trim()} className="w-full sm:w-auto">
               {isTestingRoot ? (
                 <>
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />

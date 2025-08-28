@@ -20,9 +20,15 @@ export default function Footer() {
           {/* Company Info */}
           <div className="space-y-3 sm:space-y-4">
             <div className="flex items-center space-x-2">
-              <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+              <img
+                src="/logo/logo sgi.jpg"
+                alt="Logo SGI"
+                className="h-8 w-8 sm:h-10 sm:w-10 object-cover"
+                width="40"
+                height="40"
+              />
               <span className="font-bold text-base sm:text-lg md:text-xl">
-                Cruscotto SGI
+                Pannello SGI
               </span>
             </div>
             <p className="text-slate-600 dark:text-slate-400 text-xs sm:text-sm">
@@ -126,7 +132,7 @@ export default function Footer() {
         <Separator className="my-4 sm:my-6 md:my-8" />
 
         <div className="flex flex-col xs:flex-row justify-between items-center text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-          <p>© {currentYear} Cruscotto SGI. Tutti i diritti riservati.</p>
+          <p>© {currentYear} Pannello SGI. Tutti i diritti riservati.</p>
           <div className="flex space-x-4 sm:space-x-6 mt-3 xs:mt-0">
             <a href="/privacy" className="hover:text-primary transition-colors">
               Privacy Policy
