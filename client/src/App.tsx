@@ -7,6 +7,7 @@ import { ErrorBoundary } from "./components/error-boundary";
 import { ConnectionStatus } from "./components/network-error";
 import NotFound from "../src/pages/not-found";
 import HomePage from "../src/pages/home-page";
+import PublicHomePage from "../src/pages/public-home-page";
 import AuthPage from "../src/pages/auth-page";
 import DocumentPage from "../src/pages/document-page";
 import UsersPage from "../src/pages/users-page";
@@ -27,8 +28,11 @@ import { ProtectedRoute } from "./lib/protected-route";
 function Router() {
   return (
     <Switch>
+      {/* Public routes */}
+      <Route path="/" component={PublicHomePage} />
+
       {/* Protected routes */}
-      <ProtectedRoute path="/" component={HomePage} />
+      <ProtectedRoute path="/dashboard" component={HomePage} />
       <ProtectedRoute path="/documents/:id" component={DocumentPage} />
       <ProtectedRoute path="/users" component={UsersPage} adminOnly={true} />
       <ProtectedRoute

@@ -78,7 +78,7 @@ export default function Footer() {
             <ul className="space-y-1 sm:space-y-2">
               <li>
                 <a
-                  href="/"
+                  href="/dashboard"
                   className="text-slate-600 hover:text-primary dark:text-slate-400 dark:hover:text-primary transition-colors text-xs sm:text-sm"
                 >
                   Dashboard
