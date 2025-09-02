@@ -25,10 +25,9 @@ import {
   Folder,
   ExternalLink,
   Clock,
-  Repeat,
 } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
-import { saveClientConfig, detectGoogleDrivePathsWithRetry } from "../lib/local-opener";
+import { saveClientConfig } from "../lib/local-opener";
 import { useAuth } from "../hooks/use-auth";
 
 interface LocalOpenerConfig {
@@ -132,58 +131,7 @@ export default function LocalOpenerConfig() {
     }
   };
 
-  // Rileva automaticamente i percorsi di Google Drive
-  const detectGoogleDrivePaths = async () => {
-    setIsTestingRoot(true);
-    try {
-      toast({
-        title: "Rilevamento in corso",
-        description: "Rilevamento automatico percorsi Google Drive con retry...",
-      });
 
-      // Usa la funzione con retry per migliori risultati all'avvio automatico
-      const result = await detectGoogleDrivePathsWithRetry(5, 2000);
-      
-      if (result.success && result.paths.length > 0) {
-        // Aggiungi automaticamente tutti i percorsi rilevati
-        for (const path of result.paths) {
-          try {
-            const response = await fetch("http://127.0.0.1:17654/config", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ addRoot: path }),
-            });
-
-            if (response.ok) {
-              const data = await response.json();
-              setConfig({ ...config, roots: data.roots });
-            }
-          } catch (err) {
-            console.warn(`Errore aggiunta percorso ${path}:`, err);
-          }
-        }
-
-        toast({
-          title: "Percorsi rilevati",
-          description: `Aggiunti ${result.paths.length} percorsi Google Drive automaticamente.`,
-        });
-      } else {
-        toast({
-          title: "Nessun percorso rilevato",
-          description: result.message || "Impossibile rilevare percorsi Google Drive automaticamente.",
-          variant: "destructive",
-        });
-      }
-    } catch (err: any) {
-      toast({
-        title: "Errore rilevamento",
-        description: err.message || "Errore durante il rilevamento automatico",
-        variant: "destructive",
-      });
-    } finally {
-      setIsTestingRoot(false);
-    }
-  };
 
   // Rimuovi root
   const removeRoot = async (root: string) => {
@@ -376,15 +324,6 @@ export default function LocalOpenerConfig() {
                 <Button onClick={() => setShowAddDialog(true)} className="w-full sm:w-auto">
                   <FolderPlus className="h-4 w-4 mr-2" />
                   Aggiungi Cartella Manualmente
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={detectGoogleDrivePaths} 
-                  disabled={isTestingRoot}
-                  className="w-full sm:w-auto"
-                >
-                  <Repeat className="h-4 w-4 mr-2" />
-                  Rileva Percorsi Google Drive
                 </Button>
                 <Button variant="outline" onClick={testFileOpen} className="w-full sm:w-auto">
                   Testa Apertura File

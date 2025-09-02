@@ -24,12 +24,29 @@ import PrivacyPage from "./pages/privacy-page";
 import TermsPage from "./pages/terms-page";
 import CookiePage from "./pages/cookie-page";
 import { ProtectedRoute } from "./lib/protected-route";
+import { useAuth } from "./hooks/use-auth";
+
+// Componente per gestire dinamicamente la home page basata sull'autenticazione
+function HomeRouter() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Se l'utente è autenticato, mostra la HomePage, altrimenti PublicHomePage
+  return user ? <HomePage /> : <PublicHomePage />;
+}
 
 function Router() {
   return (
     <Switch>
-      {/* Public routes */}
-      <Route path="/" component={PublicHomePage} />
+      {/* Dynamic home route based on authentication */}
+      <Route path="/" component={HomeRouter} />
 
       {/* Protected routes */}
       <ProtectedRoute path="/dashboard" component={HomePage} />

@@ -168,6 +168,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         duration: 2000,
       });
 
+      // Redirect alla home page dopo login
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 1000); // Piccolo delay per permettere al toast di essere visibile
+
       // Avvia controllo automatico Local Opener dopo login
       setTimeout(() => {
         checkAndPromptLocalOpener();
