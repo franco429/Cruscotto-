@@ -30,7 +30,7 @@ export default function CookiePage() {
                   Come Utilizziamo i Cookie
                 </h2>
                 <p>
-                  Pannello SGI utilizza i cookie per:
+                  Pannello di Controllo SGI utilizza i cookie per:
                 </p>
                 <ul className="list-disc list-inside mt-2 space-y-1 ml-4">
                   <li>Mantenere la tua sessione attiva durante la navigazione</li>
@@ -111,7 +111,7 @@ export default function CookiePage() {
                 </ul>
                 <p className="mt-2">
                   <strong>Nota:</strong> La disabilitazione di alcuni cookie può compromettere 
-                  il funzionamento del servizio Pannello SGI.
+                  il funzionamento del servizio Pannello di Controllo SGI.
                 </p>
               </section>
 
@@ -120,7 +120,7 @@ export default function CookiePage() {
                   Cookie e Sicurezza
                 </h2>
                 <p>
-                  I cookie utilizzati da Pannello SGI sono progettati per:
+                  I cookie utilizzati da Pannello di Controllo SGI sono progettati per:
                 </p>
                 <ul className="list-disc list-inside mt-2 space-y-1 ml-4">
                   <li>Proteggere la tua sessione e i dati personali</li>
@@ -149,7 +149,7 @@ export default function CookiePage() {
                   Per domande sulla nostra policy sui cookie, contattaci:
                 </p>
                 <div className="mt-3 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <p className="font-semibold">Pannello SGI</p>
+                  <p className="font-semibold">Pannello di Controllo SGI</p>
                   <p>Email: isodocs178@gmail.com</p>
                   <p>Telefono: +39 3351375593 / +39 3791341270</p>
                   <p>Indirizzo: 60044 Fabriano (AN), Italia</p>

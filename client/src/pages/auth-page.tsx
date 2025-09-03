@@ -726,7 +726,7 @@ export default function AuthPage() {
               </div>
               <div className="text-center mb-8">
                 <h1 className="text-3xl xs:text-4xl sm:text-5xl font-bold text-primary-foreground mb-4">
-                  Pannello SGI
+                  Pannello di Controllo SGI
                 </h1>
                 <p className="text-lg xs:text-xl text-primary-foreground/80 max-w-2xl mx-auto leading-relaxed">
                   Unisciti alle aziende che hanno già scelto la gestione intelligente dei documenti ISO

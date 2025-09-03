@@ -110,7 +110,7 @@ export default function AuthNavbar() {
               height="48"
             />
             <span className="font-bold text-lg lg:text-xl">
-              Pannello SGI
+              Pannello di Controllo SGI
             </span>
           </Link>
         </div>

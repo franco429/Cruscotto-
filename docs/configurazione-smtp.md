@@ -2,7 +2,7 @@
 
 ## Panoramica
 
-Il sistema di Pannello SGI utilizza Nodemailer per l'invio di email, in particolare per:
+Il sistema di Pannello di Controllo SGI utilizza Nodemailer per l'invio di email, in particolare per:
 - Reset password
 - Notifiche di sistema
 - Form di contatto

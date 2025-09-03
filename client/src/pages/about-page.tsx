@@ -14,7 +14,7 @@ export default function AboutPage() {
         
         <div className="space-y-8">
           <section className="bg-card border rounded-lg p-6">
-            <h2 className="text-2xl font-semibold mb-4">Pannello SGI</h2>
+            <h2 className="text-2xl font-semibold mb-4">Pannello di Controllo SGI</h2>
             <p className="text-muted-foreground mb-4">
               La nostra applicazione è stata sviluppata per aiutare le aziende a gestire efficacemente la documentazione conforme agli standard ISO, semplificando la conformità e migliorando l'organizzazione dei documenti.
             </p>

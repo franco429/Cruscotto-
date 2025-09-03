@@ -1,6 +1,6 @@
-# Tools di Amministrazione - Pannello SGI
+# Tools di Amministrazione - Pannello di Controllo SGI
 
-Questo directory contiene gli strumenti per la gestione amministrativa del sistema Pannello SGI.
+Questo directory contiene gli strumenti per la gestione amministrativa del sistema Pannello di Controllo SGI.
 
 ## 📋 Strumenti Disponibili
 

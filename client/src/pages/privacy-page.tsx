@@ -19,7 +19,7 @@ export default function PrivacyPage() {
                   Informativa sulla Privacy
                 </h2>
                 <p>
-                  La presente informativa descrive come Pannello SGI raccoglie, utilizza e protegge le informazioni 
+                  La presente informativa descrive come Pannello di Controllo SGI raccoglie, utilizza e protegge le informazioni 
                   personali degli utenti. Questa informativa è conforme al Regolamento Generale sulla Protezione dei Dati (GDPR) 
                   e alle normative italiane sulla privacy.
                 </p>
@@ -75,7 +75,7 @@ export default function PrivacyPage() {
                   Utilizziamo le informazioni raccolte per:
                 </p>
                 <ul className="list-disc list-inside mt-2 space-y-1 ml-4">
-                  <li>Fornire e mantenere il servizio Pannello SGI</li>
+                  <li>Fornire e mantenere il servizio Pannello di Controllo SGI</li>
                   <li>Gestire l'autenticazione e l'accesso degli utenti</li>
                   <li>Sincronizzare i documenti tra Google Drive e la piattaforma</li>
                   <li>Inviare notifiche relative a scadenze e aggiornamenti</li>
@@ -133,7 +133,7 @@ export default function PrivacyPage() {
                   puoi contattarci:
                 </p>
                 <div className="mt-3 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <p className="font-semibold">Pannello SGI</p>
+                  <p className="font-semibold">Pannello di Controllo SGI</p>
                   <p>Email: isodocs178@gmail.com</p>
                   <p>Telefono: +39 3351375593 / +39 3791341270</p>
                   <p>Indirizzo: 60044 Fabriano (AN), Italia</p>

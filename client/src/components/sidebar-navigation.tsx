@@ -210,7 +210,7 @@ export default function SidebarNavigation({
                 height="40"
               />
               <h2 className="text-lg font-semibold text-slate-800 dark:text-white">
-                Pannello SGI
+                Pannello di Controllo SGI
               </h2>
             </div>
 

@@ -19,7 +19,7 @@ export default function TermsPage() {
                   Accettazione dei Termini
                 </h2>
                 <p>
-                  Utilizzando il servizio Pannello SGI, accetti di essere vincolato da questi Termini di Servizio. 
+                  Utilizzando il servizio Pannello di Controllo SGI, accetti di essere vincolato da questi Termini di Servizio. 
                   Se non accetti questi termini, non utilizzare il servizio.
                 </p>
               </section>
@@ -29,7 +29,7 @@ export default function TermsPage() {
                   Descrizione del Servizio
                 </h2>
                 <p>
-                  Pannello SGI è una piattaforma per la gestione intelligente dei documenti ISO, 
+                  Pannello di Controllo SGI è una piattaforma per la gestione intelligente dei documenti ISO, 
                   che consente di sincronizzare, organizzare e monitorare documenti aziendali 
                   attraverso l'integrazione con Google Drive.
                 </p>
@@ -102,7 +102,7 @@ export default function TermsPage() {
                   , senza alcuna garanzia di funzionamento continuo o di idoneità a scopi particolari.
                 </p>
                 <p className="mt-2">
-                  Pannello SGI non garantisce che il servizio sarà ininterrotto, sicuro o privo di errori, 
+                  Pannello di Controllo SGI non garantisce che il servizio sarà ininterrotto, sicuro o privo di errori, 
                   né che eventuali difetti saranno corretti.
                 </p>
               </section>
@@ -112,7 +112,7 @@ export default function TermsPage() {
                   Proprietà Intellettuale
                 </h2>
                 <p>
-                  Il servizio Pannello SGI e il suo contenuto sono protetti da copyright, 
+                  Il servizio Pannello di Controllo SGI e il suo contenuto sono protetti da copyright, 
                   marchi commerciali e altre leggi sulla proprietà intellettuale. 
                   Mantieni tutti i diritti sui tuoi documenti e contenuti.
                 </p>
@@ -171,7 +171,7 @@ export default function TermsPage() {
                   Per domande sui termini di servizio, contattaci:
                 </p>
                 <div className="mt-3 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <p className="font-semibold">Pannello SGI</p>
+                  <p className="font-semibold">Pannello di Controllo SGI</p>
                   <p>Email: isodocs178@gmail.com</p>
                   <p>Telefono: +39 3351375593 / +39 3791341270</p>
                   <p>Indirizzo: 60044 Fabriano (AN), Italia</p>

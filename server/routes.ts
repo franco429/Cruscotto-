@@ -1214,7 +1214,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
             </div>
             <hr style="border-top: 1px solid #ddd; margin: 20px 0;">
             <p style="color: #666; font-size: 12px;">
-              Questo messaggio è stato inviato dal form di contatto del Sistema di Pannello SGI.
+              Questo messaggio è stato inviato dal form di contatto del Sistema di Pannello di Controllo SGI.
               <br>Timestamp: ${new Date().toISOString()}
             </p>
           </div>

@@ -29,7 +29,7 @@ export default function PublicHomePage() {
                 className="h-8 w-8 object-cover"
               />
               <span className="font-bold text-xl text-slate-900 dark:text-white">
-                Pannello SGI
+                Pannello di Controllo SGI
               </span>
             </div>
             <div className="flex items-center space-x-4">
