@@ -1,0 +1,67 @@
+Oggetto: [IMPORTANTE] Aggiornamento SGI Cruscotto - Miglioramento apertura documenti
+
+Gentile [NOME_CLIENTE],
+
+Siamo lieti di annunciare un importante aggiornamento per SGI Cruscotto che 
+migliorerà significativamente la vostra esperienza nell'apertura dei documenti.
+
+==============================================================================
+COSA CAMBIA?
+==============================================================================
+✓ Apertura istantanea dei documenti con un click
+✓ Nessun download necessario
+✓ Integrazione perfetta con Google Drive Desktop
+✓ Maggiore produttività nel lavoro quotidiano
+
+==============================================================================
+COME PROCEDERE?
+==============================================================================
+
+Per installazione su singoli PC (1-10 computer):
+------------------------------------------------
+1. Scaricate il file allegato "LocalOpener-Base.zip"
+2. Estraete il contenuto in una cartella
+3. Eseguite "setup-local-opener-task.bat" come amministratore
+4. Riavviate il PC
+
+Tempo richiesto: circa 5 minuti per PC
+
+Per installazione aziendale (10+ computer):
+------------------------------------------
+Contattate il vostro reparto IT e fornite il pacchetto "LocalOpener-Enterprise.zip"
+che include strumenti per deployment automatico su larga scala.
+
+==============================================================================
+TEMPISTICHE
+==============================================================================
+Vi chiediamo cortesemente di completare l'aggiornamento entro il [DATA_SCADENZA]
+per garantire la continuità del servizio.
+
+==============================================================================
+SUPPORTO
+==============================================================================
+Il nostro team è a vostra disposizione per qualsiasi necessità:
+
+Email: supporto@sgisistemi.it
+Telefono: [NUMERO_TELEFONO]
+Assistenza remota: disponibile su richiesta
+
+==============================================================================
+VANTAGGI IMMEDIATI
+==============================================================================
+• Risparmio di tempo nell'accesso ai documenti
+• Eliminazione dei download non necessari
+• Workflow più fluido e produttivo
+• Nessun costo aggiuntivo
+
+Restiamo a vostra disposizione per qualsiasi chiarimento.
+
+Cordiali saluti,
+Il Team SGI Sistemi
+
+--
+ALLEGATI:
+- LocalOpener-Base.zip: Pacchetto di installazione
+- Guida-Installazione.pdf: Istruzioni dettagliate con screenshot
+
+© 2024 SGI Sistemi - Questo messaggio è riservato e confidenziale

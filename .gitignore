@@ -24,3 +24,6 @@ server/server/uploads/*
 # File di test local-opener
 local-opener/dist/*
 !local-opener/dist/.gitkeep
+
+# Pacchetti Local Opener per distribuzione clienti
+LocalOpener-Packages/

@@ -39,9 +39,17 @@ Per motivi di sicurezza, i browser non possono aprire direttamente file locali s
    [local-opener] Listening on http://127.0.0.1:17654 with roots=C:\Users\[nome]\Google Drive, ...
    ```
 
-### Avvio Automatico (Opzionale)
+### Avvio Automatico (Raccomandato: Task Scheduler Puro)
+Per avviare automaticamente senza NSSM (migliore per rilevare drive Google come G:/ nel contesto utente):
 
-Per avviare automaticamente il servizio all'avvio del computer:
+1. Scarica ed esegui `setup-local-opener-task.bat` come admin dalla cartella downloads.
+2. Riavvia il PC.
+3. Verifica con `schtasks /query /tn LocalOpenerAuto`.
+
+Questo crea un task nativo Windows che avvia l'exe al logon, con log in C:\Logs\LocalOpener.
+
+### Avvio Automatico (Alternativa: Con NSSM)
+Per la vecchia modalità con NSSM:
 
 **Windows:**
 1. Crea un file `.bat` con il contenuto:
@@ -121,3 +129,55 @@ Per debug, imposta le variabili d'ambiente:
 - `LOCAL_OPENER_DEEP_SEARCH`: abilita/disabilita ricerca profonda (default: true)
 - `LOCAL_OPENER_DEEP_MAX_DEPTH`: profondità massima ricerca (default: 12)
 - `LOCAL_OPENER_DEEP_MAX_VISITED`: numero massimo di cartelle da visitare (default: 40000)
+
+## Deployment Scalabile per Aziende (200+ PC)
+
+### Metodo Base (Piccole Aziende)
+- **Manuale**: Distribuisci `setup-local-opener-task.bat` + exe via email/share. Utenti eseguono come admin.
+- **Semi-Automatico**: Usa script remoto via RDP/TeamViewer per installazione guidata.
+
+### Metodo Enterprise (Raccomandato per 200+ PC)
+Usa il nuovo `setup-local-opener-enterprise.bat` che offre:
+
+1. **Installazione Multi-Utente**: Configura per tutti gli utenti con un singolo comando
+2. **Deployment Remoto**: Genera script PowerShell per installazione su PC remoti
+3. **Sicurezza Integrata**: Configura firewall e esclusioni antivirus automaticamente
+4. **Logging Centralizzato**: Log separati per utente in C:\ProgramData\LocalOpener\Logs
+5. **Retry Intelligente**: Attende 45 secondi per garantire che Google Drive sia montato
+
+#### Con Active Directory (GPO)
+```powershell
+# 1. Copia i file su share di rete
+\\server\share\LocalOpener\setup-local-opener-enterprise.bat
+\\server\share\LocalOpener\cruscotto-local-opener-setup.exe
+
+# 2. Crea GPO con Startup Script che punta al batch
+# 3. Applica a OU con i computer target
+```
+
+#### Con Microsoft Intune
+```powershell
+# 1. Crea pacchetto .intunewin con i file necessari
+# 2. Deploy come Win32 app con comando:
+cmd /c setup-local-opener-enterprise.bat
+
+# 3. Assegnazione: Sistema/Dispositivo (non utente)
+```
+
+#### Con PowerShell Remoto (senza dominio)
+```powershell
+# 1. Esegui setup-local-opener-enterprise.bat e scegli opzione 4
+# 2. Usa lo script generato deploy-local-opener.ps1:
+
+$computers = @("PC001", "PC002", "PC003")
+foreach ($pc in $computers) {
+    Install-LocalOpener -ComputerName $pc
+}
+```
+
+### Best Practices per Sicurezza
+- **Firma Digitale**: Firma cruscotto-local-opener-setup.exe con certificato EV
+- **Testing**: Testa su gruppo pilota (5-10 PC) prima del rollout completo
+- **Monitoraggio**: Implementa raccolta log centralizzata (es. con Splunk/ELK)
+- **Whitelist Antivirus**: Configura esclusioni prima del deployment
+- **Documentazione**: Prepara FAQ per help desk e utenti finali
