@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import Footer from "../components/footer";
 import { Button } from "../components/ui/button";
 import { Link } from "wouter";
@@ -12,27 +12,39 @@ import {
   ArrowRight,
   Lock,
   Eye,
-  Cloud
+  Cloud,
+  Menu,
+  X
 } from "lucide-react";
 
 export default function PublicHomePage() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-950">
       {/* Header */}
       <header className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700 sticky top-0 z-50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
+            {/* Logo */}
             <div className="flex items-center space-x-3">
               <img
                 src="/logo/logo sgi.jpg"
                 alt="Logo SGI"
                 className="h-8 w-8 object-cover"
               />
-              <span className="font-bold text-xl text-slate-900 dark:text-white">
-                Pannello di Controllo SGI
+              <span className="font-bold text-lg sm:text-xl text-slate-900 dark:text-white">
+                <span className="hidden sm:inline">Pannello di Controllo SGI</span>
+                <span className="sm:hidden">SGI</span>
               </span>
             </div>
-            <div className="flex items-center space-x-4">
+
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center space-x-4">
               <a
                 href="/privacy"
                 className="text-slate-600 hover:text-primary dark:text-slate-400 dark:hover:text-primary transition-colors text-sm"
@@ -51,7 +63,49 @@ export default function PublicHomePage() {
                 </Button>
               </Link>
             </div>
+
+            {/* Mobile Menu Button */}
+            <button
+              onClick={toggleMobileMenu}
+              className="md:hidden p-2 rounded-md text-slate-600 hover:text-primary dark:text-slate-400 dark:hover:text-primary transition-colors"
+              aria-label="Toggle mobile menu"
+            >
+              {isMobileMenuOpen ? (
+                <X className="h-6 w-6" />
+              ) : (
+                <Menu className="h-6 w-6" />
+              )}
+            </button>
           </div>
+
+          {/* Mobile Menu */}
+          {isMobileMenuOpen && (
+            <div className="md:hidden border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+              <div className="px-2 pt-2 pb-3 space-y-1">
+                <a
+                  href="/privacy"
+                  className="block px-3 py-2 rounded-md text-base font-medium text-slate-600 hover:text-primary hover:bg-slate-100 dark:text-slate-400 dark:hover:text-primary dark:hover:bg-slate-700 transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Privacy Policy
+                </a>
+                <a
+                  href="/terms"
+                  className="block px-3 py-2 rounded-md text-base font-medium text-slate-600 hover:text-primary hover:bg-slate-100 dark:text-slate-400 dark:hover:text-primary dark:hover:bg-slate-700 transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Terms of Service
+                </a>
+                <div className="px-3 py-2">
+                  <Link href="/auth" onClick={() => setIsMobileMenuOpen(false)}>
+                    <Button className="w-full bg-primary hover:bg-primary/90">
+                      Accedi
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
