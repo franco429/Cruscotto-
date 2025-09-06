@@ -3,6 +3,9 @@
 ## 🎯 Obiettivo
 Questa guida ti accompagna passo-passo dalla configurazione iniziale del Local Opener fino alla distribuzione finale ai tuoi 200+ clienti aziendali.
 
+## ⚠️ **IMPORTANTE: COERENZA DEI PERCORSI**
+**NON È POSSIBILE MESCOLARE PERCORSI DIVERSI** - Un account deve usare un unico percorso base (es. solo G:/SGI_Documents). Mescolare drive diversi (G: e H:) causa crash del servizio. Vedi [FLUSSO-CORRETTO-CARICAMENTO-DOCUMENTI-LOCALI.md](./FLUSSO-CORRETTO-CARICAMENTO-DOCUMENTI-LOCALI.md) per dettagli completi.
+
 ---
 
 ## 📋 PARTE 1: PREPARAZIONE INIZIALE (Tu come Sviluppatore)

@@ -1,33 +1,38 @@
-# DocumentiIso - Sistema di Gestione Documentale
+# 🎯 SGI Cruscotto - Sistema di Gestione Documentale
 
-## 📋 Panoramica del Progetto
+## 📖 Benvenuto in SGI Cruscotto
 
-**DocumentiIso** è un sistema completo di gestione documentale progettato per aziende che necessitano di organizzare, sincronizzare e gestire documenti in modo sicuro e efficiente. Il sistema integra Google Drive per la sincronizzazione automatica dei documenti e supporta anche il caricamento di documenti locali, offrendo un'interfaccia web moderna per la gestione e la consultazione.
+**SGI Cruscotto** è il sistema di gestione documentale che trasforma la gestione dei documenti aziendali da "complessa e lenta" a "semplice e veloce". Integra Google Drive per la sincronizzazione automatica e offre un'interfaccia web moderna per la gestione completa dei documenti.
 
-### 🎯 Obiettivi Principali
+### 🚀 **Per Iniziare Subito**
+👉 **[Vai alla Guida Cliente](README-CLIENTE.md)** - Setup rapido e istruzioni complete
 
-- **Sincronizzazione Automatica** con Google Drive
-- **Gestione Documenti Locali** con upload di cartelle complete
-- **Gestione Multi-utente** con ruoli differenziati (Viewer, Admin, SuperAdmin)
-- **Sicurezza Avanzata** con crittografia e autenticazione robusta
-- **Interfaccia Moderna** e responsive
-- **Notifiche Automatiche** per scadenze documentali
-- **Audit Trail** completo delle attività
+### 🎯 Funzionalità Principali
 
-## 🚀 Setup Iniziale del Sistema
+- **📁 Organizzazione Perfetta** dei documenti aziendali
+- **⚡ Apertura Istantanea** senza download (Local Opener)
+- **🔄 Sincronizzazione Automatica** con Google Drive
+- **🔍 Ricerca Potente** e filtri avanzati
+- **👥 Gestione Team** con ruoli differenziati
+- **💾 Backup Automatici** e sicurezza totale
+- **📧 Notifiche Intelligenti** per scadenze
 
-### Prerequisiti
+## 🚀 **Per Sviluppatori - Setup Tecnico**
+
+> **Per i clienti**: Vai direttamente alla [Guida Cliente](README-CLIENTE.md) per iniziare subito!
+
+### Prerequisiti Tecnici
 
 - **Node.js** 18+ installato
 - **MongoDB** 5+ installato e in esecuzione
 - **Google Cloud Project** configurato con Google Drive API
 
-### Passo 1: Installazione
+### Installazione Sviluppo
 
 ```bash
 # Clona il repository
 git clone <repository-url>
-cd DocumentiIso-main
+cd SGI-Cruscotto-main
 
 # Installa le dipendenze
 npm install
@@ -36,7 +41,7 @@ cd ../server && npm install
 cd ..
 ```
 
-### Passo 2: Configurazione Variabili d'Ambiente
+### Configurazione Ambiente
 
 Crea un file `.env` nella directory root:
 

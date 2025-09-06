@@ -1,4 +1,4 @@
-# 🎯 Guida Completa Setup Local Opener per il Cliente
+# 🚀 SGI Cruscotto - Guida Completa Local Opener
 
 ## 🔥 **PROCEDURA AUTOMATICA (Raccomandato)**
 
@@ -20,6 +20,8 @@
    - Nome azienda (opzionale)
    - Installazione servizio Windows
 3. **Riavvio browser** (importante!)
+4. **⚠️ IMPORTANTE**: Il PC deve essere collegato alla corrente elettrica per il corretto funzionamento del servizio automatico
+5. **⚠️ CRITICO**: Usa SEMPRE lo stesso percorso scelto durante la registrazione - NON cambiare drive o cartelle!
 
 ### **STEP 4: Verifica Funzionamento**
 1. Cliente fa **nuovo login**
@@ -59,13 +61,28 @@
 
 ---
 
+## ⚡ **REQUISITI DI ALIMENTAZIONE**
+
+### **IMPORTANTE: Condizione Critica**
+Il servizio Local Opener **NON si avvia automaticamente** quando il computer è alimentato a batteria. Questo è un comportamento standard di Windows per risparmiare energia.
+
+### **Requisiti per il Funzionamento:**
+- **Desktop**: Sempre collegato alla rete elettrica ✅
+- **Laptop**: Deve essere collegato all'alimentatore durante l'uso
+- **Workstation**: Verificare alimentazione stabile
+
+### **Se il Servizio Non Funziona:**
+1. **Verifica alimentazione**: PC collegato alla corrente?
+2. **Controlla task**: Apri Task Scheduler → LocalOpenerAuto
+3. **Riavvia PC**: Con alimentatore collegato
+
 ## 🚨 **RISOLUZIONE PROBLEMI**
 
 ### **Toast continua a comparire**
 **Causa**: Servizio non installato/avviato
 **Soluzione**: 
 - Ri-eseguire installer come amministratore
-- Riavviare PC
+- Riavviare PC **con alimentatore collegato**
 - Controllare Windows Defender/Antivirus
 
 ### **Icona occhio non funziona**

@@ -214,24 +214,24 @@ export default function LocalOpenerConfig() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-4 md:space-y-6">
       {/* Status Card */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            Stato Servizio Local Opener
+        <CardHeader className="p-3 sm:p-4 md:p-6">
+          <CardTitle className="flex items-center gap-2 text-sm sm:text-base md:text-lg">
+            <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="break-words">Stato Servizio Local Opener</span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 lg:gap-0">
-            <div className="flex items-center gap-3">
+        <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4 lg:gap-0">
+            <div className="flex items-start sm:items-center gap-2 sm:gap-3">
               {status.isRunning ? (
                 <>
                   <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
-                  <div>
-                    <p className="text-sm sm:text-base font-medium">Servizio attivo</p>
-                    <p className="text-xs sm:text-sm text-muted-foreground">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm md:text-base font-medium break-words">Servizio attivo</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground break-words">
                       Versione {status.version || "1.0.0"}
                     </p>
                   </div>
@@ -239,9 +239,9 @@ export default function LocalOpenerConfig() {
               ) : (
                 <>
                   <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
-                  <div>
-                    <p className="text-sm sm:text-base font-medium">Servizio non disponibile</p>
-                    <p className="text-xs sm:text-sm text-muted-foreground">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm md:text-base font-medium break-words">Servizio non disponibile</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground break-words">
                       {status.error}
                     </p>
                   </div>
@@ -252,13 +252,13 @@ export default function LocalOpenerConfig() {
             <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
               {!status.isRunning && (
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                  <Button asChild variant="default" className="w-full sm:w-auto">
+                  <Button asChild variant="default" className="w-full sm:w-auto text-xs sm:text-sm">
                     <a
                       href="/downloads/local-opener-complete-package.zip"
                       download="local-opener-complete-package.zip"
                     >
-                      <Download className="h-4 w-4 mr-2" />
-                      Scarica Local Opener
+                      <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                      <span className="break-words">Scarica Local Opener</span>
                     </a>
                   </Button>
                 </div>
@@ -267,10 +267,10 @@ export default function LocalOpenerConfig() {
                 variant="outline"
                 onClick={checkServiceStatus}
                 disabled={isLoading}
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto text-xs sm:text-sm"
               >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Ricontrolla
+                <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                <span className="break-words">Ricontrolla</span>
               </Button>
             </div>
           </div>
@@ -282,37 +282,38 @@ export default function LocalOpenerConfig() {
       {/* Configuration Card */}
       {status.isRunning && config && (
         <Card>
-          <CardHeader>
-            <CardTitle>Cartelle Configurate</CardTitle>
-            <CardDescription>
+          <CardHeader className="p-3 sm:p-4 md:p-6">
+            <CardTitle className="text-sm sm:text-base md:text-lg break-words">Cartelle Configurate</CardTitle>
+            <CardDescription className="text-xs sm:text-sm break-words">
               Queste sono le cartelle dove il servizio cerca i documenti locali
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <ScrollArea className="h-[200px] w-full rounded-md border p-4">
+          <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
+            <div className="space-y-3 sm:space-y-4">
+              <ScrollArea className="h-[150px] sm:h-[200px] w-full rounded-md border p-2 sm:p-4">
                 {config.roots.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">
+                  <p className="text-xs sm:text-sm text-muted-foreground text-center py-3 sm:py-4 break-words">
                     Nessuna cartella configurata. Aggiungi manualmente le cartelle
                     contenenti i documenti ISO.
                   </p>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-1 sm:space-y-2">
                     {config.roots.map((root, index) => (
                       <div
                         key={index}
-                        className="flex items-center justify-between p-2 rounded-md hover:bg-accent"
+                        className="flex items-start sm:items-center justify-between p-2 rounded-md hover:bg-accent gap-2"
                       >
-                        <div className="flex items-center gap-2">
-                          <Folder className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm font-mono">{root}</span>
+                        <div className="flex items-start sm:items-center gap-2 min-w-0 flex-1">
+                          <Folder className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0 mt-0.5 sm:mt-0" />
+                          <span className="text-xs sm:text-sm font-mono break-all">{root}</span>
                         </div>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => removeRoot(root)}
+                          className="flex-shrink-0 h-6 w-6 sm:h-8 sm:w-8 p-0"
                         >
-                          <Trash2 className="h-4 w-4 text-destructive" />
+                          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 text-destructive" />
                         </Button>
                       </div>
                     ))}
@@ -321,12 +322,12 @@ export default function LocalOpenerConfig() {
               </ScrollArea>
 
               <div className="flex flex-col sm:flex-row gap-2">
-                <Button onClick={() => setShowAddDialog(true)} className="w-full sm:w-auto">
-                  <FolderPlus className="h-4 w-4 mr-2" />
-                  Aggiungi Cartella Manualmente
+                <Button onClick={() => setShowAddDialog(true)} className="w-full sm:w-auto text-xs sm:text-sm">
+                  <FolderPlus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                  <span className="break-words">Aggiungi Cartella Manualmente</span>
                 </Button>
-                <Button variant="outline" onClick={testFileOpen} className="w-full sm:w-auto">
-                  Testa Apertura File
+                <Button variant="outline" onClick={testFileOpen} className="w-full sm:w-auto text-xs sm:text-sm">
+                  <span className="break-words">Testa Apertura File</span>
                 </Button>
               </div>
             </div>
@@ -336,52 +337,52 @@ export default function LocalOpenerConfig() {
 
       {/* Help Card */}
       <Card>
-        <CardHeader>
-          <CardTitle>Come configurare l'apertura locale</CardTitle>
+        <CardHeader className="p-3 sm:p-4 md:p-6">
+          <CardTitle className="text-sm sm:text-base md:text-lg break-words">Come configurare l'apertura locale</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-3 text-xs sm:text-sm">
+        <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
+          <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
             <div>
-              <p className="font-medium">1. Scarica e installa Local Opener</p>
+              <p className="font-medium break-words">1. Scarica e installa Local Opener</p>
               <div className="ml-2 sm:ml-4 space-y-1 text-muted-foreground">
-                <p><strong>Pacchetto Completo:</strong> Contiene tutti i file necessari per installazione automatica</p>
-                <p className="text-xs text-blue-600 dark:text-blue-400">
+                <p className="break-words"><strong>Pacchetto Completo:</strong> Contiene tutti i file necessari per installazione automatica</p>
+                <p className="text-xs text-blue-600 dark:text-blue-400 break-words">
                   💡 Il pacchetto include script di installazione automatica, debug e gestione servizi Windows
                 </p>
               </div>
             </div>
             <Separator />
             <div>
-              <p className="font-medium">2. Compatibilità Sistema</p>
+              <p className="font-medium break-words">2. Compatibilità Sistema</p>
               <div className="ml-2 sm:ml-4 space-y-1 text-muted-foreground">
-                <p>✅ Windows 10 (versione 1903+) / Windows 11</p>
-                <p>✅ Architetture: Intel/AMD x64, ARM64</p>
-                <p>✅ Supporto automatico rilevamento architettura</p>
-                <p>⚠️ Richiede privilegi amministratore per l'installer</p>
+                <p className="break-words">✅ Windows 10 (versione 1903+) / Windows 11</p>
+                <p className="break-words">✅ Architetture: Intel/AMD x64, ARM64</p>
+                <p className="break-words">✅ Supporto automatico rilevamento architettura</p>
+                <p className="break-words">⚠️ Richiede privilegi amministratore per l'installer</p>
               </div>
             </div>
             <Separator />
             <div>
-              <p className="font-medium">3. Configura le cartelle</p>
-              <p className="text-muted-foreground">
+              <p className="font-medium break-words">3. Configura le cartelle</p>
+              <p className="text-muted-foreground break-words">
                 Aggiungi manualmente le cartelle dove sono salvati i documenti ISO
               </p>
             </div>
             <Separator />
             <div>
-              <p className="font-medium">4. Testa il funzionamento</p>
-              <p className="text-muted-foreground">
+              <p className="font-medium break-words">4. Testa il funzionamento</p>
+              <p className="text-muted-foreground break-words">
                 Usa il pulsante "Testa Apertura File" per verificare che tutto
                 funzioni correttamente
               </p>
             </div>
             <Separator />
             <div>
-              <p className="font-medium">🔧 Problemi di compatibilità?</p>
+              <p className="font-medium break-words">🔧 Problemi di compatibilità?</p>
               <div className="ml-2 sm:ml-4 space-y-1 text-muted-foreground">
-                <p>• Disabilita temporaneamente l'antivirus durante l'installazione</p>
-                <p>• Esegui come amministratore se richiesto</p>
-                <p>• Verifica che Windows Defender non blocchi l'esecuzione</p>
+                <p className="break-words">• Disabilita temporaneamente l'antivirus durante l'installazione</p>
+                <p className="break-words">• Esegui come amministratore se richiesto</p>
+                <p className="break-words">• Verifica che Windows Defender non blocchi l'esecuzione</p>
               </div>
             </div>
           </div>
@@ -390,24 +391,25 @@ export default function LocalOpenerConfig() {
 
       {/* Add Folder Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent>
+        <DialogContent className="w-[95vw] sm:w-full max-w-md">
           <DialogHeader>
-            <DialogTitle>Aggiungi Cartella</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-sm sm:text-base break-words">Aggiungi Cartella</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm break-words">
               Inserisci il percorso completo della cartella contenente i documenti
               ISO
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-3 sm:space-y-4 py-3 sm:py-4">
             <div className="space-y-2">
-              <Label htmlFor="folder-path">Percorso cartella</Label>
+              <Label htmlFor="folder-path" className="text-xs sm:text-sm break-words">Percorso cartella</Label>
               <Input
                 id="folder-path"
                 placeholder="C:\Documenti\ISO oppure G:\Il mio Drive\ISO"
                 value={newRoot}
                 onChange={(e) => setNewRoot(e.target.value)}
+                className="text-xs sm:text-sm"
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground break-words">
                 Esempi: C:\Users\Nome\Documents\ISO, G:\Il mio Drive,
                 \\SERVER\Condivisa\ISO
               </p>
@@ -418,18 +420,18 @@ export default function LocalOpenerConfig() {
               variant="outline"
               onClick={() => setShowAddDialog(false)}
               disabled={isTestingRoot}
-              className="w-full sm:w-auto"
+              className="w-full sm:w-auto text-xs sm:text-sm"
             >
-              Annulla
+              <span className="break-words">Annulla</span>
             </Button>
-            <Button onClick={addRoot} disabled={isTestingRoot || !newRoot.trim()} className="w-full sm:w-auto">
+            <Button onClick={addRoot} disabled={isTestingRoot || !newRoot.trim()} className="w-full sm:w-auto text-xs sm:text-sm">
               {isTestingRoot ? (
                 <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Verifica in corso...
+                  <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin" />
+                  <span className="break-words">Verifica in corso...</span>
                 </>
               ) : (
-                "Aggiungi"
+                <span className="break-words">Aggiungi</span>
               )}
             </Button>
           </DialogFooter>

@@ -204,10 +204,10 @@ export default function SettingsPage() {
     <div className="flex flex-col min-h-screen">
       <HeaderBar user={user} />
 
-      <main className="flex-1 bg-slate-50 dark:bg-slate-900 p-3 sm:p-4 md:p-6">
+      <main className="flex-1 bg-slate-50 dark:bg-slate-900 p-2 sm:p-3 md:p-4 lg:p-6">
         <div className="max-w-4xl mx-auto">
-          <div className="mb-4 sm:mb-6">
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+          <div className="mb-3 sm:mb-4 md:mb-6">
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-slate-900 dark:text-white">
               Impostazioni
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
@@ -216,24 +216,24 @@ export default function SettingsPage() {
           </div>
 
           <Tabs value={tabValue} onValueChange={setTabValue}>
-            <TabsList className="w-full grid grid-cols-2 mb-4 sm:mb-6">
+            <TabsList className="w-full grid grid-cols-2 mb-3 sm:mb-4 md:mb-6">
               <TabsTrigger value="account" className="text-xs sm:text-sm">Account</TabsTrigger>
               <TabsTrigger value="application" className="text-xs sm:text-sm">Applicazione</TabsTrigger>
             </TabsList>
 
             <TabsContent value="account">
-              <div className="grid gap-4 sm:gap-6">
+              <div className="grid gap-3 sm:gap-4 md:gap-6">
                 {/* Profile Settings */}
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg sm:text-xl">Profilo Utente</CardTitle>
+                  <CardHeader className="p-3 sm:p-4 md:p-5 lg:p-6">
+                    <CardTitle className="text-base sm:text-lg md:text-xl">Profilo Utente</CardTitle>
                     <CardDescription className="text-xs sm:text-sm">
                       Aggiorna le informazioni del tuo account e le impostazioni
                       di sicurezza
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4 sm:space-y-6">
-                    <div className="space-y-3 sm:space-y-4">
+                  <CardContent className="p-3 sm:p-4 md:p-5 lg:p-6 pt-0 space-y-2 sm:space-y-3 md:space-y-4 lg:space-y-6">
+                    <div className="space-y-2 sm:space-y-3 md:space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="email" className="text-sm sm:text-base">Indirizzo Email</Label>
                         <Input
@@ -264,7 +264,7 @@ export default function SettingsPage() {
                       {/* Aggiunta sezione per il cambio password */}
                       <Separator className="my-4" />
 
-                      <div className="space-y-3 sm:space-y-4">
+                      <div className="space-y-2 sm:space-y-3 md:space-y-4">
                         <div>
                           <h4 className="text-sm sm:text-base font-medium text-slate-900 dark:text-white">
                             Cambio Password
@@ -276,7 +276,7 @@ export default function SettingsPage() {
 
                         <form
                           onSubmit={handleChangePassword}
-                          className="space-y-3 sm:space-y-4"
+                          className="space-y-2 sm:space-y-3 md:space-y-4"
                         >
                           <div className="space-y-2">
                             <Label htmlFor="currentPassword" className="text-sm sm:text-base">
@@ -294,19 +294,19 @@ export default function SettingsPage() {
                                   })
                                 }
                                 required
-                                className="pr-10 text-sm sm:text-base"
+                                className="pr-8 sm:pr-10 text-sm sm:text-base"
                               />
                               <button
                                 type="button"
                                 onClick={() =>
                                   setShowCurrentPassword((prev) => !prev)
                                 }
-                                className="absolute right-3 top-1/2 -translate-y-1/2 h-fit w-fit p-1 text-muted-foreground hover:text-primary"
+                                className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 h-fit w-fit p-0.5 sm:p-1 text-muted-foreground hover:text-primary"
                               >
                                 {showCurrentPassword ? (
-                                  <EyeOff size={16} className="sm:w-4 sm:h-4" />
+                                  <EyeOff size={14} className="sm:w-4 sm:h-4" />
                                 ) : (
-                                  <Eye size={16} className="sm:w-4 sm:h-4" />
+                                  <Eye size={14} className="sm:w-4 sm:h-4" />
                                 )}
                               </button>
                             </div>
@@ -326,46 +326,46 @@ export default function SettingsPage() {
                                   })
                                 }
                                 required
-                                className={`pr-10 text-sm sm:text-base ${passwordForm.newPassword && !passwordValidation.isValid ? "border-red-500" : ""}`}
+                                className={`pr-8 sm:pr-10 text-sm sm:text-base ${passwordForm.newPassword && !passwordValidation.isValid ? "border-red-500" : ""}`}
                               />
                               <button
                                 type="button"
                                 onClick={() =>
                                   setShowNewPassword((prev) => !prev)
                                 }
-                                className="absolute right-3 top-1/2 -translate-y-1/2 h-fit w-fit p-1 text-muted-foreground hover:text-primary"
+                                className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 h-fit w-fit p-0.5 sm:p-1 text-muted-foreground hover:text-primary"
                               >
                                 {showNewPassword ? (
-                                  <EyeOff size={16} className="sm:w-4 sm:h-4" />
+                                  <EyeOff size={14} className="sm:w-4 sm:h-4" />
                                 ) : (
-                                  <Eye size={16} className="sm:w-4 sm:h-4" />
+                                  <Eye size={14} className="sm:w-4 sm:h-4" />
                                 )}
                               </button>
                             </div>
                             {/* ✅  Visualizzazione requisiti password */}
                             {passwordForm.newPassword && (
                               <div className="mt-2">
-                                <p className="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                <p className="text-xs font-medium text-slate-700 dark:text-slate-300 mb-1 sm:mb-2">
                                   Requisiti Password:
                                 </p>
                                 <div className="space-y-1">
-                                  <div className={`text-xs sm:text-sm flex items-center ${passwordForm.newPassword.length >= 8 ? 'text-green-600' : 'text-red-500'}`}>
+                                  <div className={`text-xs flex items-center ${passwordForm.newPassword.length >= 8 ? 'text-green-600' : 'text-red-500'}`}>
                                     <span className="mr-2">•</span>
                                     Minimo 8 caratteri
                                   </div>
-                                  <div className={`text-xs sm:text-sm flex items-center ${/[A-Z]/.test(passwordForm.newPassword) ? 'text-green-600' : 'text-red-500'}`}>
+                                  <div className={`text-xs flex items-center ${/[A-Z]/.test(passwordForm.newPassword) ? 'text-green-600' : 'text-red-500'}`}>
                                     <span className="mr-2">•</span>
                                     Almeno 1 lettera maiuscola
                                   </div>
-                                  <div className={`text-xs sm:text-sm flex items-center ${/[a-z]/.test(passwordForm.newPassword) ? 'text-green-600' : 'text-red-500'}`}>
+                                  <div className={`text-xs flex items-center ${/[a-z]/.test(passwordForm.newPassword) ? 'text-green-600' : 'text-red-500'}`}>
                                     <span className="mr-2">•</span>
                                     Almeno 1 lettera minuscola
                                   </div>
-                                  <div className={`text-xs sm:text-sm flex items-center ${/\d/.test(passwordForm.newPassword) ? 'text-green-600' : 'text-red-500'}`}>
+                                  <div className={`text-xs flex items-center ${/\d/.test(passwordForm.newPassword) ? 'text-green-600' : 'text-red-500'}`}>
                                     <span className="mr-2">•</span>
                                     Almeno 1 numero
                                   </div>
-                                  <div className={`text-xs sm:text-sm flex items-center ${/[@$!%*?&]/.test(passwordForm.newPassword) ? 'text-green-600' : 'text-red-500'}`}>
+                                  <div className={`text-xs flex items-center ${/[@$!%*?&]/.test(passwordForm.newPassword) ? 'text-green-600' : 'text-red-500'}`}>
                                     <span className="mr-2">•</span>
                                     Almeno 1 carattere speciale (@$!%*?&)
                                   </div>
@@ -390,26 +390,26 @@ export default function SettingsPage() {
                                   })
                                 }
                                 required
-                                className="pr-10 text-sm sm:text-base"
+                                className="pr-8 sm:pr-10 text-sm sm:text-base"
                               />
                               <button
                                 type="button"
                                 onClick={() =>
                                   setShowConfirmPassword((prev) => !prev)
                                 }
-                                className="absolute right-3 top-1/2 -translate-y-1/2 h-fit w-fit p-1 text-muted-foreground hover:text-primary"
+                                className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 h-fit w-fit p-0.5 sm:p-1 text-muted-foreground hover:text-primary"
                               >
                                 {showConfirmPassword ? (
-                                  <EyeOff size={16} className="sm:w-4 sm:h-4" />
+                                  <EyeOff size={14} className="sm:w-4 sm:h-4" />
                                 ) : (
-                                  <Eye size={16} className="sm:w-4 sm:h-4" />
+                                  <Eye size={14} className="sm:w-4 sm:h-4" />
                                 )}
                               </button>
                             </div>
                           </div>
 
                           {passwordForm.error && (
-                            <div className="text-red-500 text-xs sm:text-sm">
+                            <div className="text-red-500 text-xs">
                               {passwordForm.error}
                             </div>
                           )}
@@ -418,11 +418,11 @@ export default function SettingsPage() {
                             <Button 
                               type="submit" 
                               disabled={isSubmitting || !passwordValidation.isValid || passwordForm.newPassword !== passwordForm.confirmPassword || !passwordForm.currentPassword}
-                              className="text-sm sm:text-base px-3 sm:px-4 py-2"
+                              className="text-xs sm:text-sm px-2 sm:px-4 py-1 sm:py-2"
                             >
                               {isSubmitting ? (
                                 <>
-                                  <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                                  <Loader2 className="mr-1 sm:mr-2 h-3 sm:h-4 w-3 sm:w-4 animate-spin" />
                                   <span className="hidden sm:inline">Aggiornamento...</span>
                                   <span className="sm:hidden">Aggiorna...</span>
                                 </>
@@ -444,36 +444,36 @@ export default function SettingsPage() {
             </TabsContent>
 
             <TabsContent value="application">
-              <div className="grid gap-4 sm:gap-6">
+              <div className="grid gap-3 sm:gap-4 md:gap-6">
                 {/* Local Opener Configuration */}
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-                      <FolderOpen className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <CardHeader className="p-3 sm:p-4 md:p-5 lg:p-6">
+                    <CardTitle className="flex items-center gap-1 sm:gap-2 text-base sm:text-lg md:text-xl">
+                      <FolderOpen className="h-4 sm:h-5 w-4 sm:w-5" />
                       Apertura File Locali
                     </CardTitle>
                     <CardDescription className="text-xs sm:text-sm">
                       Configura il servizio per aprire i documenti direttamente dal tuo PC
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-3 sm:p-4 md:p-5 lg:p-6 pt-0">
                     <LocalOpenerConfig />
                   </CardContent>
                 </Card>
 
                 {/* Google Drive Integration */}
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg sm:text-xl">Integrazione Google Drive</CardTitle>
+                  <CardHeader className="p-3 sm:p-4 md:p-5 lg:p-6">
+                    <CardTitle className="text-base sm:text-lg md:text-xl">Integrazione Google Drive</CardTitle>
                     <CardDescription className="text-xs sm:text-sm">
                       Configura l'integrazione con Google Drive per
                       sincronizzare i documenti ISO
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4 sm:space-y-6">
-                    <div className="space-y-3 sm:space-y-4">
+                  <CardContent className="p-3 sm:p-4 md:p-5 lg:p-6 pt-0 space-y-2 sm:space-y-3 md:space-y-4 lg:space-y-6">
+                    <div className="space-y-2 sm:space-y-3 md:space-y-4">
                       <div className="space-y-2">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
                           <div className="flex-1">
                             <h4 className="text-sm sm:text-base font-medium text-slate-900 dark:text-white">
                               Sincronizzazione Automatica
@@ -494,47 +494,43 @@ export default function SettingsPage() {
 
                 {/* Notification Settings */}
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg sm:text-xl">Impostazioni Notifiche</CardTitle>
+                  <CardHeader className="p-3 sm:p-4 md:p-5 lg:p-6">
+                    <CardTitle className="text-base sm:text-lg md:text-xl">Impostazioni Notifiche</CardTitle>
                     <CardDescription className="text-xs sm:text-sm">
                       Configura le notifiche per documenti in scadenza e
                       aggiornamenti
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4 sm:space-y-6">
-                    <div className="space-y-3 sm:space-y-4">
-                      <div className="space-y-2">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
-                          <div className="flex-1">
-                            <h4 className="text-sm sm:text-base font-medium text-slate-900 dark:text-white">
-                              Notifiche Email
-                            </h4>
-                            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                              Ricevi notifiche via email per aggiornamenti e
-                              scadenze
-                            </p>
-                          </div>
-                          <Switch defaultChecked />
+                  <CardContent className="p-3 sm:p-4 md:p-5 lg:p-6 pt-0 space-y-2 sm:space-y-3 md:space-y-4 lg:space-y-6">
+                    <div className="space-y-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
+                        <div className="flex-1">
+                          <h4 className="text-sm sm:text-base font-medium text-slate-900 dark:text-white">
+                            Notifiche Email
+                          </h4>
+                          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                            Ricevi notifiche via email per aggiornamenti e
+                            scadenze
+                          </p>
                         </div>
+                        <Switch defaultChecked />
                       </div>
-
-                      <div className="space-y-2">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
-                          <div className="flex-1">
-                            <h4 className="text-sm sm:text-base font-medium text-slate-900 dark:text-white">
-                              Notifiche In-App
-                            </h4>
-                            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                              Visualizza notifiche all'interno dell'applicazione
-                            </p>
-                          </div>
-                          <Switch defaultChecked />
-                        </div>
-                      </div>
-
-                      {/* La sezione di preavviso scadenza è stata rimossa come richiesto
-                      La scadenza sarà gestita a livello di documento */}
                     </div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
+                      <div className="flex-1">
+                        <h4 className="text-sm sm:text-base font-medium text-slate-900 dark:text-white">
+                          Notifiche In-App
+                        </h4>
+                        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                          Visualizza notifiche all'interno dell'applicazione
+                        </p>
+                      </div>
+                      <Switch defaultChecked />
+                    </div>
+
+                    {/* La sezione di preavviso scadenza è stata rimossa come richiesto
+                    La scadenza sarà gestita a livello di documento */}
                   </CardContent>
                 </Card>
               </div>

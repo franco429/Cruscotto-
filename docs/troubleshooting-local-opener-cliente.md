@@ -2,6 +2,13 @@
 
 ## ❓ **Problema: "Il servizio trova il percorso ma non apre i documenti"**
 
+## ⚠️ **PROBLEMA PRINCIPALE: PERCORSI MISTI**
+**Se mescoli drive diversi (G: e H:) o cartelle diverse, il Local Opener crasha!**
+- ✅ **CORRETTO**: Usa solo `G:/SGI_Documents` per tutti i documenti
+- ❌ **SBAGLIATO**: Mescola `G:/SGI_Copia` + `H:/Copia`
+
+**IMPORTANTE**: Usa sempre lo stesso drive e la stessa cartella base per tutti i documenti.
+
 ### 🔍 **Diagnosi Automatica**
 
 1. **Scarica** il file di debug: [debug-local-opener.bat](/downloads/debug-local-opener.bat)
@@ -37,6 +44,10 @@ npm start
 - ✅ Servizio attivo
 - ❌ Cartelle Google Drive non rilevate
 - Toast: "File non trovato nel percorso locale"
+
+**CAUSA PRINCIPALE: PERCORSI MISTI**
+- Se hai caricato documenti da drive diversi (G: e H:), il Local Opener cerca solo nel percorso base configurato
+- **Soluzione**: Unifica tutti i documenti in un unico percorso (es. `G:/SGI_Documents`)
 
 **Soluzione Rapida**:
 1. Apri browser: `http://127.0.0.1:17654/config`
@@ -134,6 +145,8 @@ Se i problemi persistono:
 
 ## ⚡ **Risoluzione Rapida - Checklist**
 
+- [ ] **UN SOLO PERCORSO**: Tutti i documenti in un unico drive (es. G:)
+- [ ] **UNA SOLA CARTELLA**: Tutti i documenti in una cartella base (es. G:/SGI_Documents)
 - [ ] Servizio attivo su porta 17654
 - [ ] Endpoint `/health` risponde
 - [ ] Cartelle Google Drive configurate correttamente
@@ -143,3 +156,6 @@ Se i problemi persistono:
 - [ ] Permessi file corretti
 
 **Una volta sistemato**: L'icona occhio funzionerà immediatamente per tutti i documenti locali! 🎯
+
+## 📚 **DOCUMENTAZIONE COMPLETA**
+Per il flusso completo e dettagliato, vedi: [FLUSSO-CORRETTO-CARICAMENTO-DOCUMENTI-LOCALI.md](./FLUSSO-CORRETTO-CARICAMENTO-DOCUMENTI-LOCALI.md)
