@@ -7,7 +7,7 @@ attached_assets
 server/backups
 server/backup-worker.cjs
 logs
-tools
+tools/
 server/uploads
 server/server/uploads
 server/uploads/previews
@@ -20,6 +20,7 @@ server/server/uploads/*
 !server/server/uploads/.gitkeep
 !server/uploads/previews/
 !server/server/uploads/previews/
+
 
 # File di test local-opener
 local-opener/dist/*
