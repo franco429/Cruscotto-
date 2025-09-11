@@ -11,7 +11,7 @@ set "TASK_NAME=LocalOpenerTerminal"
 :: Verifica rapida se il servizio è già attivo
 sc query "%SERVICE_NAME%" | find "RUNNING" >nul 2>&1
 if %errorLevel% equ 0 (
-    echo ✅ Servizio LocalOpener già attivo
+    echo  Servizio LocalOpener già attivo
     echo.
     echo Per aprire il terminale manualmente:
     echo 1. Premi Win+R
@@ -28,9 +28,9 @@ echo.
 :: Avvia il servizio
 sc start "%SERVICE_NAME%" >nul 2>&1
 if %errorLevel% equ 0 (
-    echo ✅ Servizio avviato con successo
+    echo  Servizio avviato con successo
 ) else (
-    echo ❌ Errore avvio servizio
+    echo  Errore avvio servizio
     echo Tentativo avvio diretto eseguibile...
     start "" "%EXE_PATH%"
     goto :end
@@ -42,13 +42,13 @@ timeout /t 3 /nobreak >nul
 :: Verifica che il servizio sia attivo
 sc query "%SERVICE_NAME%" | find "RUNNING" >nul 2>&1
 if %errorLevel% equ 0 (
-    echo ✅ Servizio attivo e funzionante
+    echo  Servizio attivo e funzionante
     echo.
     echo Il terminale dovrebbe aprirsi automaticamente.
     echo Se non si apre, verifica il task scheduler:
     echo   schtasks /query /tn "%TASK_NAME%"
 ) else (
-    echo ❌ Servizio non attivo
+    echo  Servizio non attivo
     echo Avvio diretto dell'eseguibile...
     start "" "%EXE_PATH%"
 )

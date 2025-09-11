@@ -132,7 +132,7 @@ export function useConfirmationToast() {
   const showRestoreConfirmation = (itemName: string): Promise<boolean> => {
     return showConfirmation({
       title: "Conferma Ripristino",
-      message: `⚠️ ATTENZIONE: Il ripristino di "${itemName}" sovrascriverà tutti i dati attuali. Continuare?`,
+      message: ` ATTENZIONE: Il ripristino di "${itemName}" sovrascriverà tutti i dati attuali. Continuare?`,
       confirmText: "Ripristina",
       cancelText: "Annulla",
       variant: "warning",

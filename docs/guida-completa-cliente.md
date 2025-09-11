@@ -1,4 +1,4 @@
-# 🚀 SGI Cruscotto - Guida Completa Local Opener
+# 🚀 Pannello Di Controllo SGI - Guida Completa Local Opener
 
 ## 🔥 **PROCEDURA AUTOMATICA (Raccomandato)**
 

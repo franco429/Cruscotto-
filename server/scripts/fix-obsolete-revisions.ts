@@ -23,9 +23,6 @@ async function fixObsoleteRevisions() {
     for (const doc of sorted.slice(1)) {
       if (!doc.isObsolete) {
         await mongoStorage.markDocumentObsolete(doc.legacyId);
-        console.log(
-          `Marked obsolete: ${doc.title} ${doc.revision} (clientId: ${doc.clientId})`
-        );
       }
     }
   }

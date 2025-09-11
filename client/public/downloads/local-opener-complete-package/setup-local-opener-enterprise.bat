@@ -43,7 +43,7 @@ if not exist "C:\ProgramData\LocalOpener" mkdir "C:\ProgramData\LocalOpener"
 echo Copia file eseguibile...
 copy "%EXE_PATH%" "C:\ProgramData\LocalOpener\cruscotto-local-opener-setup.exe" /Y >nul
 if %errorLevel% neq 0 (
-    echo ❌ ERRORE: Impossibile copiare l'exe in ProgramData
+    echo  ERRORE: Impossibile copiare l'exe in ProgramData
     pause
     exit /b 1
 )
@@ -101,7 +101,7 @@ if exist "%~dp0local-opener-allusers.xml" (
         /f
 )
 
-echo ✅ Task creato per tutti gli utenti
+echo Task creato per tutti gli utenti
 goto :configure_advanced
 
 :install_current_user
@@ -135,7 +135,7 @@ schtasks /create /tn "%TASK_NAME%" ^
     /rl highest ^
     /f
 
-echo ✅ Task creato per utente %USER_TO_INSTALL%
+echo Task creato per utente %USER_TO_INSTALL%
 goto :configure_advanced
 
 :generate_ps_script
@@ -209,7 +209,7 @@ echo             schtasks /create /tn "${using:TaskPrefix}_${using:Username}" /t
 echo         }
 echo     }
 echo.
-echo     Write-Host "✅ Installazione completata su $ComputerName"
+echo     Write-Host "Installazione completata su $ComputerName"
 echo }
 echo.
 echo # Esempio uso:
@@ -221,7 +221,7 @@ echo # $computers = Get-Content "computers.txt"
 echo # foreach ($pc in $computers) { Install-LocalOpener -ComputerName $pc }
 ) > "%~dp0deploy-local-opener.ps1"
 
-echo ✅ Script PowerShell generato: deploy-local-opener.ps1
+echo Script PowerShell generato: deploy-local-opener.ps1
 echo.
 echo Usalo con: PowerShell -ExecutionPolicy Bypass -File deploy-local-opener.ps1
 goto :end
@@ -237,9 +237,9 @@ echo.
 echo Configurazione Windows Firewall...
 netsh advfirewall firewall add rule name="Local Opener Service" dir=in action=allow protocol=TCP localport=17654 >nul 2>&1
 if %errorLevel% equ 0 (
-    echo ✅ Regola firewall creata (porta 17654)
+    echo Regola firewall creata (porta 17654)
 ) else (
-    echo ⚠️ Impossibile creare regola firewall
+    echo  Impossibile creare regola firewall
 )
 
 :: Configurazione antivirus (Windows Defender)
@@ -248,9 +248,9 @@ echo Configurazione esclusioni antivirus...
 powershell -Command "Add-MpPreference -ExclusionPath '%EXE_PATH%'" >nul 2>&1
 powershell -Command "Add-MpPreference -ExclusionPath '%LOG_BASE_DIR%'" >nul 2>&1
 if %errorLevel% equ 0 (
-    echo ✅ Esclusioni Windows Defender configurate
+    echo Esclusioni Windows Defender configurate
 ) else (
-    echo ⚠️ Impossibile configurare esclusioni (richiede PowerShell admin)
+    echo  Impossibile configurare esclusioni (richiede PowerShell admin)
 )
 
 :: Test connettività
@@ -259,9 +259,9 @@ echo Test servizio Local Opener...
 timeout /t 5 /nobreak >nul
 curl -s http://127.0.0.1:17654/health >nul 2>&1
 if %errorLevel% equ 0 (
-    echo ✅ Servizio Local Opener attivo e funzionante!
+    echo Servizio Local Opener attivo e funzionante!
 ) else (
-    echo ⚠️ Servizio non ancora attivo (normale al primo avvio)
+    echo  Servizio non ancora attivo (normale al primo avvio)
 )
 
 :menu_error

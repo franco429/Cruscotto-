@@ -1,8 +1,8 @@
-# 🎯 SGI Cruscotto - Sistema di Gestione Documentale
+# 🎯 Pannello Di Controllo SGI - Sistema di Gestione Documentale
 
-## 📖 Benvenuto in SGI Cruscotto
+## 📖 Benvenuto in Pannello Di Controllo SGI
 
-**SGI Cruscotto** è il sistema di gestione documentale che trasforma la gestione dei documenti aziendali da "complessa e lenta" a "semplice e veloce". Integra Google Drive per la sincronizzazione automatica e offre un'interfaccia web moderna per la gestione completa dei documenti.
+**Pannello Di Controllo SGI** è il sistema di gestione documentale che trasforma la gestione dei documenti aziendali da "complessa e lenta" a "semplice e veloce". Integra Google Drive per la sincronizzazione automatica e offre un'interfaccia web moderna per la gestione completa dei documenti.
 
 ### 🚀 **Per Iniziare Subito**
 👉 **[Vai alla Guida Cliente](README-CLIENTE.md)** - Setup rapido e istruzioni complete
@@ -10,8 +10,8 @@
 ### 🎯 Funzionalità Principali
 
 - **📁 Organizzazione Perfetta** dei documenti aziendali
-- **⚡ Apertura Istantanea** senza download (Local Opener)
-- **🔄 Sincronizzazione Automatica** con Google Drive
+- **⚡ Apertura Istantanea Locale** senza download (Local Opener)
+- **🔄 Sincronizzazione Automatica** con Google Drive Browser
 - **🔍 Ricerca Potente** e filtri avanzati
 - **👥 Gestione Team** con ruoli differenziati
 - **💾 Backup Automatici** e sicurezza totale
@@ -47,7 +47,7 @@ Crea un file `.env` nella directory root:
 
 ```env
 # Database
-DB_URI=mongodb://localhost:27017/documentiiso
+DB_URI=mongodb://localhost:27017/Pannello di Controllo SGI
 
 # Google Drive
 GOOGLE_CLIENT_ID=your_client_id
@@ -70,7 +70,7 @@ SERVER_BASE_URL=http://localhost:5000
 FRONTEND_URL=http://localhost:5173
 ```
 
-### Passo 3: Creazione del Primo SuperAdmin
+### Passo 3: Creazione del Primo SuperAdmin solo per Sviluppatori!
 
 **IMPORTANTE**: Il sistema richiede un SuperAdmin per funzionare. Esegui questo comando per creare il primo SuperAdmin:
 
@@ -104,21 +104,17 @@ npm run dev
 
 Le aziende possono scegliere tra due modalità di gestione documenti:
 
-**Opzione A: Google Drive (Raccomandato)**
+**Opzione A: Google Drive**
 - Configura l'URL della cartella Google Drive durante la registrazione
 - Sincronizzazione automatica ogni 15 minuti
 - Backup automatico su Google Drive
 
-**Opzione B: Documenti Locali**
+**Opzione B: Documenti Locali (Raccomandato)**
 - Carica cartelle di documenti direttamente dal computer
 - Processamento automatico dei metadati
 - Controllo completo sui file
 - Funziona offline
 
-**Opzione C: Modalità Ibrida**
-- Combina entrambe le modalità
-- Documenti Google Drive e locali nella stessa interfaccia
-- Massima flessibilità per l'azienda
 
 Per utilizzare i documenti locali:
 1. Durante la registrazione, seleziona "Carica Cartella Locale" invece di inserire l'URL Google Drive
@@ -126,7 +122,7 @@ Per utilizzare i documenti locali:
 3. Seleziona una cartella contenente i documenti da caricare
 4. Il sistema processerà automaticamente tutti i file
 
-### 🔧 Tools di Amministrazione
+### 🔧 Tools di Amministrazione Solo per Sviluppatori della web App!
 
 Il sistema include strumenti per la gestione amministrativa:
 
@@ -141,13 +137,12 @@ Per maggiori dettagli sui tool, consulta [tools/README.md](./tools/README.md).
 Il progetto è strutturato come un'applicazione **full-stack** con architettura client-server:
 
 ```
-DocumentiIso/
+Pannello di Controllo SGI/
 ├── client/          # Frontend React + TypeScript
 ├── server/          # Backend Node.js + Express
 ├── shared-types/    # Tipi TypeScript condivisi
 ├── docs/           # Documentazione
-└── tools/          # Script di utilità
-```
+
 
 ### Architettura Documenti Locali
 
@@ -183,7 +178,7 @@ Il sistema supporta una **architettura ibrida** per la gestione documenti:
 - **File Upload Handler**: Gestisce upload di cartelle complete
 - **Document Processor**: Estrae metadati dai nomi file
 - **Excel Analyzer**: Analizza contenuto Excel per scadenze
-- **Storage Manager**: Gestisce file locali e Drive in modo unificato
+- **Storage Manager**: Gestisce file locali  Drive in modo unificato
 - **Preview Engine**: Visualizzazione integrata per entrambi i tipi
 - **Confirmation Toast System**: Sistema di conferma moderno per operazioni critiche
 - **Document Management**: Gestione completa con eliminazione sicura
@@ -359,7 +354,7 @@ Il sistema supporta il caricamento e la gestione di documenti locali, offrendo u
 #### Convenzioni nome file (parsing automatico)
 
 - Pattern atteso: `ISO_PATH_Titolo_Rev.REVISIONE_YYYY-MM-DD.EXT`
-  - Esempio: `10.2.3_Manuale Qualità_Rev.4_2024-12-31.pdf`
+  - Esempio: `10.2.3_Manuale Qualità_Rev.4_2025-12-31.pdf`
   - Estrazioni:
     - `path`: `10.2.3` (o `cartella/subcartella/10.2.3` se presente gerarchia)
     - `title`: `Manuale Qualità`
@@ -415,7 +410,8 @@ Il sistema utilizza **toast di conferma eleganti** invece di modali tradizionali
 - **Tema Supportato**: Funziona perfettamente con tema chiaro e scuro
 - **Accessibilità**: Supporto completo per screen reader e navigazione da tastiera
 
-#### Operazioni Supportate
+#### Operazioni Supportate solo all' interno della web app non all' esterno es:
+Google Drive
 
 - **Eliminazione Documenti**: Conferma sicura con toast distruttivo (rosso)
 - **Eliminazione Backup**: Conferma per rimozione backup con avvisi chiari
@@ -496,7 +492,7 @@ Il sistema utilizza **toast di conferma eleganti** invece di modali tradizionali
 
 ```env
 # Database
-DB_URI=mongodb://localhost:27017/documentiiso
+DB_URI=mongodb://localhost:27017/Pannello di Controllo SGI
 
 # Google Drive
 GOOGLE_CLIENT_ID=your_client_id
@@ -541,27 +537,6 @@ Questo progetto è sotto licenza MIT.
 Per supporto tecnico o domande:
 
 - Consulta la documentazione nella cartella `docs/`
-- Contatta il team di sviluppo
+- Contatta il team di sviluppo.
 
----
-
-**DocumentiIso** - Gestione documentale intelligente e sicura
-
-## 🆕 Funzionalità Recenti
-
-### Sistema di Conferma Moderno
-- **Toast di Conferma**: Sostituzione modali con toast eleganti per operazioni critiche
-- **Eliminazione Sicura**: Gestione eliminazione documenti con conferma moderna
-- **UX Migliorata**: Interfaccia non bloccante e responsive
-
-### Gestione Documenti Locali
-- **Upload Cartelle**: Caricamento completo di cartelle di documenti
-- **Processamento Intelligente**: Estrazione automatica metadati
-- **Analisi Excel**: Estrazione scadenze da file Excel
-- **Modalità Ibrida**: Supporto simultaneo Google Drive e documenti locali
-
-### Sicurezza Avanzata
-- **Conferme Obbligatorie**: Per tutte le operazioni critiche
-- **Crittografia File**: Protezione documenti locali
-- **Audit Trail**: Tracciamento completo delle operazioni
-- **Controllo Accessi**: Gestione permessi granulare
+ 

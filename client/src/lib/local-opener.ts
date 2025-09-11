@@ -239,7 +239,7 @@ export async function checkAndPromptLocalOpener(): Promise<void> {
     // Mostra toast di conferma con istruzioni
     setTimeout(() => {
       toast({
-        title: "✅ Download Avviato",
+        title: " Download Avviato",
         description: "Estrai il ZIP e esegui install-local-opener.bat come amministratore. Dopo l'installazione, il servizio si avvierà automaticamente!",
         duration: 8000,
       });

@@ -24,14 +24,14 @@ const {
 async function connectToDB() {
   if (mongoose.connection.readyState === 0) {
     await mongoose.connect(process.env.DB_URI);
-    console.log("✅ Connesso al database");
+    console.log(" Connesso al database");
   }
 }
 
 async function disconnectFromDB() {
   if (mongoose.connection.readyState !== 0) {
     await mongoose.disconnect();
-    console.log("✅ Disconnesso dal database");
+    console.log(" Disconnesso dal database");
   }
 }
 
@@ -99,7 +99,7 @@ async function createTestData() {
     ownerId: admin2.legacyId,
   });
 
-  console.log("✅ Dati di test creati");
+  console.log(" Dati di test creati");
   return { client1, client2, admin1, admin2, superadmin };
 }
 
@@ -144,7 +144,7 @@ async function testBackupCreation() {
 
   console.log("📋 Superadmin crea backup completo:", superadminBackupOptions);
 
-  console.log("✅ Test creazione backup completato");
+  console.log(" Test creazione backup completato");
 }
 
 async function testBackupFiltering() {
@@ -155,7 +155,7 @@ async function testBackupFiltering() {
   // Simula lista backup (dati di esempio)
   const allBackups = [
     {
-      filename: "backup_client_1001_2024-01-01.json",
+      filename: "backup_client_1001_2025-01-01.json",
       metadata: {
         createdBy: {
           userId: admin1.legacyId,
@@ -167,7 +167,7 @@ async function testBackupFiltering() {
       },
     },
     {
-      filename: "backup_client_1002_2024-01-02.json",
+      filename: "backup_client_1002_2025-01-02.json",
       metadata: {
         createdBy: {
           userId: admin2.legacyId,
@@ -179,7 +179,7 @@ async function testBackupFiltering() {
       },
     },
     {
-      filename: "backup_complete_2024-01-03.json",
+      filename: "backup_complete_2025-01-03.json",
       metadata: {
         createdBy: {
           userId: superadmin.legacyId,
@@ -228,7 +228,7 @@ async function testBackupFiltering() {
     superadminBackups.map((b) => b.filename)
   );
 
-  console.log("✅ Test filtro backup completato");
+  console.log(" Test filtro backup completato");
 }
 
 async function testBackupPermissions() {
@@ -238,7 +238,7 @@ async function testBackupPermissions() {
 
   // Simula backup di admin1
   const admin1Backup = {
-    filename: "backup_client_1001_2024-01-01.json",
+    filename: "backup_client_1001_2025-01-01.json",
     metadata: {
       createdBy: {
         userId: admin1.legacyId,
@@ -294,7 +294,7 @@ async function testBackupPermissions() {
     superadminCanRestoreAny
   );
 
-  console.log("✅ Test permessi backup completato");
+  console.log(" Test permessi backup completato");
 }
 
 async function cleanupTestData() {
@@ -308,7 +308,7 @@ async function cleanupTestData() {
     CompanyCodeModel.deleteMany({ createdBy: { $in: [2001, 2002, 2003] } }),
   ]);
 
-  console.log("✅ Dati di test puliti");
+  console.log(" Dati di test puliti");
 }
 
 async function runTests() {
@@ -323,13 +323,13 @@ async function runTests() {
 
     console.log("\n🎉 Tutti i test completati con successo!");
     console.log("\n📋 Riepilogo funzionalità testate:");
-    console.log("✅ Creazione backup specifici per client");
-    console.log("✅ Creazione backup completi (solo superadmin)");
-    console.log("✅ Filtro backup in base ai ruoli");
-    console.log("✅ Controllo permessi di accesso");
-    console.log("✅ Isolamento dati tra client");
+    console.log(" Creazione backup specifici per client");
+    console.log(" Creazione backup completi (solo superadmin)");
+    console.log(" Filtro backup in base ai ruoli");
+    console.log(" Controllo permessi di accesso");
+    console.log(" Isolamento dati tra client");
   } catch (error) {
-    console.error("❌ Errore durante i test:", error);
+    console.error(" Errore durante i test:", error);
   } finally {
     await cleanupTestData();
     await disconnectFromDB();

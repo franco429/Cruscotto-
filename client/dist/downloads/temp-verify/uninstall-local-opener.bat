@@ -52,9 +52,9 @@ echo.
 echo - Arresto del servizio %SERVICE_NAME%...
 sc stop "%SERVICE_NAME%" >nul 2>&1
 if %errorLevel% equ 0 (
-    echo ✅ Servizio fermato con successo
+    echo  Servizio fermato con successo
 ) else (
-    echo ⚠️  Servizio già fermo o non avviato
+    echo   Servizio già fermo o non avviato
 )
 
 :: Attendi che il servizio si fermi completamente
@@ -65,15 +65,15 @@ timeout /t 5 /nobreak >nul
 echo - Rimozione servizio %SERVICE_NAME%...
 sc delete "%SERVICE_NAME%" >nul 2>&1
 if %errorLevel% equ 0 (
-    echo ✅ Servizio rimosso con successo
+    echo  Servizio rimosso con successo
 ) else (
-    echo ❌ Errore rimozione servizio
+    echo Errore rimozione servizio
     echo Tentativo di rimozione forzata...
     sc delete "%SERVICE_NAME%" /force >nul 2>&1
     if %errorLevel% equ 0 (
-        echo ✅ Servizio rimosso con rimozione forzata
+        echo  Servizio rimosso con rimozione forzata
     ) else (
-        echo ❌ Impossibile rimuovere il servizio
+        echo Impossibile rimuovere il servizio
         echo Potrebbe essere necessario riavviare il computer
     )
 )
@@ -96,15 +96,15 @@ if %errorLevel% neq 0 (
 echo - Rimozione task scheduler %TASK_NAME%...
 schtasks /delete /tn "%TASK_NAME%" /f >nul 2>&1
 if %errorLevel% equ 0 (
-    echo ✅ Task scheduler rimosso con successo
+    echo  Task scheduler rimosso con successo
 ) else (
-    echo ❌ Errore rimozione task scheduler
+    echo Errore rimozione task scheduler
     echo Tentativo di rimozione forzata...
     schtasks /delete /tn "%TASK_NAME%" /f /force >nul 2>&1
     if %errorLevel% equ 0 (
-        echo ✅ Task scheduler rimosso con rimozione forzata
+        echo  Task scheduler rimosso con rimozione forzata
     ) else (
-        echo ❌ Impossibile rimuovere il task scheduler
+        echo Impossibile rimuovere il task scheduler
         echo Potrebbe essere necessario riavviare il computer
     )
 )
@@ -121,9 +121,9 @@ if exist "%STARTUP_SCRIPT%" (
     echo - Rimozione script di avvio...
     del "%STARTUP_SCRIPT%" >nul 2>&1
     if %errorLevel% equ 0 (
-        echo ✅ Script di avvio rimosso
+        echo  Script di avvio rimosso
     ) else (
-        echo ❌ Errore rimozione script di avvio
+        echo Errore rimozione script di avvio
     )
 )
 
@@ -132,9 +132,9 @@ if exist "%TASK_SCRIPT%" (
     echo - Rimozione script task scheduler...
     del "%TASK_SCRIPT%" >nul 2>&1
     if %errorLevel% equ 0 (
-        echo ✅ Script task scheduler rimosso
+        echo  Script task scheduler rimosso
     ) else (
-        echo ❌ Errore rimozione script task scheduler
+        echo Errore rimozione script task scheduler
     )
 )
 
@@ -149,9 +149,9 @@ if exist "%LOG_DIR%" (
         echo - Directory log vuota, rimozione...
         rmdir "%LOG_DIR%" >nul 2>&1
         if %errorLevel% equ 0 (
-            echo ✅ Directory log rimossa
+            echo  Directory log rimossa
         ) else (
-            echo ❌ Errore rimozione directory log
+            echo Errore rimozione directory log
         )
     )
 )
@@ -162,9 +162,9 @@ echo    DISINSTALLAZIONE COMPLETATA!
 echo ========================================
 echo.
 
-echo ✅ Servizio Local Opener rimosso
-echo ✅ Task Scheduler rimosso
-echo ✅ File temporanei puliti
+echo  Servizio Local Opener rimosso
+echo  Task Scheduler rimosso
+echo  File temporanei puliti
 echo.
 
 echo 📋 INFORMAZIONI IMPORTANTI:

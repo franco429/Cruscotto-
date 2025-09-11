@@ -79,7 +79,7 @@ export default function SyncProgress({
             {isComplete && (
               <div className="p-3 bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-md">
                 <p className="text-sm text-green-700 dark:text-green-300">
-                  ✅ Sincronizzazione completata con successo! I documenti sono ora disponibili.
+                   Sincronizzazione completata con successo! I documenti sono ora disponibili.
                 </p>
               </div>
             )}

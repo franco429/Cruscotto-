@@ -5,7 +5,7 @@ async function fixObsoleteDocuments() {
   
   try {
     await mongoStorage.connect();
-    console.log("✅ Connesso al database");
+    console.log(" Connesso al database");
 
     // Ottieni tutti i client
     const clients = await mongoStorage.getAllClients();
@@ -19,22 +19,22 @@ async function fixObsoleteDocuments() {
       console.log(`   📄 Ripristinati ${restoreResult.restored} documenti obsoleti`);
       
       if (restoreResult.errors.length > 0) {
-        console.log(`   ⚠️  Errori durante il ripristino:`, restoreResult.errors);
+        console.log(`     Errori durante il ripristino:`, restoreResult.errors);
       }
 
       // Poi applica la logica corretta per marcare come obsoleti solo i documenti con revisioni inferiori
       await mongoStorage.markObsoleteRevisionsForClient(client.legacyId);
-      console.log(`   ✅ Applicata logica corretta per documenti obsoleti`);
+      console.log(`    Applicata logica corretta per documenti obsoleti`);
 
       // Verifica il risultato
       const obsoleteDocs = await mongoStorage.getObsoleteDocumentsByClientId(client.legacyId);
       console.log(`   📊 Documenti obsoleti dopo la correzione: ${obsoleteDocs.length}`);
     }
 
-    console.log("\n✅ Correzione completata con successo!");
+    console.log("\n Correzione completata con successo!");
     
   } catch (error) {
-    console.error("❌ Errore durante la correzione:", error);
+    console.error(" Errore durante la correzione:", error);
   } finally {
     await mongoStorage.cleanup();
   }

@@ -60,7 +60,7 @@ Dovresti vedere qualcosa come:
 
 ### 1.3 Test nell'Applicazione Web
 
-1. Apri il tuo browser e vai su SGI Cruscotto
+1. Apri il tuo browser e vai su Pannello Di Controllo SGI
 2. Naviga nella sezione documenti
 3. Clicca sull'icona occhio (👁️) su un documento locale
 4. Il documento dovrebbe aprirsi direttamente nel programma predefinito
@@ -88,7 +88,7 @@ copy ..\client\public\downloads\README.txt .
 
 Contenuto di `ISTRUZIONI-CLIENTE.txt`:
 ```
-INSTALLAZIONE LOCAL OPENER - SGI CRUSCOTTO
+INSTALLAZIONE LOCAL OPENER - Pannello Di Controllo SGI
 ==========================================
 
 REQUISITI:
@@ -104,7 +104,7 @@ INSTALLAZIONE:
 5. Riavvia il PC
 
 VERIFICA:
-Dopo il riavvio, apri SGI Cruscotto e prova ad aprire un documento.
+Dopo il riavvio, apri Pannello Di Controllo SGI e prova ad aprire un documento.
 Se funziona, vedrai il documento aprirsi direttamente!
 
 SUPPORTO:
@@ -153,7 +153,7 @@ function Deploy-LocalOpener {
     $emailBody = @"
 Gentile Cliente,
 
-Abbiamo preparato un aggiornamento importante per SGI Cruscotto che migliorerà
+Abbiamo preparato un aggiornamento importante per Pannello Di Controllo SGI che migliorerà
 l'apertura dei documenti locali dal vostro Google Drive.
 
 ISTRUZIONI:
@@ -169,7 +169,7 @@ Il Team SGI
 "@
     
     # Invia email con allegato (esempio con Outlook)
-    # Send-MailMessage -To "$Company@email.com" -Subject "Aggiornamento SGI Cruscotto" -Body $emailBody -Attachments "$PackagePath.zip"
+    # Send-MailMessage -To "$Company@email.com" -Subject "Aggiornamento Pannello Di Controllo SGI" -Body $emailBody -Attachments "$PackagePath.zip"
     
     Write-Host "✅ Package sent to $Company" -ForegroundColor Green
 }
@@ -327,11 +327,11 @@ debug-local-opener.bat
 ### 5.2 Template Email per Clienti
 
 ```
-Oggetto: [IMPORTANTE] Aggiornamento SGI Cruscotto - Miglioramento Apertura Documenti
+Oggetto: [IMPORTANTE] Aggiornamento Pannello Di Controllo SGI - Miglioramento Apertura Documenti
 
 Gentile [Nome Cliente],
 
-Abbiamo sviluppato un importante aggiornamento per SGI Cruscotto che migliorerà
+Abbiamo sviluppato un importante aggiornamento per Pannello Di Controllo SGI che migliorerà
 significativamente l'esperienza di apertura dei documenti dal vostro Google Drive.
 
 COSA CAMBIA:

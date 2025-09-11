@@ -20,6 +20,9 @@ server/server/uploads/*
 !server/server/uploads/.gitkeep
 !server/uploads/previews/
 !server/server/uploads/previews/
+THIRD-PARTY-LICENSES.txt
+TRASCRIZIONE-SIAE.md
+third-party-licenses/
 
 
 # File di test local-opener

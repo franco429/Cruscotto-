@@ -355,10 +355,10 @@ export default function LocalOpenerConfig() {
             <div>
               <p className="font-medium break-words">2. Compatibilità Sistema</p>
               <div className="ml-2 sm:ml-4 space-y-1 text-muted-foreground">
-                <p className="break-words">✅ Windows 10 (versione 1903+) / Windows 11</p>
-                <p className="break-words">✅ Architetture: Intel/AMD x64, ARM64</p>
-                <p className="break-words">✅ Supporto automatico rilevamento architettura</p>
-                <p className="break-words">⚠️ Richiede privilegi amministratore per l'installer</p>
+                <p className="break-words"> Windows 10 (versione 1903+) / Windows 11</p>
+                <p className="break-words"> Architetture: Intel/AMD x64, ARM64</p>
+                <p className="break-words"> Supporto automatico rilevamento architettura</p>
+                <p className="break-words"> Richiede privilegi amministratore per l'installer</p>
               </div>
             </div>
             <Separator />

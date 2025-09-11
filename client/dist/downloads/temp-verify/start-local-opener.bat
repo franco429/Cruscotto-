@@ -9,11 +9,11 @@ echo.
 echo Il servizio Local Opener è ora attivo e funzionante.
 echo.
 echo Caratteristiche:
-echo - ✅ Avvio automatico all'avvio di Windows
-echo - ✅ Terminale sempre visibile per monitoraggio
-echo - ✅ Riavvio automatico in caso di crash
-echo - ✅ Log salvati in C:\Logs\LocalOpener
-echo - ✅ Task Scheduler per apertura automatica
+echo - Avvio automatico all'avvio di Windows
+echo - Terminale sempre visibile per monitoraggio
+echo - Riavvio automatico in caso di crash
+echo - Log salvati in C:\Logs\LocalOpener
+echo - Task Scheduler per apertura automatica
 echo.
 echo PER CHIUDERE IL SERVIZIO:
 echo 1. Chiudi questa finestra
@@ -65,12 +65,12 @@ echo [%date% %time%] Applicazione terminata con codice %EXIT_CODE% >> "%LOG_DIR%
 
 :: Riavvio automatico in caso di crash o terminazione
 if %EXIT_CODE% neq 0 (
-    echo ⚠️  Applicazione terminata con errore, riavvio immediato...
+    echo   Applicazione terminata con errore, riavvio immediato...
     echo [%date% %time%] Riavvio immediato per errore %EXIT_CODE% >> "%LOG_DIR%\service-restart.log"
     timeout /t 2 /nobreak >nul
     goto :loop
 ) else (
-    echo ✅ Applicazione terminata normalmente
+    echo Applicazione terminata normalmente
     echo Riavvio in 5 secondi per mantenere il servizio attivo...
     echo [%date% %time%] Riavvio programmato normale >> "%LOG_DIR%\service-restart.log"
     timeout /t 5 /nobreak >nul

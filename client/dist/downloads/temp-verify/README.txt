@@ -1,12 +1,12 @@
 ========================================
-    LOCAL OPENER SERVICE - SGI CRUSCOTTO
+    LOCAL OPENER SERVICE - Pannello Di Controllo SGI
     Guida Completa all'Installazione e Configurazione
     CON APERTURA AUTOMATICA DEL TERMINALE
 ========================================
 
 📋 DESCRIZIONE
 Local Opener è un servizio Windows che permette l'apertura automatica
-dei documenti locali direttamente dall'interfaccia web SGI Cruscotto.
+dei documenti locali direttamente dall'interfaccia web Pannello Di Controllo SGI.
 Il servizio mantiene sempre visibile un terminale per monitoraggio e debug.
 ORA CON APERTURA AUTOMATICA DEL TERMINALE ALL'AVVIO DI WINDOWS!
 
@@ -58,7 +58,7 @@ STEP 3: VERIFICA
 - Verifica che il task scheduler sia configurato
 
 STEP 4: CONFIGURAZIONE GOOGLE DRIVE
-- Apri la web app SGI Cruscotto
+- Apri la web app Pannello Di Controllo SGI
 - Vai su Impostazioni → Apertura File Locali
 - Clicca "Rileva Percorsi Automaticamente"
 - Clicca "Aggiungi Tutti" per configurare Google Drive

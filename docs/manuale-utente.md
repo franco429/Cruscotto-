@@ -1,4 +1,4 @@
-# Manuale Utente - DocumentiIso
+# Manuale Utente - Pannello di Controllo SGI
 
 ## 📖 Indice
 
@@ -15,7 +15,7 @@
 
 ## 🎯 Introduzione
 
-**DocumentiIso** è un sistema di gestione documentale che permette di organizzare, sincronizzare e gestire documenti in modo sicuro e efficiente. Il sistema integra Google Drive per la sincronizzazione automatica e offre un'interfaccia web moderna per la consultazione e gestione dei documenti.
+**Pannello di Controllo SGI** è un sistema di gestione documentale che permette di organizzare, sincronizzare e gestire documenti in modo sicuro e efficiente. Il sistema integra Google Drive per la sincronizzazione automatica e offre un'interfaccia web moderna per la consultazione e gestione dei documenti.
 
 ### Ruoli Utente
 
@@ -33,7 +33,7 @@
 1. **Ricezione Codice Aziendale**
 
    - Il SuperAdmin fornisce un codice aziendale univoco
-   - Il codice ha formato: `BULK-2024-XXXXXX` o simile
+   - Il codice ha formato: `BULK-2025-XXXXXX` o simile
 
 2. **Registrazione**
 
@@ -419,19 +419,19 @@ Soluzione: Verifica formato file e dimensioni
 
 ###### Template Email Esempio
 ```
-Oggetto: [DocumentiIso] Avviso Scadenza Documenti - {Nome Azienda}
+Oggetto: [Pannello di Controllo SGI] Avviso Scadenza Documenti - {Nome Azienda}
 
 Gentile {Nome Admin},
 
 Il sistema ha rilevato i seguenti documenti in scadenza:
 
 📋 DOCUMENTI IN SCADENZA:
-• Documento A - Scadenza: 15/01/2024
-• Documento B - Scadenza: 20/01/2024
+• Documento A - Scadenza: 15/01/2025
+• Documento B - Scadenza: 20/01/2025
 
 📅 PROSSIME SCADENZE:
-• Documento C - Scadenza: 25/01/2024
-• Documento D - Scadenza: 30/01/2024
+• Documento C - Scadenza: 25/01/2025
+• Documento D - Scadenza: 30/01/2025
 
 🔗 AZIONE RICHIESTA:
 - Verifica i documenti in scadenza
@@ -441,7 +441,7 @@ Il sistema ha rilevato i seguenti documenti in scadenza:
 Per accedere al sistema: {Link Accesso}
 
 Cordiali saluti,
-Sistema DocumentiIso
+Sistema Pannello di Controllo SGI
 ```
 
 ##### Gestione Notifiche
@@ -701,4 +701,4 @@ Sistema DocumentiIso
 
 ---
 
-**DocumentiIso** - Gestione documentale intelligente e sicura
+**Pannello di Controllo SGI** - Gestione documentale intelligente e sicura

@@ -70,42 +70,42 @@ echo.
 
 :: Verifica eseguibile principale
 if exist "%EXE_PATH%" (
-    echo ✅ cruscotto-local-opener-setup.exe trovato
+    echo  cruscotto-local-opener-setup.exe trovato
     echo   - Percorso: %EXE_PATH%
     echo   - Dimensione: 
     for %%A in ("%EXE_PATH%") do echo     %%~zA bytes
     echo.
 ) else (
-    echo ❌ cruscotto-local-opener-setup.exe NON TROVATO
+    echo  cruscotto-local-opener-setup.exe NON TROVATO
     echo   - Percorso cercato: %EXE_PATH%
     echo.
 )
 
 :: Verifica NSSM
 if exist "%NSSM_PATH%" (
-    echo ✅ nssm.exe trovato
+    echo  nssm.exe trovato
     echo   - Percorso: %NSSM_PATH%
     echo.
 ) else (
-    echo ❌ nssm.exe NON TROVATO
+    echo  nssm.exe NON TROVATO
     echo   - Percorso cercato: %NSSM_PATH%
     echo.
 )
 
 echo Verifica file necessari: >> "%DEBUG_LOG%"
 if exist "%EXE_PATH%" (
-    echo ✅ cruscotto-local-opener-setup.exe trovato >> "%DEBUG_LOG%"
+    echo  cruscotto-local-opener-setup.exe trovato >> "%DEBUG_LOG%"
     echo   - Percorso: %EXE_PATH% >> "%DEBUG_LOG%"
     for %%A in ("%EXE_PATH%") do echo     %%~zA bytes >> "%DEBUG_LOG%"
 ) else (
-    echo ❌ cruscotto-local-opener-setup.exe NON TROVATO >> "%DEBUG_LOG%"
+    echo  cruscotto-local-opener-setup.exe NON TROVATO >> "%DEBUG_LOG%"
     echo   - Percorso cercato: %EXE_PATH% >> "%DEBUG_LOG%"
 )
 if exist "%NSSM_PATH%" (
-    echo ✅ nssm.exe trovato >> "%DEBUG_LOG%"
+    echo  nssm.exe trovato >> "%DEBUG_LOG%"
     echo   - Percorso: %NSSM_PATH% >> "%DEBUG_LOG%"
 ) else (
-    echo ❌ nssm.exe NON TROVATO >> "%DEBUG_LOG%"
+    echo  nssm.exe NON TROVATO >> "%DEBUG_LOG%"
     echo   - Percorso cercato: %NSSM_PATH% >> "%DEBUG_LOG%"
 )
 echo. >> "%DEBUG_LOG%"
@@ -118,7 +118,7 @@ echo.
 
 sc query "%SERVICE_NAME%" >nul 2>&1
 if %errorLevel% equ 0 (
-    echo ✅ Servizio %SERVICE_NAME% trovato
+    echo  Servizio %SERVICE_NAME% trovato
     echo.
     echo Stato dettagliato del servizio:
     sc query "%SERVICE_NAME%"
@@ -127,21 +127,21 @@ if %errorLevel% equ 0 (
     :: Verifica se il servizio è in esecuzione
     sc query "%SERVICE_NAME%" | find "RUNNING" >nul 2>&1
     if %errorLevel% equ 0 (
-        echo ✅ Servizio in esecuzione
+        echo  Servizio in esecuzione
     ) else (
-        echo ❌ Servizio non in esecuzione
+        echo  Servizio non in esecuzione
         echo Tentativo di avvio...
         sc start "%SERVICE_NAME%"
         timeout /t 5 /nobreak >nul
         sc query "%SERVICE_NAME%" | find "RUNNING" >nul 2>&1
         if %errorLevel% equ 0 (
-            echo ✅ Servizio avviato con successo
+            echo  Servizio avviato con successo
         ) else (
-            echo ❌ Impossibile avviare il servizio
+            echo  Impossibile avviare il servizio
         )
     )
 ) else (
-    echo ❌ Servizio %SERVICE_NAME% NON TROVATO
+    echo  Servizio %SERVICE_NAME% NON TROVATO
     echo Il servizio non è installato
     echo.
 )
@@ -157,7 +157,7 @@ echo ========================================
 echo.
 
 if exist "%NSSM_PATH%" (
-    echo ✅ NSSM disponibile, verifica configurazione...
+    echo  NSSM disponibile, verifica configurazione...
     echo.
     
     sc query "%SERVICE_NAME%" >nul 2>&1
@@ -176,10 +176,10 @@ if exist "%NSSM_PATH%" (
         "%NSSM_PATH%" get "%SERVICE_NAME%" Start
         echo.
     ) else (
-        echo ❌ Servizio non installato, impossibile verificare NSSM
+        echo  Servizio non installato, impossibile verificare NSSM
     )
 ) else (
-    echo ❌ NSSM non disponibile
+    echo  NSSM non disponibile
 )
 
 echo Verifica configurazione NSSM: >> "%DEBUG_LOG%"
@@ -207,7 +207,7 @@ echo.
 
 schtasks /query /tn "%TASK_NAME%" >nul 2>&1
 if %errorLevel% equ 0 (
-    echo ✅ Task scheduler %TASK_NAME% trovato
+    echo  Task scheduler %TASK_NAME% trovato
     echo.
     echo Configurazione task scheduler:
     schtasks /query /tn "%TASK_NAME%" /fo table
@@ -218,7 +218,7 @@ if %errorLevel% equ 0 (
     schtasks /query /tn "%TASK_NAME%" /fo list
     echo.
 ) else (
-    echo ❌ Task scheduler %TASK_NAME% NON TROVATO
+    echo  Task scheduler %TASK_NAME% NON TROVATO
     echo Il task scheduler per apertura automatica non è configurato
     echo.
 )
@@ -242,37 +242,37 @@ set STARTUP_SCRIPT=%~dp0start-local-opener.bat
 set TASK_SCRIPT=%~dp0auto-open-terminal.bat
 
 if exist "%STARTUP_SCRIPT%" (
-    echo ✅ Script di avvio trovato: %STARTUP_SCRIPT%
+    echo  Script di avvio trovato: %STARTUP_SCRIPT%
     echo   - Dimensione: 
     for %%A in ("%STARTUP_SCRIPT%") do echo     %%~zA bytes
     echo.
 ) else (
-    echo ❌ Script di avvio NON TROVATO: %STARTUP_SCRIPT%
+    echo  Script di avvio NON TROVATO: %STARTUP_SCRIPT%
     echo.
 )
 
 if exist "%TASK_SCRIPT%" (
-    echo ✅ Script task scheduler trovato: %TASK_SCRIPT%
+    echo  Script task scheduler trovato: %TASK_SCRIPT%
     echo   - Dimensione: 
     for %%A in ("%TASK_SCRIPT%") do echo     %%~zA bytes
     echo.
 ) else (
-    echo ❌ Script task scheduler NON TROVATO: %TASK_SCRIPT%
+    echo  Script task scheduler NON TROVATO: %TASK_SCRIPT%
     echo.
 )
 
 echo Verifica script di supporto: >> "%DEBUG_LOG%"
 if exist "%STARTUP_SCRIPT%" (
-    echo ✅ Script di avvio trovato: %STARTUP_SCRIPT% >> "%DEBUG_LOG%"
+    echo  Script di avvio trovato: %STARTUP_SCRIPT% >> "%DEBUG_LOG%"
     for %%A in ("%STARTUP_SCRIPT%") do echo     %%~zA bytes >> "%DEBUG_LOG%"
 ) else (
-    echo ❌ Script di avvio NON TROVATO: %STARTUP_SCRIPT% >> "%DEBUG_LOG%"
+    echo  Script di avvio NON TROVATO: %STARTUP_SCRIPT% >> "%DEBUG_LOG%"
 )
 if exist "%TASK_SCRIPT%" (
-    echo ✅ Script task scheduler trovato: %TASK_SCRIPT% >> "%DEBUG_LOG%"
+    echo  Script task scheduler trovato: %TASK_SCRIPT% >> "%DEBUG_LOG%"
     for %%A in ("%TASK_SCRIPT%") do echo     %%~zA bytes >> "%DEBUG_LOG%"
 ) else (
-    echo ❌ Script task scheduler NON TROVATO: %TASK_SCRIPT% >> "%DEBUG_LOG%"
+    echo  Script task scheduler NON TROVATO: %TASK_SCRIPT% >> "%DEBUG_LOG%"
 )
 echo. >> "%DEBUG_LOG%"
 
@@ -286,7 +286,7 @@ echo Verifica directory log:
 echo.
 
 if exist "%LOG_DIR%" (
-    echo ✅ Directory log trovata: %LOG_DIR%
+    echo  Directory log trovata: %LOG_DIR%
     echo.
     echo Contenuto directory log:
     dir "%LOG_DIR%" /b
@@ -294,7 +294,7 @@ if exist "%LOG_DIR%" (
     
     :: Verifica file di log specifici
     if exist "%LOG_DIR%\LocalOpener.log" (
-        echo ✅ File log principale trovato
+        echo  File log principale trovato
         echo   - Dimensione: 
         for %%A in ("%LOG_DIR%\LocalOpener.log") do echo     %%~zA bytes
         echo.
@@ -304,11 +304,11 @@ if exist "%LOG_DIR%" (
         echo ----------------------------------------
         echo.
     ) else (
-        echo ❌ File log principale NON TROVATO
+        echo  File log principale NON TROVATO
     )
     
     if exist "%LOG_DIR%\LocalOpener-error.log" (
-        echo ✅ File log errori trovato
+        echo  File log errori trovato
         echo   - Dimensione: 
         for %%A in ("%LOG_DIR%\LocalOpener-error.log") do echo     %%~zA bytes
         echo.
@@ -318,34 +318,34 @@ if exist "%LOG_DIR%" (
         echo ----------------------------------------
         echo.
     ) else (
-        echo ❌ File log errori NON TROVATO
+        echo  File log errori NON TROVATO
     )
 ) else (
-    echo ❌ Directory log NON TROVATA: %LOG_DIR%
+    echo  Directory log NON TROVATA: %LOG_DIR%
     echo.
 )
 
 echo Verifica directory log: >> "%DEBUG_LOG%"
 if exist "%LOG_DIR%" (
-    echo ✅ Directory log trovata: %LOG_DIR% >> "%DEBUG_LOG%"
+    echo  Directory log trovata: %LOG_DIR% >> "%DEBUG_LOG%"
     dir "%LOG_DIR%" /b >> "%DEBUG_LOG%"
     echo. >> "%DEBUG_LOG%"
     if exist "%LOG_DIR%\LocalOpener.log" (
-        echo ✅ File log principale trovato >> "%DEBUG_LOG%"
+        echo  File log principale trovato >> "%DEBUG_LOG%"
         for %%A in ("%LOG_DIR%\LocalOpener.log") do echo     %%~zA bytes >> "%DEBUG_LOG%"
         echo. >> "%DEBUG_LOG%"
         echo Ultime 10 righe del log: >> "%DEBUG_LOG%"
         powershell "Get-Content '%LOG_DIR%\LocalOpener.log' | Select-Object -Last 10" >> "%DEBUG_LOG%"
     )
     if exist "%LOG_DIR%\LocalOpener-error.log" (
-        echo ✅ File log errori trovato >> "%DEBUG_LOG%"
+        echo  File log errori trovato >> "%DEBUG_LOG%"
         for %%A in ("%LOG_DIR%\LocalOpener-error.log") do echo     %%~zA bytes >> "%DEBUG_LOG%"
         echo. >> "%DEBUG_LOG%"
         echo Ultime 10 righe del log errori: >> "%DEBUG_LOG%"
         powershell "Get-Content '%LOG_DIR%\LocalOpener-error.log' | Select-Object -Last 10" >> "%DEBUG_LOG%"
     )
 ) else (
-    echo ❌ Directory log NON TROVATA: %LOG_DIR% >> "%DEBUG_LOG%"
+    echo  Directory log NON TROVATA: %LOG_DIR% >> "%DEBUG_LOG%"
 )
 echo. >> "%DEBUG_LOG%"
 
@@ -367,13 +367,13 @@ timeout /t 3 /nobreak >nul
 :: Verifica se il processo è attivo
 tasklist /fi "imagename eq cruscotto-local-opener-setup.exe" | find "cruscotto-local-opener-setup.exe" >nul 2>&1
 if %errorLevel% equ 0 (
-    echo ✅ Eseguibile avviato con successo
+    echo  Eseguibile avviato con successo
     echo   Processo attivo nel task manager
     echo.
     echo   Terminazione processo di test...
     taskkill /f /im "cruscotto-local-opener-setup.exe" >nul 2>&1
 ) else (
-    echo ❌ Eseguibile non si avvia correttamente
+    echo  Eseguibile non si avvia correttamente
     echo   Possibili cause:
     echo   - File corrotto
     echo   - Antivirus che blocca l'esecuzione

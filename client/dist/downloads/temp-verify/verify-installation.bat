@@ -18,32 +18,32 @@ echo ========================================
 :: 1. Verifica file eseguibile
 echo 1. File eseguibile principale...
 if exist "%EXE_PATH%" (
-    echo    ✅ cruscotto-local-opener-setup.exe trovato
-    echo    📁 Percorso: %EXE_PATH%
+    echo     cruscotto-local-opener-setup.exe trovato
+    echo     Percorso: %EXE_PATH%
 ) else (
-    echo    ❌ cruscotto-local-opener-setup.exe NON TROVATO!
-    echo    📁 Percorso cercato: %EXE_PATH%
+    echo     cruscotto-local-opener-setup.exe NON TROVATO!
+    echo     Percorso cercato: %EXE_PATH%
 )
 
 :: 2. Verifica file nssm.exe
 if exist "%~dp0nssm.exe" (
-    echo    ✅ nssm.exe trovato
+    echo     nssm.exe trovato
 ) else (
-    echo    ❌ nssm.exe NON TROVATO!
+    echo     nssm.exe NON TROVATO!
 )
 
 :: 3. Verifica script di avvio
 if exist "%~dp0start-local-opener.bat" (
-    echo    ✅ start-local-opener.bat trovato
+    echo     start-local-opener.bat trovato
 ) else (
-    echo    ❌ start-local-opener.bat NON TROVATO!
+    echo     start-local-opener.bat NON TROVATO!
 )
 
 :: 4. Verifica script task scheduler
 if exist "%~dp0auto-open-terminal.bat" (
-    echo    ✅ auto-open-terminal.bat trovato
+    echo     auto-open-terminal.bat trovato
 ) else (
-    echo    ❌ auto-open-terminal.bat NON TROVATO!
+    echo     auto-open-terminal.bat NON TROVATO!
 )
 
 echo.
@@ -53,7 +53,7 @@ echo ========================================
 :: Verifica se il servizio esiste
 sc query "%SERVICE_NAME%" >nul 2>&1
 if %errorLevel% equ 0 (
-    echo ✅ Servizio %SERVICE_NAME% installato
+    echo  Servizio %SERVICE_NAME% installato
     
     :: Verifica stato del servizio
     sc query "%SERVICE_NAME%" | find "RUNNING" >nul 2>&1
@@ -70,7 +70,7 @@ if %errorLevel% equ 0 (
     "%~dp0nssm.exe" dump "%SERVICE_NAME%" 2>nul | findstr /i "Application AppType"
     
 ) else (
-    echo ❌ Servizio %SERVICE_NAME% NON installato
+    echo  Servizio %SERVICE_NAME% NON installato
     echo    💡 Esegui install-local-opener.bat come amministratore
 )
 
@@ -81,14 +81,14 @@ echo ========================================
 :: Verifica task scheduler
 schtasks /query /tn "%TASK_NAME%" >nul 2>&1
 if %errorLevel% equ 0 (
-    echo ✅ Task scheduler %TASK_NAME% configurato
+    echo  Task scheduler %TASK_NAME% configurato
     
     :: Mostra dettagli del task
     echo 📋 Dettagli task:
     schtasks /query /tn "%TASK_NAME%" /fo list | findstr /i "TaskName Next Run Time"
     
 ) else (
-    echo ❌ Task scheduler %TASK_NAME% NON configurato
+    echo  Task scheduler %TASK_NAME% NON configurato
     echo    💡 Esegui install-local-opener.bat come amministratore
 )
 
@@ -98,7 +98,7 @@ echo ========================================
 
 :: Verifica directory log
 if exist "C:\Logs\LocalOpener" (
-    echo ✅ Directory log trovata: C:\Logs\LocalOpener
+    echo  Directory log trovata: C:\Logs\LocalOpener
     
     :: Conta file di log
     dir "C:\Logs\LocalOpener\*.log" /b 2>nul | find /c /v "" >nul 2>&1
@@ -110,7 +110,7 @@ if exist "C:\Logs\LocalOpener" (
         echo    📊 File di log trovati: 0
     )
 ) else (
-    echo ❌ Directory log NON trovata: C:\Logs\LocalOpener
+    echo  Directory log NON trovata: C:\Logs\LocalOpener
 )
 
 echo.
@@ -119,7 +119,7 @@ echo ========================================
 
 :: Test apertura file
 echo Test apertura file locale...
-echo    💡 Apri la web app SGI Cruscotto
+echo    💡 Apri la web app Pannello Di Controllo SGI
 echo    💡 Vai su Impostazioni → Apertura File Locali
 echo    💡 Clicca "Rileva Percorsi Automaticamente"
 echo    💡 Clicca "Aggiungi Tutti" per Google Drive

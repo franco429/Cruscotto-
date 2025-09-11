@@ -33,14 +33,14 @@ echo.
 :: 1. Verifica file necessari
 echo 1. Verifica file necessari...
 if not exist "%NSSM_PATH%" (
-    echo    ❌ nssm.exe non trovato!
+    echo     nssm.exe non trovato!
     echo    💡 Assicurati che sia nella stessa cartella
     pause
     exit /b 1
 )
 
 if not exist "%STARTUP_SCRIPT%" (
-    echo    ❌ start-local-opener.bat non trovato!
+    echo     start-local-opener.bat non trovato!
     echo    💡 Creazione file mancante...
     
     :: Crea il file mancante
@@ -56,11 +56,11 @@ if not exist "%STARTUP_SCRIPT%" (
     echo echo Il servizio Local Opener è ora attivo e funzionante.
     echo echo.
     echo echo Caratteristiche:
-    echo echo - ✅ Avvio automatico all'avvio di Windows
-    echo echo - ✅ Terminale sempre visibile per monitoraggio
-    echo echo - ✅ Riavvio automatico in caso di crash
-    echo echo - ✅ Log salvati in C:\Logs\LocalOpener
-    echo echo - ✅ Task Scheduler per apertura automatica
+    echo echo -  Avvio automatico all'avvio di Windows
+    echo echo -  Terminale sempre visibile per monitoraggio
+    echo echo -  Riavvio automatico in caso di crash
+    echo echo -  Log salvati in C:\Logs\LocalOpener
+    echo echo -  Task Scheduler per apertura automatica
     echo echo.
     echo echo PER CHIUDERE IL SERVIZIO:
     echo echo 1. Chiudi questa finestra
@@ -85,9 +85,9 @@ if not exist "%STARTUP_SCRIPT%" (
     echo goto :loop
     ) > "%STARTUP_SCRIPT%"
     
-    echo    ✅ File start-local-opener.bat creato
+    echo     File start-local-opener.bat creato
 ) else (
-    echo    ✅ start-local-opener.bat trovato
+    echo     start-local-opener.bat trovato
 )
 
 :: 2. Ferma il servizio se è in esecuzione
@@ -98,7 +98,7 @@ if %errorLevel% equ 0 (
     echo    🛑 Arresto servizio %SERVICE_NAME%...
     sc stop "%SERVICE_NAME%" >nul 2>&1
     timeout /t 3 >nul
-    echo    ✅ Servizio arrestato
+    echo     Servizio arrestato
 ) else (
     echo    ℹ️  Servizio non attivo
 )
@@ -113,12 +113,12 @@ if %errorLevel% equ 0 (
     :: Verifica se punta al file corretto
     "%NSSM_PATH%" dump "%SERVICE_NAME%" | find "start-local-opener.bat" >nul 2>&1
     if %errorLevel% neq 0 (
-        echo    ⚠️  Configurazione errata, rimozione servizio...
+        echo      Configurazione errata, rimozione servizio...
         sc delete "%SERVICE_NAME%" >nul 2>&1
         timeout /t 2 >nul
-        echo    ✅ Servizio rimosso per riconfigurazione
+        echo     Servizio rimosso per riconfigurazione
     ) else (
-        echo    ✅ Configurazione servizio corretta
+        echo     Configurazione servizio corretta
     )
 ) else (
     echo    ℹ️  Servizio non installato
@@ -128,17 +128,17 @@ if %errorLevel% equ 0 (
 echo.
 echo 4. Rimozione task scheduler esistente...
 schtasks /delete /tn "%TASK_NAME%" /f >nul 2>&1
-echo    ✅ Task scheduler rimosso
+echo     Task scheduler rimosso
 
 :: 5. Reinstalla il servizio correttamente
 echo.
 echo 5. Reinstallazione servizio...
-echo    📁 Percorso script: %STARTUP_SCRIPT%
-echo    📁 Percorso NSSM: %NSSM_PATH%
+echo     Percorso script: %STARTUP_SCRIPT%
+echo     Percorso NSSM: %NSSM_PATH%
 
 "%NSSM_PATH%" install "%SERVICE_NAME%" "%STARTUP_SCRIPT%"
 if %errorLevel% neq 0 (
-    echo    ❌ Errore installazione servizio!
+    echo     Errore installazione servizio!
     pause
     exit /b 1
 )
@@ -150,19 +150,19 @@ echo 6. Configurazione servizio...
 "%NSSM_PATH%" set "%SERVICE_NAME%" AppType Interactive
 "%NSSM_PATH%" set "%SERVICE_NAME%" AppStdout "C:\Logs\LocalOpener\LocalOpener.log"
 "%NSSM_PATH%" set "%SERVICE_NAME%" AppStderr "C:\Logs\LocalOpener\LocalOpener-error.log"
-"%NSSM_PATH%" set "%SERVICE_NAME%" Description "Servizio Local Opener per apertura documenti locali SGI Cruscotto - Terminal sempre visibile"
+"%NSSM_PATH%" set "%SERVICE_NAME%" Description "Servizio Local Opener per apertura documenti locali Pannello Di Controllo SGI - Terminal sempre visibile"
 "%NSSM_PATH%" set "%SERVICE_NAME%" AppRestartDelay 10000
 
-echo    ✅ Configurazione servizio completata
+echo     Configurazione servizio completata
 
 :: 7. Crea directory log
 echo.
 echo 7. Creazione directory log...
 if not exist "C:\Logs\LocalOpener" (
     mkdir "C:\Logs\LocalOpener" >nul 2>&1
-    echo    ✅ Directory log creata: C:\Logs\LocalOpener
+    echo     Directory log creata: C:\Logs\LocalOpener
 ) else (
-    echo    ✅ Directory log esistente: C:\Logs\LocalOpener
+    echo     Directory log esistente: C:\Logs\LocalOpener
 )
 
 :: 8. Ricrea task scheduler
@@ -173,12 +173,12 @@ set TASK_SCRIPT=%~dp0auto-open-terminal.bat
 if exist "%TASK_SCRIPT%" (
     schtasks /create /tn "%TASK_NAME%" /tr "%TASK_SCRIPT%" /sc onlogon /ru "%USERNAME%" /rl highest /f
     if %errorLevel% equ 0 (
-        echo    ✅ Task scheduler ricreato
+        echo     Task scheduler ricreato
     ) else (
-        echo    ⚠️  Errore creazione task scheduler
+        echo      Errore creazione task scheduler
     )
 ) else (
-    echo    ⚠️  Script task scheduler non trovato
+    echo      Script task scheduler non trovato
 )
 
 :: 9. Avvia il servizio
@@ -186,9 +186,9 @@ echo.
 echo 9. Avvio servizio...
 sc start "%SERVICE_NAME%"
 if %errorLevel% equ 0 (
-    echo    ✅ Servizio avviato con successo
+    echo     Servizio avviato con successo
 ) else (
-    echo    ❌ Errore avvio servizio
+    echo     Errore avvio servizio
     echo    💡 Prova manualmente: sc start %SERVICE_NAME%
 )
 
@@ -197,9 +197,9 @@ echo ========================================
 echo    RIPRISTINO COMPLETATO!
 echo ========================================
 echo.
-echo ✅ Il servizio Local Opener è stato ripristinato
-echo ✅ Il terminale dovrebbe essere ora visibile
-echo ✅ Il servizio si avvierà automaticamente con Windows
+echo  Il servizio Local Opener è stato ripristinato
+echo  Il terminale dovrebbe essere ora visibile
+echo  Il servizio si avvierà automaticamente con Windows
 echo.
 echo 🔍 VERIFICA:
 echo - Esegui verify-installation.bat per controllo completo

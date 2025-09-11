@@ -59,31 +59,31 @@ describe('Excel Analysis Tests', () => {
   });
 
   it('should parse date from string format DD/MM/YYYY', async () => {
-    mockCell.value = '31/12/2024';
+    mockCell.value = '31/12/2025';
 
     const result = await analyzeExcelContent('/test/path/file.xlsx');
 
     expect(result.alertStatus).toBeDefined();
     expect(result.expiryDate).toBeInstanceOf(Date);
-    expect(result.expiryDate?.getFullYear()).toBe(2024);
+    expect(result.expiryDate?.getFullYear()).toBe(2025);
     expect(result.expiryDate?.getMonth()).toBe(11); // December is 11 (0-based)
     expect(result.expiryDate?.getDate()).toBe(31);
   });
 
   it('should parse date from string format YYYY-MM-DD', async () => {
-    mockCell.value = '2024-12-31';
+    mockCell.value = '2025-12-31';
 
     const result = await analyzeExcelContent('/test/path/file.xlsx');
 
     expect(result.alertStatus).toBeDefined();
     expect(result.expiryDate).toBeInstanceOf(Date);
-    expect(result.expiryDate?.getFullYear()).toBe(2024);
+    expect(result.expiryDate?.getFullYear()).toBe(2025);
     expect(result.expiryDate?.getMonth()).toBe(11);
     expect(result.expiryDate?.getDate()).toBe(31);
   });
 
   it('should parse Excel serial number', async () => {
-    // Excel serial number for 2024-12-31
+    // Excel serial number for 2025-12-31
     mockCell.value = 45658;
 
     const result = await analyzeExcelContent('/test/path/file.xlsx');
@@ -93,7 +93,7 @@ describe('Excel Analysis Tests', () => {
   });
 
   it('should parse Date object directly', async () => {
-    const testDate = new Date('2024-12-31');
+    const testDate = new Date('2025-12-31');
     mockCell.value = testDate;
 
     const result = await analyzeExcelContent('/test/path/file.xlsx');
@@ -171,12 +171,12 @@ describe('Excel Analysis Tests', () => {
 
   it('should parse various date formats correctly', async () => {
     const testCases = [
-      { input: '31/12/2024', expectedYear: 2024, expectedMonth: 11, expectedDay: 31 },
-      { input: '12/31/2024', expectedYear: 2024, expectedMonth: 11, expectedDay: 31 },
-      { input: '2024-12-31', expectedYear: 2024, expectedMonth: 11, expectedDay: 31 },
-      { input: '31-12-2024', expectedYear: 2024, expectedMonth: 11, expectedDay: 31 },
-      { input: '31.12.2024', expectedYear: 2024, expectedMonth: 11, expectedDay: 31 },
-      { input: '2024/12/31', expectedYear: 2024, expectedMonth: 11, expectedDay: 31 }
+      { input: '31/12/2025', expectedYear: 2025, expectedMonth: 11, expectedDay: 31 },
+      { input: '12/31/2025', expectedYear: 2025, expectedMonth: 11, expectedDay: 31 },
+      { input: '2025-12-31', expectedYear: 2025, expectedMonth: 11, expectedDay: 31 },
+      { input: '31-12-2025', expectedYear: 2025, expectedMonth: 11, expectedDay: 31 },
+      { input: '31.12.2025', expectedYear: 2025, expectedMonth: 11, expectedDay: 31 },
+      { input: '2025/12/31', expectedYear: 2025, expectedMonth: 11, expectedDay: 31 }
     ];
 
     for (const testCase of testCases) {

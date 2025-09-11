@@ -17,14 +17,14 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 if (!encryptionKey) {
   if (isProduction) {
-    console.error('❌ CRITICAL SECURITY ERROR: ENCRYPTION_KEY environment variable is required in production!');
+    console.error(' CRITICAL SECURITY ERROR: ENCRYPTION_KEY environment variable is required in production!');
     console.error('   This prevents data loss when the server restarts.');
     console.error('   Please set ENCRYPTION_KEY in your environment variables.');
     console.error('   Example: ENCRYPTION_KEY=your-secure-32-character-key');
     process.exit(1);
   } else {
     // Only allow auto-generation in development/testing
-    console.warn('⚠️  WARNING: ENCRYPTION_KEY not set. Generating temporary key for development.');
+    console.warn('WARNING: ENCRYPTION_KEY not set. Generating temporary key for development.');
     console.warn('   This key will change on server restart, making encrypted files inaccessible.');
     console.warn('   Set ENCRYPTION_KEY environment variable for persistent encryption.');
     encryptionKey = randomBytes(KEY_SIZE).toString('hex');
@@ -33,7 +33,7 @@ if (!encryptionKey) {
 
 // Validate key length for security
 if (encryptionKey.length < 32) {
-  console.error('❌ SECURITY ERROR: ENCRYPTION_KEY must be at least 32 characters long!');
+  console.error(' SECURITY ERROR: ENCRYPTION_KEY must be at least 32 characters long!');
   console.error(`   Current length: ${encryptionKey.length} characters`);
   console.error('   Please use a longer, secure key.');
   process.exit(1);

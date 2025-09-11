@@ -342,7 +342,7 @@ export default function SettingsPage() {
                                 )}
                               </button>
                             </div>
-                            {/* ✅  Visualizzazione requisiti password */}
+                            {/*   Visualizzazione requisiti password */}
                             {passwordForm.newPassword && (
                               <div className="mt-2">
                                 <p className="text-xs font-medium text-slate-700 dark:text-slate-300 mb-1 sm:mb-2">

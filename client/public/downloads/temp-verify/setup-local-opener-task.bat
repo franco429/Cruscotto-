@@ -56,7 +56,7 @@ schtasks /delete /tn "%TASK_NAME%" /f >nul 2>&1
 echo Creazione task scheduler...
 schtasks /create /tn "%TASK_NAME%" /tr "%WRAPPER_PATH%" /sc onlogon /ru "%USERNAME%" /rl highest /f /delay 0000:30
 if %errorlevel% neq 0 (
-    echo ❌ Errore nella creazione del task!
+    echo Errore nella creazione del task!
     pause
     exit /b 1
 )

@@ -510,9 +510,6 @@ export async function sendSyncErrorNotifications(
       });
     }
 
-    console.log(
-      `Notifiche di errore inviate a ${targetAdmins.length} amministratori`
-    );
   } catch (error) {
     console.error(
       "Errore nell'invio delle notifiche di sincronizzazione:",

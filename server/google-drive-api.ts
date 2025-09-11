@@ -39,7 +39,7 @@ export async function googleDriveDownloadFile(
           "application/vnd.openxmlformats-officedocument.presentationml.presentation";
         break;
       default:
-        throw new Error(`❌ Tipo Google non supportato: ${mimeType}`);
+        throw new Error(`Tipo Google non supportato: ${mimeType}`);
     }
 
     streamRes = await drive.files.export(

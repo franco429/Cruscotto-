@@ -22,7 +22,6 @@ const requiredEnvVars = [
   "FRONTEND_URL",
 ];
 
-console.log("🔍 Verifica configurazione produzione...\n");
 
 let allGood = true;
 const missingVars = [];
@@ -43,26 +42,18 @@ for (const key of requiredEnvVars) {
 }
 
 if (missingVars.length > 0) {
-  console.error("❌ Variabili d'ambiente mancanti:");
+  console.error(" Variabili d'ambiente mancanti:");
   missingVars.forEach(varName => console.error(`   - ${varName}`));
 }
 
 if (weakVars.length > 0) {
-  console.error("⚠️  Variabili d'ambiente deboli:");
+  console.error("  Variabili d'ambiente deboli:");
   weakVars.forEach(varName => console.error(`   - ${varName}`));
 }
 
 if (allGood) {
-  console.log("✅ Configurazione produzione OK!");
-  console.log("\n📋 Riepilogo configurazione:");
-  console.log(`   - Database: ${process.env.DB_URI ? "Configurato" : "Mancante"}`);
-  console.log(`   - SMTP: ${process.env.SMTP_HOST ? "Configurato" : "Mancante"}`);
-  console.log(`   - API URL: ${process.env.API_BASE_URL || "Non configurato"}`);
-  console.log(`   - Frontend URL: ${process.env.FRONTEND_URL || "Non configurato"}`);
-  console.log(`   - CORS Origin: ${process.env.CORS_ORIGIN || "Non configurato"}`);
   process.exit(0);
 } else {
-  console.error("\n❌ Configurazione incompleta o non sicura!");
-  console.error("   Crea un file .env.production con tutte le variabili richieste.");
+  console.error("\n Configurazione incompleta o non sicura!");
   process.exit(1);
 } 

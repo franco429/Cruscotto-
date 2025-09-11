@@ -52,7 +52,7 @@ export default function DocumentPage() {
   } = useQueryWithErrorHandling<Document>({
     queryKey: [`/api/documents/${params?.id}`],
     onError: (error: Error) => {
-      console.error("❌ Errore caricamento documento:", error);
+      console.error("Errore caricamento documento:", error);
     },
   });
 

@@ -244,7 +244,7 @@ export default function AuthPage() {
                         )}
                       />
 
-                      {/* ✅ MODIFICA: Campo password del LOGIN aggiornato con l'occhio */}
+                      {/* Campo password del LOGIN aggiornato con l'occhio */}
                       <FormField
                         control={loginForm.control}
                         name="password"
@@ -349,7 +349,7 @@ export default function AuthPage() {
                         )}
                       />
 
-                      {/* ✅ MODIFICA: Campo password della REGISTRAZIONE aggiornato con l'occhio */}
+                      {/* Campo password della REGISTRAZIONE aggiornato con l'occhio */}
                       <FormField
                         control={registerForm.control}
                         name="password"
@@ -392,7 +392,7 @@ export default function AuthPage() {
                         )}
                       />
 
-                      {/* ✅ MODIFICA: Campo CONFERMA password della REGISTRAZIONE aggiornato con l'occhio */}
+                      {/* Campo CONFERMA password della REGISTRAZIONE aggiornato con l'occhio */}
                       <FormField
                         control={registerForm.control}
                         name="confirmPassword"

@@ -18,7 +18,7 @@ if %errorLevel% neq 0 (
     goto :check_service
 )
 
-echo ✅ Servizio LocalOpener attivo e funzionante
+echo  Servizio LocalOpener attivo e funzionante
 echo.
 
 :: Apri il terminale del servizio se non è già visibile
@@ -39,7 +39,7 @@ echo Attendo apertura terminale...
 timeout /t 5 /nobreak >nul
 
 echo.
-echo ✅ Terminale Local Opener configurato per apertura automatica.
+echo  Terminale Local Opener configurato per apertura automatica.
 echo.
 echo Per verificare lo stato:
 echo - Servizio: sc query LocalOpener

@@ -26,14 +26,14 @@ async function testDocumentDeletion() {
         const deleteResult = await mongoStorage.deleteDocument(testDoc.legacyId);
         
         if (deleteResult) {
-          console.log("   ✅ Documento eliminato con successo");
+          console.log("Documento eliminato con successo");
           
           // Verifica che il documento sia stato eliminato
           const deletedDoc = await mongoStorage.getDocument(testDoc.legacyId);
           if (!deletedDoc) {
-            console.log("   ✅ Documento non più presente nel database");
+            console.log("Documento non più presente nel database");
           } else {
-            console.log("   ❌ ERRORE: Documento ancora presente nel database");
+            console.log("    ERRORE: Documento ancora presente nel database");
           }
           
           // Verifica che non sia più in obsoleti
@@ -41,13 +41,13 @@ async function testDocumentDeletion() {
           const stillInObsolete = obsoleteDocsAfter.find(doc => doc.legacyId === testDoc.legacyId);
           
           if (!stillInObsolete) {
-            console.log("   ✅ Documento non più presente in obsoleti");
+            console.log("Documento non più presente in obsoleti");
           } else {
-            console.log("   ❌ ERRORE: Documento ancora presente in obsoleti");
+            console.log("    ERRORE: Documento ancora presente in obsoleti");
           }
           
         } else {
-          console.log("   ❌ ERRORE: Eliminazione fallita");
+          console.log("    ERRORE: Eliminazione fallita");
         }
       } else {
         console.log("   ℹ️  Nessun documento obsoleto da testare");
@@ -56,10 +56,10 @@ async function testDocumentDeletion() {
       console.log("");
     }
     
-    console.log("✅ Test eliminazione documenti completato!");
+    console.loTest eliminazione documenti completato!");
     
   } catch (error) {
-    console.error("❌ Errore durante il test:", error);
+    console.error(" Errore durante il test:", error);
     process.exit(1);
   }
 }

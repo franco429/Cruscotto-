@@ -27,9 +27,9 @@ async function testObsoleteFix() {
       
       // Verifica che i numeri siano identici
       if (docs1.length === docs2.length && obsolete1.length === obsolete2.length) {
-        console.log("   ✅ SUCCESSO: I numeri sono identici - nessuna marcatura errata");
+        console.log("  SUCCESSO: I numeri sono identici - nessuna marcatura errata");
       } else {
-        console.log("   ❌ ERRORE: I numeri sono diversi - marcatura errata ancora presente");
+        console.log("    ERRORE: I numeri sono diversi - marcatura errata ancora presente");
       }
     }
     
@@ -52,17 +52,17 @@ async function testObsoleteFix() {
       console.log(`   Documenti obsoleti dopo: ${afterObsolete.length}`);
       
       if (beforeObsolete.length === afterObsolete.length) {
-        console.log("   ✅ SUCCESSO: Nessun documento aggiuntivo marcato come obsoleto");
+        console.log("  SUCCESSO: Nessun documento aggiuntivo marcato come obsoleto");
       } else {
-        console.log("   ⚠️  ATTENZIONE: Documenti aggiuntivi marcati come obsoleti");
+        console.log("  ATTENZIONE: Documenti aggiuntivi marcati come obsoleti");
       }
     }
     
     console.log("");
-    console.log("✅ Test completati con successo!");
+    console.log Test completati con successo!");
     
   } catch (error) {
-    console.error("❌ Errore durante il test:", error);
+    console.error(" Errore durante il test:", error);
     process.exit(1);
   }
 }

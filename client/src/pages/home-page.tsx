@@ -85,7 +85,7 @@ export default function HomePage() {
   } = useQueryWithErrorHandling<Document[]>({
     queryKey: ["/api/documents"],
     onError: (error) => {
-      console.error("❌ Errore caricamento documenti:", error);
+      console.error(" Errore caricamento documenti:", error);
     },
     // Aumenta il refetch interval se l'utente arriva dalla connessione Drive
     refetchInterval: isFromGoogleDriveConnection ? 2000 : false, // Refetch ogni 2 secondi per essere più veloci
@@ -104,7 +104,7 @@ export default function HomePage() {
   } = useQueryWithErrorHandling<Document[]>({
     queryKey: ["/api/documents/obsolete"],
     onError: (error) => {
-      console.error("❌ Errore caricamento documenti obsoleti:", error);
+      console.error(" Errore caricamento documenti obsoleti:", error);
     },
   });
 
@@ -136,7 +136,7 @@ export default function HomePage() {
           errorMessage = `HTTP ${response.status}: ${response.statusText}`;
         }
         
-        console.error("❌ Sync error details:", {
+        console.error(" Sync error details:", {
           status: response.status,
           statusText: response.statusText,
           message: errorMessage
@@ -179,7 +179,7 @@ export default function HomePage() {
         toast.error(errorMessage);
       }
       
-      console.error("❌ Errore sync:", error);
+      console.error(" Errore sync:", error);
     },
   });
 

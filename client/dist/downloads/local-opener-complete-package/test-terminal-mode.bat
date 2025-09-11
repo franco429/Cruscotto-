@@ -24,13 +24,13 @@ echo.
 
 sc query "%SERVICE_NAME%" >nul 2>&1
 if %errorLevel% equ 0 (
-    echo ✅ Servizio %SERVICE_NAME% trovato
+    echo  Servizio %SERVICE_NAME% trovato
     echo.
     echo Stato attuale del servizio:
     sc query "%SERVICE_NAME%"
     echo.
 ) else (
-    echo ❌ Servizio %SERVICE_NAME% non trovato
+    echo  Servizio %SERVICE_NAME% non trovato
     echo Esegui prima install-local-opener.bat
     echo.
     goto :end
@@ -43,13 +43,13 @@ echo ========================================
 echo.
 
 if exist "%NSSM_PATH%" (
-    echo ✅ NSSM trovato, verifica configurazione...
+    echo  NSSM trovato, verifica configurazione...
     echo.
     echo Configurazione attuale del servizio:
     "%NSSM_PATH%" dump "%SERVICE_NAME%"
     echo.
 ) else (
-    echo ❌ NSSM non trovato
+    echo  NSSM non trovato
     echo.
 )
 
@@ -61,13 +61,13 @@ echo.
 
 schtasks /query /tn "%TASK_NAME%" >nul 2>&1
 if %errorLevel% equ 0 (
-    echo ✅ Task scheduler %TASK_NAME% trovato
+    echo  Task scheduler %TASK_NAME% trovato
     echo.
     echo Configurazione task scheduler:
     schtasks /query /tn "%TASK_NAME%" /fo table
     echo.
 ) else (
-    echo ❌ Task scheduler %TASK_NAME% non trovato
+    echo  Task scheduler %TASK_NAME% non trovato
     echo Esegui configure-terminal-mode.bat per configurarlo
     echo.
 )
@@ -80,7 +80,7 @@ echo.
 
 set STARTUP_SCRIPT=%~dp0start-local-opener.bat
 if exist "%STARTUP_SCRIPT%" (
-    echo ✅ Script di avvio trovato: %STARTUP_SCRIPT%
+    echo  Script di avvio trovato: %STARTUP_SCRIPT%
     echo.
     echo Contenuto script di avvio:
     echo ----------------------------------------
@@ -88,7 +88,7 @@ if exist "%STARTUP_SCRIPT%" (
     echo ----------------------------------------
     echo.
 ) else (
-    echo ❌ Script di avvio non trovato
+    echo  Script di avvio non trovato
     echo.
 )
 
@@ -100,7 +100,7 @@ echo.
 
 set TASK_SCRIPT=%~dp0auto-open-terminal.bat
 if exist "%TASK_SCRIPT%" (
-    echo ✅ Script task scheduler trovato: %TASK_SCRIPT%
+    echo  Script task scheduler trovato: %TASK_SCRIPT%
     echo.
     echo Contenuto script task scheduler:
     echo ----------------------------------------
@@ -108,7 +108,7 @@ if exist "%TASK_SCRIPT%" (
     echo ----------------------------------------
     echo.
 ) else (
-    echo ❌ Script task scheduler non trovato
+    echo  Script task scheduler non trovato
     echo.
 )
 
@@ -120,13 +120,13 @@ echo.
 
 set LOG_DIR=C:\Logs\LocalOpener
 if exist "%LOG_DIR%" (
-    echo ✅ Directory log trovata: %LOG_DIR%
+    echo  Directory log trovata: %LOG_DIR%
     echo.
     echo Contenuto directory log:
     dir "%LOG_DIR%" /b
     echo.
 ) else (
-    echo ❌ Directory log non trovata
+    echo  Directory log non trovata
     echo.
 )
 
@@ -143,9 +143,9 @@ echo.
 echo - Arresto temporaneo del servizio...
 sc stop "%SERVICE_NAME%" >nul 2>&1
 if %errorLevel% equ 0 (
-    echo ✅ Servizio fermato
+    echo  Servizio fermato
 ) else (
-    echo ❌ Errore arresto servizio
+    echo  Errore arresto servizio
 )
 
 :: Attendi
@@ -155,9 +155,9 @@ timeout /t 3 /nobreak >nul
 echo - Riavvio del servizio...
 sc start "%SERVICE_NAME%" >nul 2>&1
 if %errorLevel% equ 0 (
-    echo ✅ Servizio riavviato
+    echo  Servizio riavviato
 ) else (
-    echo ❌ Errore riavvio servizio
+    echo  Errore riavvio servizio
 )
 
 :: Attendi che si avvii
@@ -167,9 +167,9 @@ timeout /t 5 /nobreak >nul
 echo - Verifica stato finale...
 sc query "%SERVICE_NAME%" | find "RUNNING" >nul 2>&1
 if %errorLevel% equ 0 (
-    echo ✅ Servizio in esecuzione
+    echo  Servizio in esecuzione
 ) else (
-    echo ❌ Servizio non in esecuzione
+    echo  Servizio non in esecuzione
 )
 
 echo.
@@ -228,9 +228,9 @@ echo ========================================
 echo.
 
 echo Se tutti i test sono passati:
-echo ✅ Il servizio Local Opener è configurato correttamente
-echo ✅ Il terminale dovrebbe aprirsi automaticamente all'avvio
-echo ✅ Il task scheduler è configurato per l'apertura automatica
+echo  Il servizio Local Opener è configurato correttamente
+echo  Il terminale dovrebbe aprirsi automaticamente all'avvio
+echo  Il task scheduler è configurato per l'apertura automatica
 echo.
 echo Se ci sono problemi:
 echo 1. Esegui configure-terminal-mode.bat per riconfigurare

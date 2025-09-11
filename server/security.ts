@@ -132,7 +132,7 @@ export function setupSecurity(app: Express) {
 
   app.use("/api/login", loginLimiter);
   app.use("/api/forgot-password", resetPasswordLimiter);
-  app.use("/api/contact", contactLimiter); // ✅ NUOVO: Applica rate limiting al contatto
+  app.use("/api/contact", contactLimiter); //  Applica rate limiting al contatto
 
   // Limiter generale per tutte le API
   const apiLimiter = rateLimit({

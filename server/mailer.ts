@@ -11,7 +11,7 @@ const SMTP_SECURE = process.env.SMTP_SECURE === "true";
 
 // Verifica che le variabili SMTP siano configurate
 if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASSWORD) {
-  console.error("❌ Configurazione SMTP incompleta. Variabili richieste:");
+  console.error(" Configurazione SMTP incompleta. Variabili richieste:");
   console.error("   SMTP_HOST:", SMTP_HOST ? "✅" : "❌");
   console.error("   SMTP_PORT:", SMTP_PORT ? "✅" : "❌");
   console.error("   SMTP_USER:", SMTP_USER ? "✅" : "❌");

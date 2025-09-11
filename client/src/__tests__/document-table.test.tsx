@@ -16,7 +16,7 @@ describe('DocumentTable Component Tests', () => {
       revision: 'Rev.1',
       fileType: 'pdf',
       alertStatus: 'valid',
-      updatedAt: new Date('2024-01-01'),
+      updatedAt: new Date('2025-01-01'),
       clientId: 1,
       driveUrl: 'https://drive.google.com/test1',
       isObsolete: false
@@ -28,7 +28,7 @@ describe('DocumentTable Component Tests', () => {
       revision: 'Rev.2',
       fileType: 'docx',
       alertStatus: 'warning',
-      updatedAt: new Date('2024-01-02'),
+      updatedAt: new Date('2025-01-02'),
       clientId: 1,
       driveUrl: 'https://drive.google.com/test2',
       isObsolete: false
@@ -40,7 +40,7 @@ describe('DocumentTable Component Tests', () => {
       revision: 'Rev.3',
       fileType: 'xlsx',
       alertStatus: 'expired',
-      updatedAt: new Date('2024-01-03'),
+      updatedAt: new Date('2025-01-03'),
       clientId: 1,
       driveUrl: 'https://drive.google.com/test3',
       isObsolete: false
@@ -254,7 +254,7 @@ describe('DocumentTable Component Tests', () => {
         />
       );
 
-      expect(screen.getByText('2024-01-01')).toBeInTheDocument();
+      expect(screen.getByText('2025-01-01')).toBeInTheDocument();
     });
 
     it('should display N/A for missing date', () => {

@@ -47,7 +47,7 @@ interface DocumentTableProps {
   onPreview: (document: Document) => void;
   isAdmin: boolean;
   pageSize?: number;
-  onDelete?: (deletedId: number) => void; // nuova prop opzionale
+  onDelete?: (deletedId: number) => void; 
 }
 
 export default function DocumentTable({
@@ -185,13 +185,13 @@ export default function DocumentTable({
         
         if (result.ok) {
           toast({
-            title: "✅ Documento aperto",
+            title: "Documento aperto",
             description: "Il documento è stato aperto con successo nell'applicazione locale.",
           });
         } else {
           // Fallback: offri download
           toast({
-            title: "⚠️ Impossibile aprire localmente",
+            title: " Impossibile aprire localmente",
             description: result.message || "Il documento non può essere aperto localmente. Vuoi scaricarlo?",
             action: (
               <ToastAction altText="Scarica documento" onClick={() => handleDownload(document)}>
@@ -203,7 +203,7 @@ export default function DocumentTable({
       } catch (error) {
         // Errore nel caricamento di Local Opener - fallback a download
         toast({
-          title: "⚠️ Errore apertura locale",
+          title: " Errore apertura locale",
           description: "Impossibile aprire il documento localmente. Vuoi scaricarlo?",
           action: (
             <ToastAction altText="Scarica documento" onClick={() => handleDownload(document)}>

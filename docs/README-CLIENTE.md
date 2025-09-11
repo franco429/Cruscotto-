@@ -1,8 +1,8 @@
-# 🎯 SGI Cruscotto - Guida per il Cliente
+# 🎯 Pannello Di Controllo SGI - Guida per il Cliente
 
-## 📖 Benvenuto in SGI Cruscotto
+## 📖 Benvenuto in Pannello Di Controllo SGI
 
-SGI Cruscotto è il sistema di gestione documentale che ti permette di organizzare, sincronizzare e gestire i tuoi documenti in modo sicuro e efficiente, integrando Google Drive per la sincronizzazione automatica.
+Pannello Di Controllo SGI è il sistema di gestione documentale che ti permette di organizzare, sincronizzare e gestire i tuoi documenti in modo sicuro e efficiente, integrando Google Drive per la sincronizzazione automatica.
 
 ---
 
@@ -146,7 +146,7 @@ Quando contatti il supporto, fornisci:
 
 ## 🎯 **RISULTATO FINALE**
 
-Con SGI Cruscotto otterrai:
+Con Pannello Di Controllo SGI otterrai:
 
 1. **📁 Organizzazione perfetta** dei documenti
 2. **⚡ Apertura istantanea** senza download
@@ -159,5 +159,5 @@ Con SGI Cruscotto otterrai:
 
 ---
 
-*Ultimo aggiornamento: Dicembre 2024*
+*Ultimo aggiornamento: Settembre 2025*
 *Versione: 2.0*

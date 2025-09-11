@@ -123,7 +123,7 @@ export default function BackupPage() {
       const confirmed = await showConfirmationWithLoading(
         {
           title: "Conferma Ripristino",
-          message: `⚠️ ATTENZIONE: Il ripristino di "${backupPath}" sovrascriverà tutti i dati attuali. Continuare?`,
+          message: ` ATTENZIONE: Il ripristino di "${backupPath}" sovrascriverà tutti i dati attuali. Continuare?`,
           confirmText: "Ripristina",
           cancelText: "Annulla",
           variant: "warning",

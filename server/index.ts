@@ -161,7 +161,7 @@ app.use((req, res, next) => {
       res.sendFile(path.join(viteDistPath, "index.html"));
     });
 
-    //  Middleware per gestione errori centralizzata (alla fine di tutto)
+    //  Middleware per gestione errori centralizzata 
     app.use((err: any, req: Request, res: Response, next: NextFunction) => {
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";

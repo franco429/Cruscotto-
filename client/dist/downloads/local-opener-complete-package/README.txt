@@ -1,25 +1,25 @@
 ========================================
-    LOCAL OPENER SERVICE - SGI CRUSCOTTO
+    LOCAL OPENER SERVICE - Pannello Di Controllo SGI
     Guida Completa all'Installazione e Configurazione
     CON APERTURA AUTOMATICA DEL TERMINALE
 ========================================
 
 📋 DESCRIZIONE
 Local Opener è un servizio Windows che permette l'apertura automatica
-dei documenti locali direttamente dall'interfaccia web SGI Cruscotto.
+dei documenti locali direttamente dall'interfaccia web Pannello Di Controllo SGI.
 Il servizio mantiene sempre visibile un terminale per monitoraggio e debug.
 ORA CON APERTURA AUTOMATICA DEL TERMINALE ALL'AVVIO DI WINDOWS!
 
 🚀 CARATTERISTICHE PRINCIPALI
-✅ Avvio automatico all'avvio di Windows
-✅ Terminale sempre visibile per monitoraggio
-✅ Riavvio automatico in caso di crash
-✅ Log salvati in C:\Logs\LocalOpener
-✅ Modalità interattiva per debug
-✅ Script di avvio personalizzato per affidabilità
-✅ Task Scheduler per apertura automatica del terminale
-✅ Loop infinito per mantenere il terminale sempre attivo
-✅ Apertura automatica del terminale ad ogni avvio di Windows
+ Avvio automatico all'avvio di Windows
+ Terminale sempre visibile per monitoraggio
+ Riavvio automatico in caso di crash
+ Log salvati in C:\Logs\LocalOpener
+ Modalità interattiva per debug
+ Script di avvio personalizzato per affidabilità
+ Task Scheduler per apertura automatica del terminale
+ Loop infinito per mantenere il terminale sempre attivo
+ Apertura automatica del terminale ad ogni avvio di Windows
 
 📁 FILE INCLUSI NEL PACCHETTO
 1. cruscotto-local-opener-setup.exe - Eseguibile principale del servizio
@@ -58,7 +58,7 @@ STEP 3: VERIFICA
 - Verifica che il task scheduler sia configurato
 
 STEP 4: CONFIGURAZIONE GOOGLE DRIVE
-- Apri la web app SGI Cruscotto
+- Apri la web app Pannello Di Controllo SGI
 - Vai su Impostazioni → Apertura File Locali
 - Clicca "Rileva Percorsi Automaticamente"
 - Clicca "Aggiungi Tutti" per configurare Google Drive
@@ -84,12 +84,12 @@ Per massimizzare la velocità di avvio:
 
 🆕 NUOVE FUNZIONALITÀ - APERTURA AUTOMATICA TERMINALE
 
-✅ **Task Scheduler Automatico**
+ **Task Scheduler Automatico**
 - Crea automaticamente un task Windows che si avvia ad ogni login utente
 - Apre automaticamente il terminale del servizio Local Opener
 - Funziona anche se Google Drive Desktop non è ancora montato
 
-✅ **Rilevamento Completo Percorsi Google Drive**
+ **Rilevamento Completo Percorsi Google Drive**
 - **SCANSIONE COMPLETA**: Controlla TUTTE le unità da A: a Z:
 - **Percorsi Supportati**:
   • A:\IL MIO DRIVE, A:\MY DRIVE, A:\Google Drive, A:\GoogleDrive
@@ -119,7 +119,7 @@ Per massimizzare la velocità di avvio:
   • Y:\IL MIO DRIVE, Y:\MY DRIVE, Y:\Google Drive, Y:\GoogleDrive
   • Z:\IL MIO DRIVE, Z:\MY DRIVE, Z:\Google Drive, Z:\GoogleDrive
 
-✅ **Rilevamento Avanzato**
+ **Rilevamento Avanzato**
 - Controlla anche percorsi come: GDrive, DriveFS, GoogleDriveFS
 - Verifica File Stream, Desktop, Sync, Backup, Mirror, Clone
 - Scansione registro Windows per percorsi nascosti
@@ -235,13 +235,13 @@ Dopo l'installazione, verifica che:
 🚨 PROBLEMI COMUNI E SOLUZIONI
 
 ❌ PROBLEMA: "Il servizio si avvia ma il terminale non si apre"
-✅ SOLUZIONE: Esegui fix-installation.bat come amministratore
+ SOLUZIONE: Esegui fix-installation.bat come amministratore
 
 ❌ PROBLEMA: "Il servizio non si avvia automaticamente con Windows"
-✅ SOLUZIONE: Verifica con verify-installation.bat e ripara con fix-installation.bat
+ SOLUZIONE: Verifica con verify-installation.bat e ripara con fix-installation.bat
 
 ❌ PROBLEMA: "Google Drive non viene rilevato automaticamente"
-✅ SOLUZIONE: Esegui configure-google-drive-paths.bat per scansione completa
+ SOLUZIONE: Esegui configure-google-drive-paths.bat per scansione completa
 
 ❌ PROBLEMA: "Installazione precedente difettosa"
-✅ SOLUZIONE: Esegui force-uninstall-local-opener.bat e poi install-local-opener.bat
+ SOLUZIONE: Esegui force-uninstall-local-opener.bat e poi install-local-opener.bat

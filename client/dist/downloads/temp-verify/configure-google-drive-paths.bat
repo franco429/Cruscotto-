@@ -44,7 +44,7 @@ if %errorLevel% neq 0 (
     exit /b 1
 )
 
-echo ✅ Servizio LocalOpener attivo
+echo Servizio LocalOpener attivo
 echo.
 
 :: 1. SCANSIONE AUTOMATICA PERCORSI GOOGLE DRIVE
@@ -203,9 +203,9 @@ echo.
 echo # 3. Risultati
 echo Write-Host "`nRisultati rilevamento:" -ForegroundColor Yellow
 echo if ($drivePaths.Count -eq 0^) {
-echo     Write-Host "  ❌ Nessun percorso Google Drive rilevato" -ForegroundColor Red
+echo     Write-Host "  Nessun percorso Google Drive rilevato" -ForegroundColor Red
 echo } else {
-echo     Write-Host "  ✅ Trovati $($drivePaths.Count^) percorsi:" -ForegroundColor Green
+echo     Write-Host "  Trovati $($drivePaths.Count^) percorsi:" -ForegroundColor Green
 echo     foreach ($path in $drivePaths^) {
 echo         Write-Host "     • $path" -ForegroundColor White
 echo     }
@@ -229,9 +229,9 @@ echo # 5. Test connessione Local Opener
 echo Write-Host "Test connessione Local Opener..." -ForegroundColor Cyan
 echo try {
 echo     $response = Invoke-RestMethod -Uri "http://127.0.0.1:17654/health" -Method Get -TimeoutSec 5
-echo     Write-Host "  ✅ Local Opener raggiungibile" -ForegroundColor Green
+echo     Write-Host "  Local Opener raggiungibile" -ForegroundColor Green
 echo } catch {
-echo     Write-Host "  ❌ Local Opener non raggiungibile" -ForegroundColor Red
+echo     Write-Host "  Local Opener non raggiungibile" -ForegroundColor Red
 echo     Write-Host "     Verifica che il servizio sia attivo" -ForegroundColor Yellow
 echo }
 echo.
@@ -240,7 +240,7 @@ echo Write-Host "Test rilevamento via API Local Opener..." -ForegroundColor Cyan
 echo try {
 echo     $apiResponse = Invoke-RestMethod -Uri "http://127.0.0.1:17654/detect-drive-paths-with-retry?retries=3&delay=1000" -Method Get -TimeoutSec 30
 echo     if ($apiResponse.paths -and $apiResponse.paths.Count -gt 0^) {
-echo         Write-Host "  ✅ API rilevamento funzionante" -ForegroundColor Green
+echo         Write-Host "  API rilevamento funzionante" -ForegroundColor Green
 echo         Write-Host "     Percorsi rilevati via API: $($apiResponse.paths.Count^)" -ForegroundColor White
 echo         foreach ($apiPath in $apiResponse.paths^) {
 echo             Write-Host "       • $apiPath" -ForegroundColor Gray
@@ -249,7 +249,7 @@ echo     } else {
 echo         Write-Host "  ⚠ API rilevamento non ha trovato percorsi" -ForegroundColor Yellow
 echo     }
 echo } catch {
-echo     Write-Host "  ❌ Errore API rilevamento" -ForegroundColor Red
+echo     Write-Host "  Errore API rilevamento" -ForegroundColor Red
 echo     Write-Host "     $($_.Exception.Message^)" -ForegroundColor Yellow
 echo }
 echo.
@@ -260,12 +260,12 @@ echo Write-Host "Scansione completata: Tutte le unità da A: a Z: controllate" -
 echo.
 echo if ($drivePaths.Count -gt 0^) {
 echo     Write-Host "`n🎯 PROSSIMI PASSI:" -ForegroundColor Yellow
-echo     Write-Host "1. Apri la web app SGI Cruscotto" -ForegroundColor White
+echo     Write-Host "1. Apri la web app Pannello Di Controllo SGI" -ForegroundColor White
 echo     Write-Host "2. Vai su Impostazioni → Apertura File Locali" -ForegroundColor White
 echo     Write-Host "3. Clicca 'Rileva Percorsi Google Drive'" -ForegroundColor White
 echo     Write-Host "4. Clicca 'Aggiungi Tutti' per configurare automaticamente" -ForegroundColor White
 echo } else {
-echo     Write-Host "`n⚠️  PROBLEMI RILEVATI:" -ForegroundColor Red
+echo     Write-Host "`n PROBLEMI RILEVATI:" -ForegroundColor Red
 echo     Write-Host "• Google Drive Desktop potrebbe non essere installato" -ForegroundColor Yellow
 echo     Write-Host "• Google Drive potrebbe non essere montato" -ForegroundColor Yellow
 echo     Write-Host "• Verifica che Google Drive sia attivo e sincronizzato" -ForegroundColor Yellow
@@ -290,7 +290,7 @@ echo.
 
 :: Verifica risultati
 if exist "%CONFIG_DIR%\google-drive-paths.json" (
-    echo ✅ File configurazione creato
+    echo File configurazione creato
     echo   Percorso: %CONFIG_DIR%\google-drive-paths.json
     echo.
     echo Contenuto file configurazione:
@@ -299,7 +299,7 @@ if exist "%CONFIG_DIR%\google-drive-paths.json" (
     echo ----------------------------------------
     echo.
 ) else (
-    echo ❌ File configurazione non creato
+    echo File configurazione non creato
     echo.
 )
 
@@ -309,7 +309,7 @@ echo - La configurazione è stata salvata in: %CONFIG_DIR%
 echo - Usa la web app per aggiungere i percorsi rilevati
 echo.
 echo 🚀 PROSSIMI PASSI:
-echo 1. Apri la web app SGI Cruscotto
+echo 1. Apri la web app Pannello Di Controllo SGI
 echo 2. Vai su Impostazioni → Apertura File Locali
 echo 3. Clicca "Rileva Percorsi Google Drive"
 echo 4. Clicca "Aggiungi Tutti" per configurare automaticamente

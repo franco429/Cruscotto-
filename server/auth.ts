@@ -79,7 +79,7 @@ export function setupAuth(app: Express) {
   const sessionSecret = process.env.SESSION_SECRET;
   if (!sessionSecret || sessionSecret.length < 32) {
     console.error(
-      "❌ CRITICAL SECURITY ERROR: SESSION_SECRET environment variable is required and must be at least 32 characters long!"
+      " CRITICAL SECURITY ERROR: SESSION_SECRET environment variable is required and must be at least 32 characters long!"
     );
     console.error(
       "   Please set SESSION_SECRET in your environment variables."
@@ -351,7 +351,7 @@ export async function migratePasswordIfNeeded(
     }
   } catch (error) {
     console.error(
-      `❌ Errore nella migrazione password per utente ${userId}:`,
+      ` Errore nella migrazione password per utente ${userId}:`,
       (error as Error).message
     );
   }

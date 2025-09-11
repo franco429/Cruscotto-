@@ -74,11 +74,11 @@ if not exist "%STARTUP_SCRIPT%" (
     echo echo Il servizio Local Opener è ora attivo e funzionante.
     echo echo.
     echo echo Caratteristiche:
-    echo echo - ✅ Avvio automatico all'avvio di Windows
-    echo echo - ✅ Terminale sempre visibile per monitoraggio
-    echo echo - ✅ Riavvio automatico in caso di crash
-    echo echo - ✅ Log salvati in C:\Logs\LocalOpener
-    echo echo - ✅ Task Scheduler per apertura automatica
+    echo echo - Avvio automatico all'avvio di Windows
+    echo echo - Terminale sempre visibile per monitoraggio
+    echo echo - Riavvio automatico in caso di crash
+    echo echo - Log salvati in C:\Logs\LocalOpener
+    echo echo - Task Scheduler per apertura automatica
     echo echo.
     echo echo PER CHIUDERE IL SERVIZIO:
     echo echo 1. Chiudi questa finestra
@@ -102,9 +102,9 @@ if not exist "%STARTUP_SCRIPT%" (
     echo echo Riavvio automatico...
     echo goto :loop
     ) > "%STARTUP_SCRIPT%"
-    echo ✅ Script di avvio personalizzato creato
+    echo Script di avvio personalizzato creato
 ) else (
-    echo ✅ Script di avvio personalizzato già esistente
+    echo Script di avvio personalizzato già esistente
 )
 
 :: Crea script per il task scheduler se non esiste
@@ -152,27 +152,27 @@ if not exist "%TASK_SCRIPT%" (
     echo echo.
     echo pause
     ) > "%TASK_SCRIPT%"
-    echo ✅ Script per task scheduler creato
+    echo Script per task scheduler creato
 ) else (
-    echo ✅ Script per task scheduler già esistente
+    echo Script per task scheduler già esistente
 )
 
 :: Configura il servizio per utilizzare lo script di avvio personalizzato
 echo - Configurazione percorso eseguibile con script personalizzato...
 "%NSSM_PATH%" set "%SERVICE_NAME%" Application "%STARTUP_SCRIPT%"
 if %errorLevel% equ 0 (
-    echo ✅ Percorso eseguibile aggiornato
+    echo Percorso eseguibile aggiornato
 ) else (
-    echo ❌ Errore aggiornamento percorso eseguibile
+    echo  Errore aggiornamento percorso eseguibile
 )
 
 :: Configura il servizio per mantenere il terminale aperto
 echo - Configurazione modalità interattiva (terminal sempre visibile)...
 "%NSSM_PATH%" set "%SERVICE_NAME%" AppType Interactive
 if %errorLevel% equ 0 (
-    echo ✅ Modalità interattiva configurata
+    echo Modalità interattiva configurata
 ) else (
-    echo ❌ Errore configurazione modalità interattiva
+    echo  Errore configurazione modalità interattiva
 )
 
 echo - Configurazione variabili ambiente console...
@@ -180,9 +180,9 @@ echo - Configurazione variabili ambiente console...
 "%NSSM_PATH%" set "%SERVICE_NAME%" AppEnvironmentExtra "TERMINAL_VISIBLE=1"
 "%NSSM_PATH%" set "%SERVICE_NAME%" AppEnvironmentExtra "AUTO_RESTART=1"
 if %errorLevel% equ 0 (
-    echo ✅ Variabili ambiente console configurate
+    echo Variabili ambiente console configurate
 ) else (
-    echo ❌ Errore configurazione variabili ambiente
+    echo  Errore configurazione variabili ambiente
 )
 
 echo - Configurazione persistenza terminale...
@@ -191,18 +191,18 @@ echo - Configurazione persistenza terminale...
 "%NSSM_PATH%" set "%SERVICE_NAME%" AppStopMethodWindow 0
 "%NSSM_PATH%" set "%SERVICE_NAME%" AppStopMethodThreads 0
 if %errorLevel% equ 0 (
-    echo ✅ Persistenza terminale configurata
+    echo Persistenza terminale configurata
 ) else (
-    echo ❌ Errore configurazione persistenza
+    echo  Errore configurazione persistenza
 )
 
 :: Aggiorna la descrizione del servizio
 echo - Aggiornamento descrizione servizio...
-"%NSSM_PATH%" set "%SERVICE_NAME%" Description "Servizio Local Opener per apertura documenti locali SGI Cruscotto - Terminal sempre visibile per funzionamento e monitoraggio"
+"%NSSM_PATH%" set "%SERVICE_NAME%" Description "Servizio Local Opener per apertura documenti locali Pannello Di Controllo SGI - Terminal sempre visibile per funzionamento e monitoraggio"
 if %errorLevel% equ 0 (
-    echo ✅ Descrizione aggiornata
+    echo Descrizione aggiornata
 ) else (
-    echo ❌ Errore aggiornamento descrizione
+    echo  Errore aggiornamento descrizione
 )
 
 :: CONFIGURAZIONE TASK SCHEDULER PER APERTURA AUTOMATICA
@@ -221,18 +221,18 @@ schtasks /delete /tn "%TASK_NAME%" /f >nul 2>&1
 echo - Creazione task scheduler per apertura automatica...
 schtasks /create /tn "%TASK_NAME%" /tr "%TASK_SCRIPT%" /sc onlogon /ru "%USERNAME%" /rl highest /f
 if %errorLevel% equ 0 (
-    echo ✅ Task scheduler creato con successo
+    echo Task scheduler creato con successo
     echo   - Nome: %TASK_NAME%
     echo   - Trigger: All'avvio di Windows
     echo   - Script: %TASK_SCRIPT%
 ) else (
-    echo ❌ Errore creazione task scheduler
+    echo  Errore creazione task scheduler
     echo Tentativo alternativo con configurazione semplificata...
     schtasks /create /tn "%TASK_NAME%" /tr "%TASK_SCRIPT%" /sc onstart /ru "%USERNAME%" /f
     if %errorLevel% equ 0 (
-        echo ✅ Task scheduler creato con configurazione alternativa
+        echo Task scheduler creato con configurazione alternativa
     ) else (
-        echo ❌ Impossibile creare il task scheduler
+        echo  Impossibile creare il task scheduler
         echo Il servizio funzionerà ma il terminale potrebbe non aprirsi automaticamente
     )
 )
@@ -258,13 +258,13 @@ if %errorLevel% equ 0 (
     echo Il task scheduler per apertura automatica è stato configurato.
     echo.
     echo 🎯 CARATTERISTICHE ATTIVATE:
-    echo - ✅ Terminale sempre aperto per funzionamento servizio
-    echo - ✅ Modalità interattiva per debug e monitoraggio
-    echo - ✅ Persistenza del terminale anche in caso di errori
-    echo - ✅ Script di avvio personalizzato per affidabilità
-    echo - ✅ Avvio automatico all'avvio di Windows
-    echo - ✅ Task Scheduler per apertura automatica terminale
-    echo - ✅ Loop infinito per mantenere il terminale sempre attivo
+    echo - Terminale sempre aperto per funzionamento servizio
+    echo - Modalità interattiva per debug e monitoraggio
+    echo - Persistenza del terminale anche in caso di errori
+    echo - Script di avvio personalizzato per affidabilità
+    echo - Avvio automatico all'avvio di Windows
+    echo - Task Scheduler per apertura automatica terminale
+    echo - Loop infinito per mantenere il terminale sempre attivo
     echo.
     echo 📋 INFORMAZIONI IMPORTANTI:
     echo - Il terminale del servizio rimarrà sempre aperto
@@ -290,7 +290,7 @@ if %errorLevel% equ 0 (
     echo 4. Verifica che il terminale si riapra automaticamente
     echo 5. Verifica che il task scheduler sia configurato correttamente
     echo.
-    echo 📁 FILE UTILIZZATI:
+    echo  FILE UTILIZZATI:
     echo - Script di avvio: %STARTUP_SCRIPT%
     echo - Script task scheduler: %TASK_SCRIPT%
     echo - Configurazione NSSM: Servizio Windows

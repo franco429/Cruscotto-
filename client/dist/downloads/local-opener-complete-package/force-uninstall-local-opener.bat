@@ -51,56 +51,56 @@ timeout /t 3 >nul
 echo - Rimozione servizio da Windows...
 sc delete "%SERVICE_NAME%" >nul 2>&1
 if %errorLevel% equ 0 (
-    echo ✅ Servizio rimosso da Windows
+    echo  Servizio rimosso da Windows
 ) else (
-    echo ❌ Errore rimozione servizio Windows
+    echo  Errore rimozione servizio Windows
 )
 
 :: 3. Rimuovi configurazioni NSSM se esiste
 if exist "%NSSM_PATH%" (
     echo - Rimozione configurazioni NSSM...
     "%NSSM_PATH%" remove "%SERVICE_NAME%" confirm >nul 2>&1
-    echo ✅ Configurazioni NSSM rimosse
+    echo  Configurazioni NSSM rimosse
 )
 
 :: 4. Rimuovi directory log
 if exist "%LOG_DIR%" (
     echo - Rimozione directory log...
     rmdir /s /q "%LOG_DIR%" >nul 2>&1
-    echo ✅ Directory log rimossa
+    echo  Directory log rimossa
 )
 
 :: 5. Rimuovi script di avvio personalizzato
 if exist "%STARTUP_SCRIPT%" (
     echo - Rimozione script di avvio personalizzato...
     del "%STARTUP_SCRIPT%" >nul 2>&1
-    echo ✅ Script di avvio rimosso
+    echo  Script di avvio rimosso
 )
 
 :: 6. Rimuovi da avvio automatico Windows
 echo - Rimozione da avvio automatico Windows...
 reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "LocalOpener" /f >nul 2>&1
 reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "LocalOpener" /f >nul 2>&1
-echo ✅ Avvio automatico rimosso
+echo  Avvio automatico rimosso
 
 :: 7. Rimuovi processi rimasti
 echo - Rimozione processi rimasti...
 taskkill /f /im "cruscotto-local-opener-setup.exe" >nul 2>&1
 taskkill /f /im "LocalOpener.exe" >nul 2>&1
-echo ✅ Processi rimossi
+echo  Processi rimossi
 
 :: 8. Pulizia registro
 echo - Pulizia registro Windows...
 reg delete "HKLM\SYSTEM\CurrentControlSet\Services\%SERVICE_NAME%" /f >nul 2>&1
 reg delete "HKLM\SOFTWARE\NSSM" /f >nul 2>&1
-echo ✅ Registro pulito
+echo  Registro pulito
 
 echo.
 echo ========================================
 echo    RIMOZIONE FORZATA COMPLETATA!
 echo ========================================
 echo.
-echo ✅ Il servizio Local Opener è stato rimosso completamente.
+echo  Il servizio Local Opener è stato rimosso completamente.
 echo.
 echo 🗑️ OPERAZIONI ESEGUITE:
 echo - Servizio Windows rimosso

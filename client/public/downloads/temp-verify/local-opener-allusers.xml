@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
-    <Date>2024-01-01T00:00:00</Date>
-    <Author>SGI Cruscotto</Author>
+    <Date>2025-01-01T00:00:00</Date>
+    <Author>Pannello Di Controllo SGI</Author>
     <Description>Local Opener Service per apertura documenti locali da Google Drive Desktop. Esegue per tutti gli utenti con delay per attendere il montaggio di Google Drive.</Description>
     <URI>\LocalOpener_AllUsers</URI>
   </RegistrationInfo>

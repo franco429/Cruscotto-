@@ -2,7 +2,7 @@
 
 ## Cos'è Local Opener?
 
-Local Opener è un componente che permette a SGI Cruscotto di aprire i vostri documenti direttamente dal vostro PC, senza doverli scaricare ogni volta. Funziona perfettamente con Google Drive Desktop.
+Local Opener è un componente che permette a Pannello Di Controllo SGI di aprire i vostri documenti direttamente dal vostro PC, senza doverli scaricare ogni volta. Funziona perfettamente con Google Drive Desktop.
 
 ## 🚀 Installazione Rapida (5 minuti)
 
@@ -23,7 +23,7 @@ Local Opener è un componente che permette a SGI Cruscotto di aprire i vostri do
 3. **Riavvia il PC** per completare l'installazione
 
 4. **Verifica il funzionamento**:
-   - Apri SGI Cruscotto nel browser
+   - Apri Pannello Di Controllo SGI nel browser
    - Vai alla sezione documenti
    - Clicca sull'icona 👁️ di un documento
    - Il documento si aprirà direttamente!
@@ -63,4 +63,4 @@ In caso di problemi:
 
 ---
 
-© 2024 SGI Cruscotto - Local Opener v1.2
+© 2025 Pannello Di Controllo SGI - Local Opener v1.2

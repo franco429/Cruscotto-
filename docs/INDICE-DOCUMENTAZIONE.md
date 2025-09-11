@@ -1,4 +1,4 @@
-# 📚 Indice Documentazione SGI Cruscotto
+# 📚 Indice Documentazione Pannello Di Controllo SGI
 
 ## 🎯 **PER IL CLIENTE FINALE**
 
@@ -55,5 +55,5 @@ Tutte le documentazioni obsolete, duplicate o tecniche non necessarie per il cli
 
 ---
 
-*Ultimo aggiornamento: Dicembre 2024*
+*Ultimo aggiornamento: Settembre 2025*
 *Documentazione pulita e ottimizzata per il cliente finale*

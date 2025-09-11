@@ -28,16 +28,8 @@ export async function syncDocuments(userId: number): Promise<any> {
 
     const files = await googleDriveListFiles(drive, client.driveFolderId);
    
-    console.log(
-      "📄 [DRIVE] Dettaglio file:",
-      files.map((f) => ({
-        name: f.name,
-        id: f.id,
-        mimeType: f.mimeType,
-      }))
-    );
   } catch (error) {
-    console.error("❌ [DRIVE] Errore sincronizzazione:", error);
+    console.error(" [DRIVE] Errore sincronizzazione:", error);
     throw error;
   }
 }
