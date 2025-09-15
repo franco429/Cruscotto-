@@ -205,7 +205,7 @@ export default function SidebarNavigation({
               <img
                 src="/logo/logo sgi.jpg"
                 alt="Logo SGI"
-                className="h-10 w-10 object-cover mr-2"
+                className="hz-10 w-10 object-cover mr-2"
                 width="40"
                 height="40"
               />

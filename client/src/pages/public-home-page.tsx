@@ -35,7 +35,7 @@ export default function PublicHomePage() {
               <img
                 src="/logo/logo sgi.jpg"
                 alt="Logo SGI"
-                className="h-8 w-8 object-cover"
+                className="h-10 w-10 object-cover"
               />
               <span className="font-bold text-lg sm:text-xl text-slate-900 dark:text-white">
                 <span className="hidden sm:inline">Pannello di Controllo SGI</span>
@@ -57,11 +57,6 @@ export default function PublicHomePage() {
               >
                 Terms of Service
               </a>
-              <Link href="/auth">
-                <Button className="bg-primary hover:bg-primary/90">
-                  Accedi
-                </Button>
-              </Link>
             </div>
 
             {/* Mobile Menu Button */}
@@ -96,13 +91,6 @@ export default function PublicHomePage() {
                 >
                   Terms of Service
                 </a>
-                <div className="px-3 py-2">
-                  <Link href="/auth" onClick={() => setIsMobileMenuOpen(false)}>
-                    <Button className="w-full bg-primary hover:bg-primary/90">
-                      Accedi
-                    </Button>
-                  </Link>
-                </div>
               </div>
             </div>
           )}
@@ -111,21 +99,21 @@ export default function PublicHomePage() {
 
       {/* Hero Section */}
       <main className="flex-1">
-        <section className="py-16 sm:py-20 lg:py-24">
+        <section className="py-10 sm:py-14 lg:py-18">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-4xl mx-auto">
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 dark:text-white mb-6">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 dark:text-white mb-10 mt-5">
                 Gestione Documenti ISO
                 <span className="block text-primary">Professionale</span>
               </h1>
-              <p className="text-xl text-slate-600 dark:text-slate-400 mb-8 leading-relaxed">
+              <p className="text-xl text-slate-600 dark:text-slate-400 mb-8 mt-8 leading-relaxed">
                 Soluzione completa per la gestione dei documenti ISO, con controllo delle revisioni,
                 tracciamento delle scadenze e monitoraggio della conformità. Integrazione nativa con Google Drive.
               </p>
 
               <div className="flex justify-center mb-12">
                 <Link href="/auth">
-                  <Button size="lg" className="bg-primary hover:bg-primary/90 text-lg px-8 py-3">
+                  <Button size="lg" className="bg-primary hover:bg-primary/90 text-lg px-8 py-3 mt-10">
                     Inizia Ora
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
