@@ -3,7 +3,7 @@ services:
     name: cruscotto-backend
     env: node
     plan: starter
-    buildCommand: cd server && npm install && npm run build
+    buildCommand: npm install && npm run build
     startCommand: cd server && npm start
     envVars:
       - key: NODE_ENV
@@ -12,6 +12,64 @@ services:
         value: "--max-old-space-size=2048 --max-semi-space-size=512"
       - key: PORT
         value: 10000
+      
+      # Database & Sessions
+      - key: DB_URI
+        sync: false
+      - key: SESSION_SECRET
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: LINK_SECRET_KEY
+        sync: false
+      
+      # SMTP Configuration
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_SECURE
+        value: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SUPPORT_EMAIL
+        sync: false
+      
+      # Frontend URLs  
+      - key: CORS_ORIGIN
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      
+      # Google Drive Integration (Backend)
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: API_GOOGLE_URL
+        sync: false
+      
+      # Google Drive Integration (Frontend - embedded during build)
+      - key: VITE_GOOGLE_CLIENT_ID
+        sync: false
+      - key: VITE_GOOGLE_API_KEY
+        sync: false
+      - key: VITE_API_BASE_URL
+        sync: false
+      - key: VITE_API_GOOGLE_URL
+        sync: false
+      
+      # File Storage
+      - key: LOCAL_UPLOAD_PATH
+        value: uploads
+      - key: ENABLE_LOCAL_UPLOAD
+        value: true
+      - key: ENABLE_GOOGLE_DRIVE
+        value: true
     healthCheckPath: /api/health
     autoDeploy: true
     scaling:

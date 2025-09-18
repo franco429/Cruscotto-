@@ -808,6 +808,89 @@ export async function registerRoutes(app: Express): Promise<Express> {
     }
   });
 
+  // PUT - Aggiorna folder ID del client (per Google Drive Picker)
+  app.put("/api/clients/:id/folder", isAuthenticated, async (req, res) => {
+    try {
+      const clientId = parseInt(req.params.id, 10);
+      const { driveFolderId, folderName } = req.body;
+
+      if (!req.user?.legacyId) {
+        return res.status(401).json({ message: "Utente non autenticato" });
+      }
+
+      // Validazione dei dati in input
+      if (!driveFolderId || typeof driveFolderId !== 'string') {
+        return res.status(400).json({ message: "ID cartella Google Drive richiesto" });
+      }
+
+      // Verifica che il client esista
+      const existingClient = await mongoStorage.getClient(clientId);
+      if (!existingClient) {
+        return res.status(404).json({ message: "Cliente non trovato" });
+      }
+
+      // Verifica che l'utente possa modificare questo client
+      const userClients = req.user.role === 'admin' 
+        ? await mongoStorage.getClientsByAdminId(req.user.legacyId)
+        : [];
+      
+      // Admin può modificare solo i propri clients, superadmin può modificare tutti
+      const canEdit = req.user.role === 'superadmin' || 
+        (req.user.role === 'admin' && userClients.some(client => client.legacyId === clientId)) ||
+        (req.user.clientId === clientId); // L'utente può modificare il proprio client
+
+      if (!canEdit) {
+        return res.status(403).json({
+          message: "Non hai i permessi per modificare questo cliente",
+        });
+      }
+
+      // Aggiorna solo il folder ID
+      const updatedClient = await mongoStorage.updateClient(clientId, {
+        driveFolderId: driveFolderId,
+      });
+
+      if (!updatedClient) {
+        return res.status(404).json({ message: "Cliente non trovato" });
+      }
+
+      // Log dell'operazione
+      if (req.user) {
+        await mongoStorage.createLog({
+          userId: req.user.legacyId,
+          action: "client-folder-update",
+          documentId: null,
+          details: {
+            message: `Cartella Google Drive aggiornata per cliente ${clientId}`,
+            clientId: clientId,
+            folderId: driveFolderId,
+            folderName: folderName || 'N/A',
+            timestamp: new Date().toISOString(),
+          },
+        });
+      }
+
+      res.json({
+        success: true,
+        client: updatedClient,
+        message: "Cartella Google Drive aggiornata con successo",
+      });
+
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Errore sconosciuto";
+      logger.error("Error updating client folder", {
+        error: errorMessage,
+        clientId: req.params.id,
+        userId: req.user?.legacyId,
+      });
+      res.status(500).json({
+        message: "Impossibile aggiornare la cartella del cliente.",
+        error: errorMessage,
+      });
+    }
+  });
+
   app.patch("/api/users/:legacyId/role", isAdmin, async (req, res) => {
     try {
       const userId = parseInt(req.params.legacyId, 10);

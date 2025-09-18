@@ -47,9 +47,6 @@ const registerSchema = z
       .string()
       .min(8, "La password deve contenere almeno 8 caratteri"),
     clientName: z.string().min(2, "Il nome dell'azienda è obbligatorio"),
-    driveFolderUrl: z
-      .string()
-      .url("Inserisci un URL valido per la cartella Google Drive"),
     companyCode: z.string().min(1, "Il codice aziendale è obbligatorio"),
     acceptTerms: z.boolean().refine((val) => val === true, {
       message: "Devi accettare i termini e le condizioni",

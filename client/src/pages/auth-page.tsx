@@ -63,11 +63,6 @@ const registerAdminSchema = z
       .string()
       .min(8, "La password deve contenere almeno 8 caratteri"),
     clientName: z.string().min(2, "Il nome dell'azienda è obbligatorio"),
-    driveFolderUrl: z
-      .string()
-      .url("Inserisci un URL valido per la cartella Google Drive")
-      .optional()
-      .or(z.literal("")),
     localFiles: z.any().optional(),
     companyCode: z.string().min(1, "Il codice aziendale è obbligatorio"),
     acceptTerms: z.boolean().refine((val) => val, {
@@ -77,21 +72,7 @@ const registerAdminSchema = z
   .refine((data) => data.password === data.confirmPassword, {
     message: "Le password non coincidono",
     path: ["confirmPassword"],
-  })
-  .refine(
-    (data) => {
-      // Almeno uno tra driveFolderUrl e localFiles deve essere presente
-      return (
-        (data.driveFolderUrl && data.driveFolderUrl !== "") ||
-        (data.localFiles && data.localFiles.length > 0)
-      );
-    },
-    {
-      message:
-        "Devi inserire l'URL della cartella Google Drive oppure caricare una cartella locale di documenti",
-      path: ["driveFolderUrl"],
-    }
-  );
+  });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 type RegisterAdminFormValues = z.infer<typeof registerAdminSchema>;
@@ -149,7 +130,6 @@ export default function AuthPage() {
       password: "",
       confirmPassword: "",
       clientName: "",
-      driveFolderUrl: "",
       localFiles: undefined,
       companyCode: "",
       acceptTerms: false,
@@ -187,12 +167,7 @@ export default function AuthPage() {
       });
       registerMutation.mutate(formData as any);
     } else {
-      // Assicurati che driveFolderUrl sia una stringa vuota se undefined
-      const cleanedValues = {
-        ...values,
-        driveFolderUrl: values.driveFolderUrl || ""
-      };
-      registerMutation.mutate(cleanedValues as any);
+      registerMutation.mutate(values as any);
     }
   };
 
@@ -476,29 +451,6 @@ export default function AuthPage() {
                               📋 <strong>WORKFLOW:</strong> I documenti saranno caricati sul server. 
                               Dopo la registrazione, dalla dashboard potrai <strong>"Aggiorna documenti locali"</strong> 
                               e installare il <strong>Local Opener</strong> per aprire i file direttamente dal tuo Google Drive locale.
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={registerForm.control}
-                        name="driveFolderUrl"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>URL Cartella Google Drive</FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <LinkIcon className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
-                                <Input
-                                  placeholder="https://drive.google.com/drive/folders/..."
-                                  className="pl-10"
-                                  {...field}
-                                />
-                              </div>
-                            </FormControl>
-                            <FormDescription>
-                              Link alla cartella principale dei documenti.
                             </FormDescription>
                             <FormMessage />
                           </FormItem>

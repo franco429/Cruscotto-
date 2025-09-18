@@ -5,6 +5,7 @@ import { ClientDocument as Client } from "../../../shared-types/client";
 import { useToast } from "../hooks/use-toast";
 import HeaderBar from "../components/header-bar";
 import Footer from "../components/footer";
+import GoogleDrivePicker from "../components/google-drive-picker";
 import {
   Card,
   CardContent,
@@ -12,459 +13,471 @@ import {
   CardTitle,
   CardDescription,
 } from "../components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../components/ui/table";
-import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "../components/ui/dialog";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
-import { Plus, Pencil } from "lucide-react";
+import { Badge } from "../components/ui/badge";
+import { 
+  FolderOpen, 
+  CheckCircle, 
+  AlertTriangle, 
+  RefreshCw, 
+  Settings,
+  Cloud,
+  Loader2
+} from "lucide-react";
 import { apiRequest, queryClient } from "../lib/queryClient";
 import { format } from "date-fns";
-import * as z from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "../components/ui/form";
-import * as React from "react";
-
-// Schema per la gestione del client
-const clientSchema = z.object({
-  name: z.string().min(1, "Il nome del cliente è obbligatorio"),
-  driveFolderId: z
-    .string()
-    .min(1, "L'ID della cartella Google Drive è obbligatorio"),
-});
-
-type ClientFormValues = z.infer<typeof clientSchema>;
-
-// Funzione per estrarre l'ID della cartella da un URL di Google Drive
-function extractFolderIdFromUrl(url: string): string | null {
-  // Pattern per gli URL di Google Drive
-  const patterns = [
-    /https:\/\/drive\.google\.com\/drive\/(?:u\/\d+\/)?folders\/([a-zA-Z0-9_-]+)(?:\?[^\s]*)?/,
-    /https:\/\/drive\.google\.com\/drive\/(?:u\/\d+\/)?my-drive\/([a-zA-Z0-9_-]+)(?:\?[^\s]*)?/,
-    /https:\/\/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)(?:&[^\s]*)?/,
-  ];
-
-  // Prova tutti i pattern e restituisci il primo match
-  for (const pattern of patterns) {
-    const match = url.match(pattern);
-    if (match && match[1]) {
-      return match[1];
-    }
-  }
-
-  // Se è già un ID senza URL, restituisci l'input originale
-  if (/^[a-zA-Z0-9_-]+$/.test(url)) {
-    return url;
-  }
-
-  return null;
-}
+import { useLocation } from "wouter";
 
 export default function ClientsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editingClient, setEditingClient] = useState<Client | null>(null);
-  const [isConnecting, setIsConnecting] = useState(false);
+  const [_, setLocation] = useLocation();
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [selectedFolder, setSelectedFolder] = useState<{id: string, name: string} | null>(null);
 
   const {
     data: clients,
     isLoading,
     isError,
+    refetch: refetchClients,
   } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
   });
 
-  // Form per la modifica di un client
-  const form = useForm<ClientFormValues>({
-    resolver: zodResolver(clientSchema),
-    defaultValues: {
-      name: "",
-      driveFolderId: "",
-    },
-  });
+  // Trova il client dell'utente corrente
+  const currentClient = clients && clients.length > 0 ? clients[0] : null;
+  const hasGoogleDriveFolder = currentClient?.driveFolderId;
 
-  // Gestisce l'apertura del form di modifica
-  const handleEdit = (client: Client) => {
-    setEditingClient(client);
-    form.reset({
-      name: client.name,
-      driveFolderId: client.driveFolderId,
-    });
-    setEditDialogOpen(true);
-  };
-
-  // Chiude il form e resetta i valori
-  const handleCloseForm = () => {
-    setEditDialogOpen(false);
-    setEditingClient(null);
-    form.reset({
-      name: "",
-      driveFolderId: "",
-    });
-  };
-
-  // Mutation per aggiornare un client esistente
-  const updateMutation = useMutation({
-    mutationFn: async ({
-      legacyId,
-      data,
-    }: {
-      legacyId: number;
-      data: ClientFormValues;
-    }) => {
-      const res = await apiRequest("PUT", `/api/clients/${legacyId}`, data);
+  // Mutation per aggiornare il folder ID del client
+  const updateClientFolderMutation = useMutation({
+    mutationFn: async ({ folderId, folderName }: { folderId: string; folderName: string }) => {
+      const res = await apiRequest("PUT", `/api/clients/${currentClient?.legacyId}/folder`, {
+        driveFolderId: folderId,
+        folderName: folderName,
+      });
       return await res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
       toast({
-        title: "Client aggiornato",
-        description: "Il client è stato aggiornato con successo.",
+        title: "Cartella configurata",
+        description: `Cartella "${variables.folderName}" configurata con successo`,
       });
-      handleCloseForm();
+      
+      // Avvia automaticamente la sincronizzazione
+      startAutomaticSync();
     },
     onError: (error: Error) => {
       toast({
-        title: "Aggiornamento fallito",
+        title: "Errore configurazione",
         description: error.message,
         variant: "destructive",
       });
     },
   });
 
-  // Gestisce l'invio del form (solo aggiornamento)
-  const onSubmit = (values: ClientFormValues) => {
-    if (!editingClient) {
+  // Mutation per la sincronizzazione manuale
+  const syncMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/sync", {
+        userId: user?.legacyId
+      });
+      return await res.json();
+    },
+    onSuccess: () => {
       toast({
-        title: "Errore",
-        description: "Nessun client selezionato per la modifica.",
-        variant: "destructive",
+        title: "Sincronizzazione completata",
+        description: "I documenti sono stati sincronizzati con successo",
       });
-      return;
-    }
-
-    // Estrai l'ID della cartella se è stato inserito un URL
-    const extractedId = extractFolderIdFromUrl(values.driveFolderId);
-
-    if (!extractedId) {
-      toast({
-        title: "URL non valido",
-        description: "L'URL o l'ID della cartella Google Drive non è valido.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Aggiorna il valore nel form con l'ID estratto
-    const dataToSubmit = {
-      ...values,
-      driveFolderId: extractedId,
-    };
-
-    updateMutation.mutate({
-      legacyId: editingClient.legacyId,
-      data: dataToSubmit,
-    });
-  };
-
-  const connectGoogleDrive = async (clientId: number) => {
-    setIsConnecting(true);
-    try {
-      const res = await fetch(`/api/google/auth-url/${clientId}`, {
-        credentials: "include",
-      });
-
-      if (!res.ok) {
-        // Gestiamo il caso in cui la richiesta al backend fallisca
-        throw new Error(
-          "Impossibile ottenere l'URL di autenticazione dal server."
-        );
-      }
-
-      const data = await res.json();
-      window.open(data.url, "_blank");
-    } catch (error) {
-      toast({
-        title: "Errore",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Impossibile connettersi a Google Drive",
-        variant: "destructive",
-      });
-    } finally {
-      setIsConnecting(false);
-    }
-  };
-
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data.type === "GOOGLE_DRIVE_CONNECTED") {
-        // Mostra messaggio di sincronizzazione in corso
-        toast({
-          title: "Connessione completata",
-          description:
-            "Connessione Google Drive completata! Avvio sincronizzazione automatica...",
-        });
-
-        // Avvia sincronizzazione automatica
-        startAutomaticSync();
-      }
-    };
-
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, []);
-
-  const startAutomaticSync = async () => {
-    try {
-      // Avvia la sincronizzazione
-      const response = await apiRequest("POST", "/api/sync");
-      
-      if (response.ok) {
-        toast({
-          title: "Sincronizzazione avviata",
-          description: "I documenti si stanno sincronizzando...",
-        });
-
-        // Attendi un po' per permettere alla sync di iniziare
-        setTimeout(() => {
-          // Reindirizza alla home page con parametro per indicare la provenienza
-          window.location.href = "/home-page?fromDrive=true";
-        }, 5000); // 5 secondi di attesa per essere più veloci
-      } else {
-        const errorData = await response.json();
-        toast({
-          title: "Errore sincronizzazione",
-          description: errorData.message || "Impossibile avviare la sincronizzazione",
-          variant: "destructive",
-        });
-
-        // Reindirizza comunque alla home page dopo un errore
-        setTimeout(() => {
-          window.location.href = "/home-page";
-        }, 5000);
-      }
-    } catch (error) {
-      console.error("Errore durante l'avvio della sincronizzazione:", error);
-      
+      setTimeout(() => {
+        setLocation("/home-page?fromSync=true");
+      }, 2000);
+    },
+    onError: (error: Error) => {
       toast({
         title: "Errore sincronizzazione",
-        description: "Impossibile avviare la sincronizzazione automatica",
+        description: error.message,
         variant: "destructive",
       });
+    },
+    onSettled: () => {
+      setIsSyncing(false);
+    }
+  });
 
-      // Reindirizza comunque alla home page dopo un errore
-      setTimeout(() => {
-        window.location.href = "/home-page";
-      }, 5000);
+  const handleFolderSelected = (folderId: string, folderName: string) => {
+    setSelectedFolder({ id: folderId, name: folderName });
+    
+    if (currentClient) {
+      updateClientFolderMutation.mutate({ folderId, folderName });
+    } else {
+      toast({
+        title: "Errore",
+        description: "Client non trovato",
+        variant: "destructive",
+      });
     }
   };
 
-  const formatDate = (dateString: string | Date) => {
-    return format(new Date(dateString), "dd/MM/yyyy HH:mm");
+  // Funzione per avviare l'autorizzazione OAuth Google Drive
+  const handleGoogleDriveAuth = async (clientId: number) => {
+    try {
+      const res = await apiRequest("GET", `/api/google/auth-url/${clientId}`);
+      const data = await res.json();
+      
+      // Apri finestra popup per OAuth
+      const popup = window.open(
+        data.url,
+        "google-auth",
+        "width=500,height=600,scrollbars=yes,resizable=yes"
+      );
+
+      // Ascolta messaggio di successo dal popup
+      const messageListener = (event: MessageEvent) => {
+        if (event.data.type === "GOOGLE_DRIVE_CONNECTED") {
+          popup?.close();
+          window.removeEventListener("message", messageListener);
+          
+          toast({
+            title: "Autorizzazione completata",
+            description: "Google Drive connesso con successo! Ora puoi sincronizzare.",
+          });
+
+          // Ricarica i dati del client per aggiornare lo stato
+          refetchClients();
+        }
+      };
+
+      window.addEventListener("message", messageListener);
+      
+      // Cleanup listener se il popup viene chiuso manualmente
+      const checkClosed = setInterval(() => {
+        if (popup?.closed) {
+          clearInterval(checkClosed);
+          window.removeEventListener("message", messageListener);
+        }
+      }, 1000);
+
+    } catch (error) {
+      console.error("Errore autorizzazione Google Drive:", error);
+      toast({
+        title: "Errore Autorizzazione",
+        description: "Impossibile avviare l'autorizzazione Google Drive",
+        variant: "destructive",
+      });
+    }
   };
+
+  const startAutomaticSync = async () => {
+    // Controlla se abbiamo tutti i requisiti per la sincronizzazione
+    if (!currentClient?.driveFolderId) {
+      toast({
+        title: "Configurazione incompleta",
+        description: "Seleziona prima una cartella da Google Drive",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Se non abbiamo i token OAuth, avvia prima l'autorizzazione
+    if (!currentClient.google?.refreshToken) {
+      toast({
+        title: "Autorizzazione necessaria",
+        description: "Completando l'autorizzazione Google Drive...",
+      });
+      
+      await handleGoogleDriveAuth(currentClient.legacyId);
+      return; // L'autorizzazione ricaricherà la pagina, la sync verrà fatta dopo
+    }
+
+    // Se abbiamo tutto, avvia la sincronizzazione
+    setIsSyncing(true);
+    
+    toast({
+      title: "Avvio sincronizzazione",
+      description: "Sincronizzazione dei documenti in corso...",
+    });
+
+    // Attendi un momento per permettere al backend di processare la configurazione
+    setTimeout(() => {
+      syncMutation.mutate();
+    }, 1500);
+  };
+
+  const handleManualSync = () => {
+    if (isSyncing) return;
+    
+    setIsSyncing(true);
+    syncMutation.mutate();
+  };
+
+  const getConnectionStatus = () => {
+    if (!currentClient) return { status: 'no-client', text: 'Nessun client configurato', variant: 'destructive' as const };
+    if (!hasGoogleDriveFolder) return { status: 'no-folder', text: 'Cartella non configurata', variant: 'secondary' as const };
+    
+    // Controlla se ha anche i token OAuth (necessari per sincronizzazione)
+    const hasOAuthTokens = currentClient.google?.refreshToken;
+    if (!hasOAuthTokens) return { status: 'needs-auth', text: 'Richiesta autorizzazione', variant: 'secondary' as const };
+    
+    return { status: 'connected', text: 'Completamente connesso', variant: 'default' as const };
+  };
+
+  const connectionStatus = getConnectionStatus();
 
   return (
     <div className="flex flex-col min-h-screen">
       <HeaderBar user={user} />
 
-      <main className="flex-1 container mx-auto py-8 px-8">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold">
-              Gestione Cartella Google Drive
+      <main className="flex-1 container mx-auto py-8 px-4 max-w-4xl">
+        <div className="space-y-6">
+          {/* Header Section */}
+          <div className="text-center space-y-3">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+              Configurazione Google Drive
             </h1>
-            <p className="text-muted-foreground mt-2">
-              Modifica i dettagli della tua cartella Google Drive associata
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              Collega la tua cartella Google Drive per sincronizzare automaticamente i tuoi documenti
             </p>
           </div>
-        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>La tua Cartella Google Drive</CardTitle>
-            <CardDescription>
-              Dettagli della cartella Google Drive associata al tuo account
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="py-10 text-center">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
-                <p className="mt-2 text-muted-foreground">
-                  Caricamento cartella Google Drive...
-                </p>
+          {/* Status Card */}
+          <Card className="border-2">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-full">
+                    <Cloud className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl">Stato Connessione</CardTitle>
+                    <CardDescription>
+                      Stato attuale della connessione Google Drive
+                    </CardDescription>
+                  </div>
+                </div>
+                <Badge variant={connectionStatus.variant} className="px-3 py-1">
+                  {connectionStatus.text}
+                </Badge>
               </div>
-            ) : isError ? (
-              <div className="py-10 text-center">
-                <p className="text-destructive">
-                  Si è verificato un errore durante il caricamento della
-                  cartella
-                </p>
-              </div>
-            ) : !clients || clients.length === 0 ? (
-              <div className="py-10 text-center">
-                <p className="text-muted-foreground">
-                  Nessuna cartella Google Drive associata al tuo account
-                </p>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome Cartella</TableHead>
-                    <TableHead>ID Cartella Google Drive</TableHead>
-                    <TableHead>Data Creazione</TableHead>
-                    <TableHead>Ultima Modifica</TableHead>
-                    <TableHead className="text-right">Azioni</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {clients.map((client) => (
-                    <TableRow key={client.legacyId}>
-                      <TableCell className="font-medium">
-                        {client.name}
-                      </TableCell>
-                      <TableCell>
-                        <div className="max-w-xs overflow-hidden text-ellipsis">
-                          {client.driveFolderId}
-                        </div>
-                      </TableCell>
-                      <TableCell>{formatDate(client.createdAt)}</TableCell>
-                      <TableCell>{formatDate(client.updatedAt)}</TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(client)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="ml-2"
-                          onClick={() => connectGoogleDrive(client.legacyId)}
-                          disabled={isConnecting}
-                        >
-                          {isConnecting ? (
-                            <>
-                              <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent mr-2"></div>
-                              Connessione...
-                            </>
-                          ) : (
-                            "Collega Drive"
-                          )}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Form Dialog */}
-        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Modifica Cartella Google Drive</DialogTitle>
-              <DialogDescription>
-                Modifica i dettagli della tua cartella Google Drive associata.
-              </DialogDescription>
-            </DialogHeader>
-
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-6"
-              >
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nome della Cartella Google Drive</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Inserisci il nome della tua cartella Google Drive"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="driveFolderId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        ID o URL della Cartella Google Drive
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Incolla l'URL o l'ID della cartella di Google Drive"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Puoi incollare l'intero URL della cartella di Google
-                        Drive.
-                        <br />
-                        Esempio URL:
-                        https://drive.google.com/drive/folders/ABCDEF123456
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleCloseForm}
+            </CardHeader>
+            <CardContent className="pt-0">
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  <span className="ml-2 text-muted-foreground">Caricamento...</span>
+                </div>
+              ) : isError ? (
+                <div className="text-center py-8">
+                  <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-3" />
+                  <p className="text-destructive font-medium">Errore nel caricamento dei dati</p>
+                  <Button 
+                    variant="outline" 
+                    className="mt-3"
+                    onClick={() => refetchClients()}
                   >
-                    Annulla
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Riprova
                   </Button>
-                  <Button type="submit" disabled={updateMutation.isPending}>
-                    {updateMutation.isPending ? "Salvataggio..." : "Aggiorna"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+                </div>
+              ) : !currentClient ? (
+                <div className="text-center py-8">
+                  <FolderOpen className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground font-medium">Nessun client configurato</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Contatta il supporto per configurare il tuo account
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Client Info */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Azienda</p>
+                      <p className="font-semibold">{currentClient.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Data creazione</p>
+                      <p className="font-semibold">
+                        {format(new Date(currentClient.createdAt), "dd/MM/yyyy HH:mm")}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Google Drive Folder Info */}
+                  {hasGoogleDriveFolder ? (
+                    <div className="p-4 border-2 border-green-200 bg-green-50 rounded-lg">
+                      <div className="flex items-center gap-2 mb-3">
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                        <h3 className="font-semibold text-green-800">Cartella Configurata</h3>
+                      </div>
+                      <div className="space-y-2">
+                        <div>
+                          <p className="text-sm font-medium text-green-700">ID Cartella</p>
+                          <p className="text-sm bg-green-100 p-2 rounded font-mono break-all text-gray-900">
+                            {currentClient.driveFolderId}
+                          </p>
+                        </div>
+                        {selectedFolder && (
+                          <div>
+                            <p className="text-sm font-medium text-green-700">Nome Cartella</p>
+                            <p className="text-sm text-green-800 font-medium">{selectedFolder.name}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-4 border-2 border-yellow-200 bg-yellow-50 rounded-lg">
+                      <div className="flex items-center gap-2 mb-3">
+                        <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                        <h3 className="font-semibold text-yellow-800">Cartella Non Configurata</h3>
+                      </div>
+                      <p className="text-sm text-yellow-700 mb-4">
+                        Per iniziare a sincronizzare i tuoi documenti, seleziona una cartella dal tuo Google Drive.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Action Card */}
+          {currentClient && (
+            <Card className="border-2">
+              <CardHeader>
+                <CardTitle className="text-xl">Azioni Rapide</CardTitle>
+                <CardDescription>
+                  Gestisci la connessione e la sincronizzazione dei documenti
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Google Drive Picker */}
+                  <div className="space-y-3">
+                    <h4 className="font-semibold flex items-center gap-2">
+                      <FolderOpen className="h-4 w-4" />
+                      {hasGoogleDriveFolder ? "Cambia Cartella" : "Seleziona Cartella"}
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      {hasGoogleDriveFolder 
+                        ? "Modifica la cartella Google Drive attualmente configurata"
+                        : "Scegli la cartella Google Drive da sincronizzare"
+                      }
+                    </p>
+                    <GoogleDrivePicker
+                      onFolderSelected={handleFolderSelected}
+                      disabled={updateClientFolderMutation.isPending}
+                      buttonText={hasGoogleDriveFolder ? "Cambia Cartella" : "Seleziona Cartella"}
+                    />
+                    
+                    {/* Autorizzazione OAuth (se necessaria) */}
+                    {hasGoogleDriveFolder && connectionStatus.status === 'needs-auth' && (
+                      <div className="pt-2 border-t border-yellow-200">
+                        <p className="text-sm text-yellow-700 mb-2">
+                          ⚠️ Autorizzazione richiesta per sincronizzare
+                        </p>
+                        <Button
+                          onClick={() => handleGoogleDriveAuth(currentClient.legacyId)}
+                          variant="outline"
+                          className="w-full border-yellow-300 text-yellow-800 hover:bg-yellow-50"
+                        >
+                          <Cloud className="h-4 w-4 mr-2" />
+                          Autorizza Google Drive
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Manual Sync */}
+                  <div className="space-y-3">
+                    <h4 className="font-semibold flex items-center gap-2">
+                      <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                      Sincronizzazione Manuale
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      Forza la sincronizzazione dei documenti dalla cartella configurata
+                    </p>
+                    <Button
+                      onClick={handleManualSync}
+                      disabled={!hasGoogleDriveFolder || isSyncing || connectionStatus.status !== 'connected'}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      {isSyncing ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Sincronizzazione...
+                        </>
+                      ) : connectionStatus.status !== 'connected' ? (
+                        <>
+                          <AlertTriangle className="h-4 w-4 mr-2" />
+                          {connectionStatus.status === 'needs-auth' ? 'Autorizzazione necessaria' : 'Configura prima'}
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Sincronizza Ora
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Navigate to Documents */}
+                {connectionStatus.status === 'connected' && (
+                  <div className="pt-4 border-t">
+                    <Button 
+                      onClick={() => setLocation("/home-page")}
+                      className="w-full"
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      Vai ai Documenti
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Help Card */}
+          <Card className="bg-muted/30">
+            <CardHeader>
+              <CardTitle className="text-lg">Come Funziona</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                <div className="flex flex-col items-center text-center space-y-2 p-3">
+                  <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold">1</div>
+                  <h4 className="font-semibold">Seleziona Cartella</h4>
+                  <p className="text-muted-foreground">
+                    Usa il Google Picker per scegliere la cartella da sincronizzare
+                  </p>
+                </div>
+                <div className="flex flex-col items-center text-center space-y-2 p-3">
+                  <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold">2</div>
+                  <h4 className="font-semibold">Autorizza Accesso</h4>
+                  <p className="text-muted-foreground">
+                    Completa l'autorizzazione OAuth per l'accesso permanente a Google Drive
+                  </p>
+                </div>
+                <div className="flex flex-col items-center text-center space-y-2 p-3">
+                  <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold">3</div>
+                  <h4 className="font-semibold">Sincronizza</h4>
+                  <p className="text-muted-foreground">
+                    Il sistema sincronizza automaticamente tutti i documenti della cartella
+                  </p>
+                </div>
+                <div className="flex flex-col items-center text-center space-y-2 p-3">
+                  <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold">4</div>
+                  <h4 className="font-semibold">Gestisci</h4>
+                  <p className="text-muted-foreground">
+                    Accedi alla dashboard per visualizzare e gestire i tuoi documenti
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </main>
 
       <Footer />
