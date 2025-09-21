@@ -169,48 +169,50 @@ export default function ActionsBar({
               </DialogHeader>
               <ModernFileUpload
                 onFilesSelected={async (files) => {
-                  // Esegui l'upload in batch per evitare limiti dei proxy/CDN (es. 100MB Cloudflare)
-                  // - Max per file: 100MB (coerente con backend)
-                  // - Max per batch: ~90MB (margine di sicurezza)
-                  const MAX_FILE_BYTES = 100 * 1024 * 1024;
-                  const MAX_BATCH_BYTES = 90 * 1024 * 1024;
+                  // Esegui l'upload in batch per evitare limiti del backend Render
+                  // - Max per file: 10MB (limite backend effettivo)
+                  // - Max per batch: ~25MB (ottimizzato per 25 file max per richiesta)
+                  // - Max file per batch: 25 file (limite critico backend)
+                  const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB come da backend
+                  const MAX_BATCH_BYTES = 25 * 1024 * 1024; // 25MB per batch
+                  const MAX_FILES_PER_BATCH = 25; // 25 file max per richiesta (limite backend)
 
                   // Filtra (o segnala) file troppo grandi
                   const tooLarge = files.filter((f: any) => f.size > MAX_FILE_BYTES);
                   if (tooLarge.length > 0) {
                     toast({
                       title: "File troppo grandi",
-                      description: `Alcuni file superano 100MB e sono stati esclusi (${tooLarge.length}).`,
+                      description: `Alcuni file superano 10MB e sono stati esclusi (${tooLarge.length}). Usa Google Drive per file grandi.`,
                       variant: "destructive",
                     });
                   }
 
                   const validFiles = files.filter((f: any) => f.size <= MAX_FILE_BYTES);
 
-                  // Partiziona i file in batch per dimensione totale
+                  // Partiziona i file in batch per dimensione E numero di file
                   const batches: any[][] = [];
                   let current: any[] = [];
                   let currentBytes = 0;
                   for (const file of validFiles) {
-                    if (file.size > MAX_BATCH_BYTES) {
-                      // File singolo che sta sotto i 100MB ma supera i 90MB: invia da solo
+                    // Controlla se aggiungere questo file supererebbe i limiti
+                    const wouldExceedSize = currentBytes + file.size > MAX_BATCH_BYTES;
+                    const wouldExceedFileCount = current.length >= MAX_FILES_PER_BATCH;
+                    
+                    if (wouldExceedSize || wouldExceedFileCount) {
+                      // Se il batch corrente ha almeno un file, salvalo
                       if (current.length > 0) {
                         batches.push(current);
                         current = [];
                         currentBytes = 0;
                       }
-                      batches.push([file]);
-                      continue;
                     }
-                    if (currentBytes + file.size > MAX_BATCH_BYTES) {
-                      batches.push(current);
-                      current = [file];
-                      currentBytes = file.size;
-                    } else {
-                      current.push(file);
-                      currentBytes += file.size;
-                    }
+                    
+                    // Aggiunge il file al batch corrente
+                    current.push(file);
+                    currentBytes += file.size;
                   }
+                  
+                  // Salva l'ultimo batch se non vuoto
                   if (current.length > 0) {
                     batches.push(current);
                   }
@@ -223,7 +225,7 @@ export default function ActionsBar({
                     // Mostra toast di avvio per upload batch
                     const progressToast = toast({
                       title: "Upload in corso",
-                      description: `Avvio upload di ${validFiles.length} file in ${batches.length} batch...`,
+                      description: `Avvio upload di ${validFiles.length} file in ${batches.length} batch (max ${MAX_FILES_PER_BATCH} file/batch)...`,
                       duration: Infinity,
                     });
 
@@ -236,7 +238,7 @@ export default function ActionsBar({
                       progressToast.update({
                         id: progressToast.id,
                         title: "Upload in corso",
-                        description: `Batch ${i + 1}/${batches.length} (${batch.length} file, ${batchSizeMB}MB)...`,
+                        description: `Batch ${i + 1}/${batches.length} (${batch.length}/${MAX_FILES_PER_BATCH} file, ${batchSizeMB}MB)...`,
                         duration: Infinity,
                       });
 
@@ -273,7 +275,7 @@ export default function ActionsBar({
 
                     // Polling dello stato upload per tutti i batch contemporaneamente
                     let pollAttempts = 0;
-                    let maxPollAttempts = 15; // Massimo 15 tentativi (30 secondi)
+                    let maxPollAttempts = 20; // Aumentato per batch multipli (40 secondi max)
                     let completedBatches = new Set<string>();
                     
                     const pollAllBatchesStatus = async () => {
@@ -403,7 +405,7 @@ export default function ActionsBar({
                       }
                     }, 2000);
 
-                    // Timeout di sicurezza (10 minuti)
+                    // Timeout di sicurezza ottimizzato per batch piccoli (5 minuti)
                     setTimeout(() => {
                       clearInterval(pollInterval);
                       progressToast.dismiss();
@@ -412,7 +414,7 @@ export default function ActionsBar({
                         description: `Upload batch in corso da troppo tempo. ${allUploadIds.length} batch avviati - controlla i risultati manualmente.`,
                         variant: "destructive",
                       });
-                    }, 600000);
+                    }, 300000); // 5 minuti invece di 10
 
                     setShowUploadDialog(false);
                   } catch (err: any) {
