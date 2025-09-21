@@ -405,7 +405,7 @@ export default function ActionsBar({
                       }
                     }, 2000);
 
-                    // Timeout di sicurezza ottimizzato per batch piccoli (5 minuti)
+                    // Timeout di sicurezza ottimizzato per carichi di lavoro pesanti (10 minuti)
                     setTimeout(() => {
                       clearInterval(pollInterval);
                       progressToast.dismiss();
@@ -414,7 +414,7 @@ export default function ActionsBar({
                         description: `Upload batch in corso da troppo tempo. ${allUploadIds.length} batch avviati - controlla i risultati manualmente.`,
                         variant: "destructive",
                       });
-                    }, 300000); // 5 minuti invece di 10
+                    }, 600000); // 10 minuti per carichi pesanti
 
                     setShowUploadDialog(false);
                   } catch (err: any) {
