@@ -127,7 +127,7 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: 5 * 60 * 1000, // 5 minuti
+      staleTime: 1 * 60 * 1000, // 1 minuto (ridotto per dati più aggiornati)
       gcTime: 15 * 60 * 1000, // 15 minuti
       retry: (failureCount, error: any) => {
         const status = parseInt(error?.message?.split(":")[0]);
@@ -148,3 +148,22 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+// Funzione utility per forzare il refresh dei dati client dopo OAuth
+export async function forceRefreshClientData(): Promise<void> {
+  console.log('🔄 Forzando refresh completo dei dati client dopo OAuth');
+  
+  // 1. Rimuovi completamente i dati dalla cache
+  queryClient.removeQueries({ queryKey: ["/api/clients"] });
+  
+  // 2. Invalida tutte le query correlate
+  await queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+  
+  // 3. Forza un refetch immediato
+  await queryClient.refetchQueries({ 
+    queryKey: ["/api/clients"],
+    type: 'active'
+  });
+  
+  console.log('✅ Refresh completo dei dati client completato');
+}

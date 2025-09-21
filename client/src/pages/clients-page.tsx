@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { ClientDocument as Client } from "../../../shared-types/client";
 import { useToast } from "../hooks/use-toast";
 import HeaderBar from "../components/header-bar";
 import Footer from "../components/footer";
-import GoogleDrivePicker from "../components/google-drive-picker";
+import GoogleDrivePicker, { GoogleDrivePickerRef } from "../components/google-drive-picker";
 import {
   Card,
   CardContent,
@@ -24,7 +24,7 @@ import {
   Cloud,
   Loader2
 } from "lucide-react";
-import { apiRequest, queryClient } from "../lib/queryClient";
+import { apiRequest, queryClient, forceRefreshClientData } from "../lib/queryClient";
 import { format } from "date-fns";
 import { useLocation } from "wouter";
 
@@ -34,6 +34,10 @@ export default function ClientsPage() {
   const [_, setLocation] = useLocation();
   const [isSyncing, setIsSyncing] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState<{id: string, name: string} | null>(null);
+  const [isAuthJustCompleted, setIsAuthJustCompleted] = useState(false);
+  const [shouldOpenPickerAutomatically, setShouldOpenPickerAutomatically] = useState(false);
+  const [isBackendAuthInProgress, setIsBackendAuthInProgress] = useState(false);
+  const googleDrivePickerRef = useRef<GoogleDrivePickerRef>(null);
 
   const {
     data: clients,
@@ -107,6 +111,7 @@ export default function ClientsPage() {
 
   const handleFolderSelected = (folderId: string, folderName: string) => {
     setSelectedFolder({ id: folderId, name: folderName });
+    setIsAuthJustCompleted(false); // Reset del flag quando la selezione è completata
     
     if (currentClient) {
       updateClientFolderMutation.mutate({ folderId, folderName });
@@ -121,6 +126,7 @@ export default function ClientsPage() {
 
   // Funzione per avviare l'autorizzazione OAuth Google Drive
   const handleGoogleDriveAuth = async (clientId: number) => {
+    setIsBackendAuthInProgress(true);
     try {
       const res = await apiRequest("GET", `/api/google/auth-url/${clientId}`);
       const data = await res.json();
@@ -132,34 +138,73 @@ export default function ClientsPage() {
         "width=500,height=600,scrollbars=yes,resizable=yes"
       );
 
+      // Cleanup listener dopo un timeout (fallback se il popup non invia messaggi)
+      const cleanupTimeout = setTimeout(() => {
+        window.removeEventListener("message", messageListener);
+        setIsBackendAuthInProgress(false); // Reset dello stato auth se timeout
+        toast({
+          title: "Timeout Autorizzazione",
+          description: "L'autorizzazione è scaduta. Riprova.",
+          variant: "destructive",
+        });
+      }, 300000); // 5 minuti di timeout
+
       // Ascolta messaggio di successo dal popup
       const messageListener = (event: MessageEvent) => {
         if (event.data.type === "GOOGLE_DRIVE_CONNECTED") {
           popup?.close();
           window.removeEventListener("message", messageListener);
+          clearTimeout(cleanupTimeout); // Pulisce il timeout quando riceve il messaggio
           
+          // IMPORTANTE: Ferma immediatamente il loading nel GoogleDrivePicker e resetta stato auth
+          setIsBackendAuthInProgress(false);
+          if (googleDrivePickerRef.current) {
+            console.log('🔄 Fermando loading nel GoogleDrivePicker immediatamente');
+            googleDrivePickerRef.current.resetToReady();
+          }
+          
+          // Mostra loading per la connessione riuscita
           toast({
-            title: "Autorizzazione completata",
-            description: "Google Drive connesso con successo! Ora puoi sincronizzare.",
+            title: "Connessione riuscita!",
+            description: "Autorizzazione Google Drive completata con successo.",
           });
 
-          // Ricarica i dati del client per aggiornare lo stato
-          refetchClients();
+          // Imposta flag che l'autorizzazione è appena completata
+          setIsAuthJustCompleted(true);
+          
+          // Imposta il flag per l'apertura automatica del picker
+          setShouldOpenPickerAutomatically(true);
+          
+          // Timeout di sicurezza per resettare i flag dopo 15 secondi se non utilizzati
+          setTimeout(() => {
+            setIsAuthJustCompleted(false);
+            setShouldOpenPickerAutomatically(false);
+          }, 15000);
+          
+          // IMPORTANTE: Usa la funzione utility per forzare il refresh completo
+          forceRefreshClientData().then(() => {
+            console.log('✅ Refresh completo dei dati client dopo OAuth completato');
+            // Il useEffect gestirà automaticamente l'apertura del picker quando i dati sono pronti
+          }).catch((error) => {
+            console.error('❌ Errore durante il refresh completo dei dati:', error);
+            toast({
+              title: "Errore",
+              description: "Errore durante l'aggiornamento dei dati. Riprova.",
+              variant: "destructive",
+            });
+            // Reset dei flag in caso di errore
+            setIsAuthJustCompleted(false);
+            setShouldOpenPickerAutomatically(false);
+            setIsBackendAuthInProgress(false);
+          });
         }
       };
 
       window.addEventListener("message", messageListener);
-      
-      // Cleanup listener se il popup viene chiuso manualmente
-      const checkClosed = setInterval(() => {
-        if (popup?.closed) {
-          clearInterval(checkClosed);
-          window.removeEventListener("message", messageListener);
-        }
-      }, 1000);
 
     } catch (error) {
       console.error("Errore autorizzazione Google Drive:", error);
+      setIsBackendAuthInProgress(false);
       toast({
         title: "Errore Autorizzazione",
         description: "Impossibile avviare l'autorizzazione Google Drive",
@@ -179,15 +224,14 @@ export default function ClientsPage() {
       return;
     }
 
-    // Se non abbiamo i token OAuth, avvia prima l'autorizzazione
+    // Se non abbiamo i token OAuth, avvisa che è necessaria l'autorizzazione
     if (!currentClient.google?.refreshToken) {
       toast({
         title: "Autorizzazione necessaria",
-        description: "Completando l'autorizzazione Google Drive...",
+        description: "Clicca su 'Seleziona Cartella' per completare l'autorizzazione",
+        variant: "destructive",
       });
-      
-      await handleGoogleDriveAuth(currentClient.legacyId);
-      return; // L'autorizzazione ricaricherà la pagina, la sync verrà fatta dopo
+      return;
     }
 
     // Se abbiamo tutto, avvia la sincronizzazione
@@ -223,6 +267,93 @@ export default function ClientsPage() {
   };
 
   const connectionStatus = getConnectionStatus();
+
+  // useEffect per gestire l'apertura automatica del picker dopo l'autorizzazione
+  useEffect(() => {
+    // Controlla se dovremmo aprire automaticamente il picker
+    if (shouldOpenPickerAutomatically) {
+      
+      console.log('🎯 Controllo condizioni per apertura automatica picker', {
+        shouldOpenPickerAutomatically,
+        hasRefreshToken: !!currentClient?.google?.refreshToken,
+        connectionStatus: connectionStatus.status,
+        isLoading,
+        hasCurrentClient: !!currentClient
+      });
+
+      // Usa un timer per verificare periodicamente le condizioni
+      const checkAndOpenPicker = () => {
+        if (currentClient?.google?.refreshToken && 
+            connectionStatus.status === 'connected' &&
+            !isLoading) {
+          
+          console.log('✅ Tutte le condizioni soddisfatte, apertura picker automatica');
+          
+          // Reset dei flag
+          setShouldOpenPickerAutomatically(false);
+          setIsAuthJustCompleted(false);
+          
+          // Mostra messaggio di feedback
+          toast({
+            title: 'Autorizzazione completata',
+            description: 'Apertura automatica Google Picker...',
+          });
+          
+          // Apre automaticamente il picker dopo aver assicurato che sia in stato pronto
+          setTimeout(() => {
+            if (googleDrivePickerRef.current) {
+              console.log('🔄 Resettando picker prima dell\'apertura automatica...');
+              googleDrivePickerRef.current.resetToReady();
+              
+              // Dopo il reset, apre il picker
+              setTimeout(() => {
+                console.log('🚀 Chiamando openPickerAfterAuth()...');
+                googleDrivePickerRef.current?.openPickerAfterAuth();
+              }, 200);
+            } else {
+              console.error('❌ googleDrivePickerRef.current è null');
+            }
+          }, 500);
+          
+          return true; // Condizioni soddisfatte
+        }
+        return false; // Condizioni non ancora soddisfatte
+      };
+
+      // Primo tentativo immediato
+      if (!checkAndOpenPicker()) {
+        // Se il primo tentativo fallisce, continua a controllare ogni 500ms per max 10 secondi
+        console.log('⏳ Primo tentativo fallito, avvio controllo periodico...');
+        
+        let attempts = 0;
+        const maxAttempts = 20; // 10 secondi max
+        
+        const interval = setInterval(() => {
+          attempts++;
+          console.log(`⏳ Tentativo ${attempts}/${maxAttempts} per apertura picker automatica`);
+          
+          if (checkAndOpenPicker()) {
+            clearInterval(interval);
+          } else if (attempts >= maxAttempts) {
+            console.error('❌ Timeout: impossibile aprire il picker automaticamente dopo 10 secondi');
+            setShouldOpenPickerAutomatically(false);
+            setIsAuthJustCompleted(false);
+            
+            toast({
+              title: 'Timeout apertura automatica',
+              description: 'Usa il pulsante "Seleziona Cartella" per procedere manualmente.',
+              variant: 'destructive'
+            });
+            
+            clearInterval(interval);
+          }
+        }, 500);
+
+        // Cleanup dell'interval se il componente viene unmountato
+        return () => clearInterval(interval);
+      }
+    }
+  }, [shouldOpenPickerAutomatically, currentClient?.google?.refreshToken, connectionStatus.status, isLoading]);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -365,9 +496,17 @@ export default function ClientsPage() {
                       }
                     </p>
                     <GoogleDrivePicker
+                      ref={googleDrivePickerRef}
                       onFolderSelected={handleFolderSelected}
                       disabled={updateClientFolderMutation.isPending}
                       buttonText={hasGoogleDriveFolder ? "Cambia Cartella" : "Seleziona Cartella"}
+                      requiresBackendAuth={((connectionStatus.status === 'needs-auth' || !currentClient.google?.refreshToken) && !isAuthJustCompleted) || isBackendAuthInProgress}
+                      onAuthRequired={() => handleGoogleDriveAuth(currentClient.legacyId)}
+                      onPickerClosed={() => {
+                        setIsAuthJustCompleted(false); // Reset del flag quando il picker si chiude
+                        setShouldOpenPickerAutomatically(false); // Reset anche questo flag
+                      }}
+                      clientId={currentClient.legacyId} // Passa il clientId per recuperare access token dal backend
                     />
                     
                     {/* Autorizzazione OAuth (se necessaria) */}

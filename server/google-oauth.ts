@@ -19,20 +19,36 @@ function buildOAuthClient() {
 }
 
 function successHtml(nonce: string) {
-  return `
-    <html><body style="font:16px system-ui;-webkit-user-select:none;
-                       display:flex;flex-direction:column;align-items:center;
-                       justify-content:center;height:100vh">
-      <div style="border:4px solid #eee;border-top-color:#3498db;
-                  border-radius:50%;width:40px;height:40px;
-                  animation:spin 1s linear infinite"></div>
-      <div>Connessione completata! Chiudi pure la finestra…</div>
-      <script nonce="${nonce}">
-        window.opener?.postMessage({type:"GOOGLE_DRIVE_CONNECTED"},"*");
-        setTimeout(()=>window.close(),7000);
-      </script>
-      <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
-    </body></html>`;
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <title>Autorizzazione Completata</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f0f2f5; }
+    .container { max-width: 400px; margin: 0 auto; background: white; padding: 40px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    .success { color: #28a745; font-size: 48px; margin-bottom: 20px; }
+    .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #28a745; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 20px auto; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="success">✓</div>
+    <h2>Connessione Riuscita!</h2>
+    <p>Google Drive è stato connesso con successo al tuo account.</p>
+    <div class="spinner"></div>
+    <p><small>Puoi chiudere questa finestra...</small></p>
+  </div>
+  <script nonce="${nonce}">
+    // Notifica la finestra padre del successo
+    if (window.opener) {
+      window.opener.postMessage({ type: 'GOOGLE_DRIVE_CONNECTED' }, '*');
+    }
+    // Chiudi automaticamente dopo 2 secondi
+    setTimeout(() => window.close(), 2000);
+  </script>
+</body>
+</html>`;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -168,6 +184,65 @@ export async function getDriveClientForClient(clientId: number) {
   }
 
   return google.drive({ version: "v3", auth });
+}
+
+/* -------------------------------------------------------------------------- */
+/* Endpoint per generare access token dal refresh token salvato               */
+/* -------------------------------------------------------------------------- */
+export async function getAccessTokenForClient(req: Request, res: Response) {
+  try {
+    const clientId = Number(req.params.clientId);
+    if (!clientId) {
+      return res.status(400).json({ error: "Client ID mancante" });
+    }
+
+    const client = await mongoStorage.getClient(clientId);
+    if (!client?.google?.refreshToken) {
+      return res.status(400).json({ 
+        error: "Refresh token non trovato. Devi riautorizzare Google Drive.",
+        requiresAuth: true 
+      });
+    }
+
+    const auth = buildOAuthClient();
+    auth.setCredentials({ refresh_token: client.google.refreshToken });
+
+    // Genera un nuovo access token
+    const { token } = await auth.getAccessToken();
+    
+    if (!token) {
+      return res.status(500).json({ 
+        error: "Impossibile generare access token",
+        requiresAuth: true 
+      });
+    }
+
+    logger.info("Access token generated successfully", { 
+      clientId,
+      tokenLength: token.length 
+    });
+
+    res.json({ access_token: token });
+  } catch (error: any) {
+    logger.error("Failed to generate access token", {
+      clientId: req.params.clientId,
+      error: error.message
+    });
+
+    // Se il refresh token è scaduto/revocato, richiedi nuova autorizzazione
+    if (error?.response?.data?.error === "invalid_grant") {
+      await mongoStorage.clearClientTokens(Number(req.params.clientId));
+      return res.status(401).json({
+        error: "Refresh token scaduto. È necessaria una nuova autorizzazione.",
+        requiresAuth: true
+      });
+    }
+
+    res.status(500).json({ 
+      error: "Errore durante la generazione dell'access token",
+      requiresAuth: false 
+    });
+  }
 }
 
 /* -------------------------------------------------------------------------- */

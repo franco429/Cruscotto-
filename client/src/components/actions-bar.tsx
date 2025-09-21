@@ -371,7 +371,7 @@ export default function ActionsBar({
                 onUploadComplete={() => {
                   // Callback opzionale quando il caricamento è completato
                 }}
-                accept={[".xlsx", ".xls", ".docx", ".pdf", ".ods", ".csv"]}
+                accept={[".xlsx", ".xls", ".docx", ".pdf", ".ods", ".csv", "doc"]}
                 maxFiles={1000}
                 disabled={false}
               />

@@ -33,6 +33,7 @@ import {
   getDriveClientForClient,
   getGoogleAuthUrl,
   googleAuthCallback,
+  getAccessTokenForClient,
 } from "./google-oauth";
 import { InsertCompanyCode } from "./shared-types/companycode";
 import type { CompanyCodeDocument } from "./shared-types/companycode";
@@ -993,6 +994,9 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
   // Callback dopo autorizzazione
   app.get("/api/google/callback", googleAuthCallback);
+
+  // Endpoint per generare access token dal refresh token salvato
+  app.get("/api/google/access-token/:clientId", isAdmin, getAccessTokenForClient);
 
   // Endpoint per cambiare la password dell'utente corrente
   app.post("/api/change-password", isAuthenticated, async (req, res) => {

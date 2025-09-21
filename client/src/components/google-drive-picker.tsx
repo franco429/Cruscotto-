@@ -1,12 +1,24 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import { Button } from './ui/button';
 import { useToast } from '../hooks/use-toast';
 import { Loader2, FolderOpen } from 'lucide-react';
+import { apiRequest } from '../lib/queryClient';
 
 interface GoogleDrivePickerProps {
   onFolderSelected: (folderId: string, folderName: string) => void;
   disabled?: boolean;
   buttonText?: string;
+  requiresBackendAuth?: boolean;
+  onAuthRequired?: () => void;
+  onPickerClosed?: () => void;
+  clientId?: number; // Aggiunto per recuperare access token dal backend
+}
+
+export interface GoogleDrivePickerRef {
+  onBackendAuthComplete: () => void;
+  setLoading: (loading: boolean) => void;
+  openPickerAfterAuth: () => void;
+  resetToReady: () => void; // Nuovo metodo per resettare lo stato
 }
 
 declare global {
@@ -16,11 +28,15 @@ declare global {
   }
 }
 
-export default function GoogleDrivePicker({ 
+const GoogleDrivePicker = forwardRef<GoogleDrivePickerRef, GoogleDrivePickerProps>(({ 
   onFolderSelected, 
   disabled = false,
-  buttonText = "Seleziona Cartella da Drive"
-}: GoogleDrivePickerProps) {
+  buttonText = "Seleziona Cartella da Drive",
+  requiresBackendAuth = false,
+  onAuthRequired,
+  onPickerClosed,
+  clientId
+}, ref) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isApiReady, setIsApiReady] = useState(false);
   const accessTokenRef = useRef<string | null>(null);
@@ -29,6 +45,158 @@ export default function GoogleDrivePicker({
   const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   const DEVELOPER_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
   const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
+
+  // Funzione per ottenere access token dal backend
+  const getAccessTokenFromBackend = async (forceRefresh = false): Promise<string | null> => {
+    if (!clientId) {
+      console.error('❌ Client ID non fornito al GoogleDrivePicker');
+      return null;
+    }
+
+    try {
+      console.log(`🔑 Tentativo di recupero access token per client ${clientId}${forceRefresh ? ' (force refresh)' : ''}`);
+      const url = forceRefresh 
+        ? `/api/google/access-token/${clientId}?refresh=true`
+        : `/api/google/access-token/${clientId}`;
+      
+      const response = await apiRequest('GET', url);
+      const data = await response.json();
+      
+      if (data.access_token) {
+        console.log('✅ Access token ottenuto dal backend con successo');
+        return data.access_token;
+      } else if (data.requiresAuth) {
+        console.log('🔄 Il refresh token è scaduto/mancante - serve nuova autorizzazione');
+        return null;
+      } else {
+        throw new Error(data.error || 'Errore sconosciuto');
+      }
+    } catch (error) {
+      console.error('❌ Errore nel recupero access token dal backend:', error);
+      // Non mostrare toast di errore qui per evitare spam, lasciamo che il fallback gestisca
+      return null;
+    }
+  };
+
+  useImperativeHandle(ref, () => ({
+    onBackendAuthComplete: () => {
+      setIsLoading(false);
+      toast({
+        title: 'Autorizzazione completata',
+        description: 'Ora puoi selezionare la cartella Google Drive',
+      });
+    },
+    setLoading: (loading: boolean) => {
+      setIsLoading(loading);
+    },
+    resetToReady: () => {
+      console.log('🔄 Resettando GoogleDrivePicker a stato pronto');
+      setIsLoading(false);
+      accessTokenRef.current = null; // Reset del token cache
+    },
+    openPickerAfterAuth: async () => {
+      // Apre automaticamente il picker usando access token dal backend
+      if (!isApiReady) {
+        toast({
+          title: 'Errore',
+          description: 'Google APIs non ancora caricate',
+          variant: 'destructive'
+        });
+        return;
+      }
+      
+      setIsLoading(true);
+      
+      toast({
+        title: 'Apertura Google Picker',
+        description: 'Preparazione della selezione cartella...',
+      });
+      
+      // Prova prima a ottenere l'access token dal backend (con force refresh dopo auth)
+      const backendAccessToken = await getAccessTokenFromBackend(true);
+      
+      if (backendAccessToken) {
+        // Usa il token dal backend - non serve autorizzazione frontend
+        console.log('🎉 Usando access token dal backend per aprire il picker');
+        accessTokenRef.current = backendAccessToken;
+        
+        toast({
+          title: 'Token recuperato',
+          description: 'Apertura Google Picker con autorizzazione esistente...',
+        });
+        
+        // Piccolo delay per mostrare il messaggio
+        setTimeout(() => {
+          openPicker(backendAccessToken);
+        }, 300);
+        return;
+      }
+      
+      // Fallback: se non c'è token dal backend, usa Google Identity Services
+      console.log('⚠️ Token backend non disponibile, fallback a Google Identity Services');
+      
+      const tokenClient = window.google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: (response: any) => {
+          if (response.error) {
+            console.error('Errore OAuth durante apertura picker:', response.error);
+            
+            // Se fallisce senza prompt, riprova con prompt
+            console.log('Riprovo con prompt consent...');
+            const fallbackTokenClient = window.google.accounts.oauth2.initTokenClient({
+              client_id: CLIENT_ID,
+              scope: SCOPES,
+              callback: (fallbackResponse: any) => {
+                if (fallbackResponse.error) {
+                  console.error('Errore OAuth anche con prompt:', fallbackResponse.error);
+                  toast({
+                    title: 'Errore di Autorizzazione',
+                    description: 'Impossibile accedere a Google Drive',
+                    variant: 'destructive'
+                  });
+                  setIsLoading(false);
+                  onPickerClosed?.(); // Notifica che il picker non è riuscito ad aprirsi
+                  return;
+                }
+                
+                accessTokenRef.current = fallbackResponse.access_token;
+                openPicker(fallbackResponse.access_token);
+              }
+            });
+            
+            fallbackTokenClient.requestAccessToken({ prompt: 'consent' });
+            return;
+          }
+          
+          // Apre il picker con il token ottenuto dal fallback
+          accessTokenRef.current = response.access_token;
+          openPicker(response.access_token);
+        }
+      });
+
+      // Prima prova senza prompt (usa la sessione esistente)
+      tokenClient.requestAccessToken({ prompt: '' });
+    }
+  }));
+
+  // useEffect per resettare lo stato quando l'autorizzazione backend è completata
+  useEffect(() => {
+    // Quando requiresBackendAuth cambia da true a false, significa che l'autorizzazione è stata completata
+    // e dobbiamo resettare il loading state per permettere l'uso normale del picker
+    if (!requiresBackendAuth && isLoading) {
+      console.log('🔄 Autorizzazione backend completata via useEffect, reset del loading state');
+      // Reset immediato senza delay per migliore UX
+      setIsLoading(false);
+      accessTokenRef.current = null; // Reset del token cache per forzare il refresh
+      
+      // Notifica l'utente che può procedere
+      toast({
+        title: 'Pronto per la selezione',
+        description: 'Clicca nuovamente per selezionare la cartella',
+      });
+    }
+  }, [requiresBackendAuth, isLoading, toast]);
 
   useEffect(() => {
     // Carica gli script Google necessari
@@ -140,17 +308,63 @@ export default function GoogleDrivePicker({
           variant: 'destructive'
         });
       }
+      setIsLoading(false);
+      onPickerClosed?.(); // Notifica che il picker è stato chiuso
     } else if (data.action === window.google.picker.Action.CANCEL) {
       setIsLoading(false);
+      onPickerClosed?.(); // Notifica che il picker è stato chiuso/cancellato
     }
   };
 
   const handleAuthAndOpen = async () => {
     if (!isApiReady || disabled) return;
     
+    // Se richiede autorizzazione backend e non è disponibile la callback, avvia l'autorizzazione backend
+    if (requiresBackendAuth && onAuthRequired) {
+      setIsLoading(true);
+      
+      toast({
+        title: 'Autorizzazione in corso',
+        description: 'Completando l\'autorizzazione con Google Drive...',
+      });
+      
+      // Chiama la callback per avviare l'autorizzazione backend
+      onAuthRequired();
+      
+      // Il loading verrà fermato quando l'autorizzazione backend è completata
+      return;
+    }
+    
     setIsLoading(true);
 
     try {
+      // Prima prova a ottenere l'access token dal backend se disponibile
+      if (!requiresBackendAuth) {
+        console.log('🔍 Tentativo di uso dell\'access token dal backend');
+        const backendAccessToken = await getAccessTokenFromBackend(true);
+        
+        if (backendAccessToken) {
+          // Usa il token dal backend - non serve autorizzazione frontend
+          console.log('🎉 Usando access token dal backend per handleAuthAndOpen');
+          accessTokenRef.current = backendAccessToken;
+          
+          toast({
+            title: 'Connessione riuscita',
+            description: 'Apertura Google Picker con token esistente...',
+          });
+          
+          setTimeout(() => {
+            openPicker(backendAccessToken);
+          }, 500); // Breve ritardo per mostrare il messaggio
+          return;
+        } else {
+          console.log('⚠️ Nessun token backend disponibile, procedendo con OAuth frontend');
+        }
+      } else {
+        console.log('🔄 Richiesta autorizzazione backend in corso, saltando tentativo token backend');
+      }
+      
+      // Fallback: se non c'è token dal backend, usa Google Identity Services  
       if (!accessTokenRef.current) {
         // Inizializza il token client
         const tokenClient = window.google.accounts.oauth2.initTokenClient({
@@ -168,8 +382,16 @@ export default function GoogleDrivePicker({
               return;
             }
             
-            accessTokenRef.current = response.access_token;
-            openPicker(response.access_token);
+            // Ritarda leggermente l'apertura del picker per permettere il completamento delle operazioni backend
+            toast({
+              title: 'Connessione riuscita',
+              description: 'Apertura Google Picker...',
+            });
+            
+            setTimeout(() => {
+              accessTokenRef.current = response.access_token;
+              openPicker(response.access_token);
+            }, 1500); // Ritardo di 1.5 secondi per permettere il completamento dell'autorizzazione
           }
         });
 
@@ -197,7 +419,7 @@ export default function GoogleDrivePicker({
       {isLoading ? (
         <>
           <Loader2 className="h-4 w-4 animate-spin" />
-          Apertura Google Picker...
+          {requiresBackendAuth && onAuthRequired ? 'Autorizzazione in corso...' : 'Apertura Google Picker...'}
         </>
       ) : (
         <>
@@ -207,4 +429,8 @@ export default function GoogleDrivePicker({
       )}
     </Button>
   );
-}
+});
+
+GoogleDrivePicker.displayName = 'GoogleDrivePicker';
+
+export default GoogleDrivePicker;
