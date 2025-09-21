@@ -33,7 +33,7 @@ interface ModernFileUploadProps {
 export default function ModernFileUpload({
   onFilesSelected,
   onUploadComplete,
-  accept = [".xlsx", ".xls", ".docx", ".pdf", ".ods", ".csv"],
+  accept = [".xlsx", ".xls", ".doc", ".docx", ".pdf", ".ods", ".csv"],
   maxFiles = 1000,
   className,
   disabled = false
