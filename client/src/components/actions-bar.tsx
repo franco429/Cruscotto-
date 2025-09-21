@@ -217,104 +217,159 @@ export default function ActionsBar({
 
                   let totalSuccess = 0;
                   let totalErrors: string[] = [];
+                  let allUploadIds: string[] = [];
 
                   try {
-                    // Upload asincrono ottimizzato
-                    const formData = new FormData();
-                    files.forEach((file: any) => {
-                      const fileNameForUpload = file.path || file.webkitRelativePath || file.name;
-                      formData.append("localFiles", file, fileNameForUpload);
-                    });
-
-                    // Avvia upload asincrono
-                    const response = await apiRequest("POST", "/api/documents/local-upload", formData);
-                    const result = await response.json();
-
-                    if (!response.ok) {
-                      throw new Error(result?.message || "Errore durante l'upload");
-                    }
-
-                    const { uploadId, totalFiles } = result;
-
-                    // Mostra toast di avvio con progress tracking
+                    // Mostra toast di avvio per upload batch
                     const progressToast = toast({
                       title: "Upload in corso",
-                      description: `Elaborazione di ${totalFiles} file in background...`,
+                      description: `Avvio upload di ${validFiles.length} file in ${batches.length} batch...`,
                       duration: Infinity,
                     });
 
-                    // Polling dello stato upload con gestione errori robusta
+                    // Upload batch per batch per rispettare i limiti di dimensione
+                    for (let i = 0; i < batches.length; i++) {
+                      const batch = batches[i];
+                      const batchSizeMB = Math.round(batch.reduce((sum: number, f: any) => sum + f.size, 0) / (1024 * 1024));
+                      
+                      // Aggiorna progress per batch corrente
+                      progressToast.update({
+                        id: progressToast.id,
+                        title: "Upload in corso",
+                        description: `Batch ${i + 1}/${batches.length} (${batch.length} file, ${batchSizeMB}MB)...`,
+                        duration: Infinity,
+                      });
+
+                      const formData = new FormData();
+                      batch.forEach((file: any) => {
+                        const fileNameForUpload = file.path || file.webkitRelativePath || file.name;
+                        formData.append("localFiles", file, fileNameForUpload);
+                      });
+
+                      // Upload singolo batch
+                      const response = await apiRequest("POST", "/api/documents/local-upload", formData);
+                      const result = await response.json();
+
+                      if (!response.ok) {
+                        totalErrors.push(`Batch ${i + 1}: ${result?.message || "Errore sconosciuto"}`);
+                        continue;
+                      }
+
+                      allUploadIds.push(result.uploadId);
+                    }
+
+                    // Se tutti i batch sono falliti
+                    if (allUploadIds.length === 0) {
+                      progressToast.dismiss();
+                      toast({
+                        title: "Errore completo",
+                        description: `Tutti i ${batches.length} batch sono falliti. Errori: ${totalErrors.join('; ')}`,
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+
+                    const totalFiles = validFiles.length;
+
+                    // Polling dello stato upload per tutti i batch contemporaneamente
                     let pollAttempts = 0;
                     let maxPollAttempts = 15; // Massimo 15 tentativi (30 secondi)
+                    let completedBatches = new Set<string>();
                     
-                    const pollUploadStatus = async () => {
+                    const pollAllBatchesStatus = async () => {
                       try {
                         pollAttempts++;
-                        const statusResponse = await apiRequest("GET", `/api/documents/upload-status/${uploadId}`);
                         
-                        // Se riceviamo errore 500, fermiamo immediatamente il polling
-                        if (!statusResponse.ok) {
-                          if (statusResponse.status === 500) {
-                            progressToast.dismiss();
-                            toast({
-                              title: "Errore server",
-                              description: "Errore interno del server. L'upload potrebbe essere ancora in corso.",
-                              variant: "destructive",
-                            });
-                            return true; // Stop polling
+                        // Polling parallelo di tutti gli uploadId
+                        const statusPromises = allUploadIds.map(uploadId => 
+                          apiRequest("GET", `/api/documents/upload-status/${uploadId}`)
+                            .then(res => ({ uploadId, response: res }))
+                            .catch(err => ({ uploadId, error: err }))
+                        );
+                        
+                        const results = await Promise.allSettled(statusPromises);
+                        
+                        let totalProcessed = 0;
+                        let totalFailed = 0;
+                        let hasErrors = false;
+                        let allCompleted = true;
+                        
+                        // Analizza i risultati di tutti i batch
+                        for (const result of results) {
+                          if (result.status === 'rejected') {
+                            hasErrors = true;
+                            continue;
                           }
                           
-                          // Per altri errori, ritenta ma con limite
-                          if (pollAttempts >= maxPollAttempts) {
-                            progressToast.dismiss();
-                            toast({
-                              title: "Timeout polling",
-                              description: "Impossibile verificare lo stato dell'upload. Controlla manualmente.",
-                              variant: "destructive",
-                            });
-                            return true; // Stop polling
+                          const { uploadId, response, error } = result.value as any;
+                          
+                          if (error) {
+                            hasErrors = true;
+                            continue;
                           }
-                          return false; // Continue polling
+                          
+                          if (!response.ok) {
+                            if (response.status === 500) {
+                              hasErrors = true;
+                              continue;
+                            }
+                            continue;
+                          }
+                          
+                          const status = await response.json();
+                          totalProcessed += status.processedFiles || 0;
+                          totalFailed += status.failedFiles || 0;
+                          
+                          if (status.status === 'completed') {
+                            completedBatches.add(uploadId);
+                          } else if (status.status === 'failed') {
+                            completedBatches.add(uploadId);
+                            hasErrors = true;
+                          } else {
+                            allCompleted = false;
+                          }
                         }
-
-                        const status = await statusResponse.json();
-
+                        
                         // Reset counter on successful response
-                        pollAttempts = 0;
+                        if (!hasErrors) pollAttempts = 0;
 
-                        const progressPercent = Math.round((status.processedFiles + status.failedFiles) / status.totalFiles * 100);
+                        const progressPercent = totalFiles > 0 ? Math.round((totalProcessed + totalFailed) / totalFiles * 100) : 0;
                         
                         // Aggiorna descrizione del toast
                         progressToast.update({
                           id: progressToast.id,
                           title: "Upload in corso",
-                          description: `Progresso: ${progressPercent}% (${status.processedFiles + status.failedFiles}/${status.totalFiles})`,
+                          description: `Progresso: ${progressPercent}% - ${completedBatches.size}/${allUploadIds.length} batch completati (${totalProcessed + totalFailed}/${totalFiles} file)`,
                           duration: Infinity,
                         });
 
-                        if (status.status === 'completed') {
+                        // Se tutti i batch sono completati
+                        if (allCompleted || completedBatches.size === allUploadIds.length) {
                           progressToast.dismiss();
                           
-                          if (status.errors.length === 0) {
+                          if (totalFailed === 0 && !hasErrors) {
                             toast({
                               title: "Successo",
-                              description: `${status.processedFiles} documenti caricati con successo`,
+                              description: `Tutti i ${totalProcessed} documenti caricati con successo in ${allUploadIds.length} batch`,
                             });
                           } else {
                             toast({
                               title: "Completato con errori",
-                              description: `${status.processedFiles} caricati, ${status.failedFiles} errori.`,
+                              description: `${totalProcessed} caricati con successo, ${totalFailed} errori in ${allUploadIds.length} batch.`,
                               variant: "destructive",
                             });
                           }
 
                           if (onSyncComplete) onSyncComplete();
                           return true; // Stop polling
-                        } else if (status.status === 'failed') {
+                        }
+                        
+                        // Se abbiamo troppi errori consecutivi
+                        if (pollAttempts >= maxPollAttempts) {
                           progressToast.dismiss();
                           toast({
-                            title: "Errore",
-                            description: "Upload fallito. Controlla i log per dettagli.",
+                            title: "Timeout polling",
+                            description: "Impossibile verificare lo stato completo. Alcuni upload potrebbero essere ancora in corso.",
                             variant: "destructive",
                           });
                           return true; // Stop polling
@@ -322,7 +377,7 @@ export default function ActionsBar({
 
                         return false; // Continue polling
                       } catch (error) {
-                        console.error("Error polling upload status:", error);
+                        console.error("Error polling batch upload status:", error);
                         pollAttempts++;
                         
                         // Se abbiamo troppi errori consecutivi, fermiamo il polling
@@ -330,7 +385,7 @@ export default function ActionsBar({
                           progressToast.dismiss();
                           toast({
                             title: "Errore di rete",
-                            description: "Troppe richieste fallite. Controlla la connessione e riprova.",
+                            description: "Troppe richieste fallite durante il monitoraggio. Controlla manualmente lo stato.",
                             variant: "destructive",
                           });
                           return true; // Stop polling
@@ -342,7 +397,7 @@ export default function ActionsBar({
 
                     // Avvia polling ogni 2 secondi
                     const pollInterval = setInterval(async () => {
-                      const shouldStop = await pollUploadStatus();
+                      const shouldStop = await pollAllBatchesStatus();
                       if (shouldStop) {
                         clearInterval(pollInterval);
                       }
@@ -354,7 +409,7 @@ export default function ActionsBar({
                       progressToast.dismiss();
                       toast({
                         title: "Timeout",
-                        description: "Upload in corso da troppo tempo. Controlla i risultati manualmente.",
+                        description: `Upload batch in corso da troppo tempo. ${allUploadIds.length} batch avviati - controlla i risultati manualmente.`,
                         variant: "destructive",
                       });
                     }, 600000);
@@ -363,7 +418,7 @@ export default function ActionsBar({
                   } catch (err: any) {
                     toast({
                       title: "Errore",
-                      description: err?.message || "Errore durante l'avvio dell'upload",
+                      description: err?.message || "Errore durante l'avvio dell'upload batch",
                       variant: "destructive",
                     });
                   }
