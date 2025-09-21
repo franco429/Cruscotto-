@@ -481,25 +481,27 @@ async function analyzeExcelContentStreamOptimized(
       throw new Error(`File Excel con formattazione eccessiva (${totalRowsRead}+ righe). Pulisci il file: Excel → Cerca e Seleziona → Vai a Speciale → Celle vuote → Elimina righe/colonne.`);
     }
     
+    const alertStatus = calculateAlertStatus(expiryDate);
+    
     if (!expiryDate) {
       logger.debug("No expiry date found in streaming Excel analysis", { 
         filePath, 
         analysisTimeMs: analysisTime,
         totalRowsRead,
+        alertStatus: "none",
         method: 'streaming-optimized'
       });
-      return { alertStatus: "none", expiryDate: null };
+    } else {
+      logger.info("Streaming Excel analysis completed", {
+        filePath,
+        expiryDate: (expiryDate as Date).toISOString(),
+        alertStatus,
+        analysisTimeMs: analysisTime,
+        totalRowsRead,
+        method: 'streaming-optimized'
+      });
     }
-
-    const alertStatus = calculateAlertStatus(expiryDate);
-    logger.info("Streaming Excel analysis completed", {
-      filePath,
-      expiryDate: expiryDate.toISOString(),
-      alertStatus,
-      analysisTimeMs: analysisTime,
-      totalRowsRead,
-      method: 'streaming-optimized'
-    });
+    
     return { alertStatus, expiryDate };
     
   } catch (error) {
@@ -519,7 +521,12 @@ async function analyzeExcelContentStreamOptimized(
 // REMOVED: analyzeExcelContentFallback - no more document mode fallback for memory safety
 
 // ===== ALERT STATUS CALCULATOR =====
-function calculateAlertStatus(expiryDate: Date): Alert {
+function calculateAlertStatus(expiryDate: Date | null | undefined): Alert {
+  // Se non c'è data di scadenza, il documento è considerato valido (non scaduto)
+  if (!expiryDate) {
+    return "none";
+  }
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -1364,40 +1371,47 @@ async function analyzeGoogleSheet(
 
     const formula = formulaResponse.data.values?.[0]?.[0];
 
+    let expiryDate: Date | null = null;
+
     if (formula && typeof formula === "string" && formula.startsWith("=")) {
       const result = evaluator.evaluate(formula);
       if (result.evaluated && result.value) {
-        const alertStatus = calculateAlertStatus(result.value);
+        expiryDate = result.value;
         logger.debug(`Google Sheet formula evaluated`, {
           formula,
           result: result.value,
         });
-        return { alertStatus, expiryDate: result.value };
       }
     }
 
-    // Fallback: leggi il valore calcolato
-    const valueResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: "Sheet1!A1",
-      valueRenderOption: "UNFORMATTED_VALUE",
-    });
+    // Fallback: leggi il valore calcolato se non abbiamo una data dalla formula
+    if (!expiryDate) {
+      const valueResponse = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: "Sheet1!A1",
+        valueRenderOption: "UNFORMATTED_VALUE",
+      });
 
-    const calculatedValue = valueResponse.data.values?.[0]?.[0];
-    if (calculatedValue) {
-      const date = parseValueToUTCDate(calculatedValue);
-      if (date) {
-        const alertStatus = calculateAlertStatus(date);
-        logger.debug(`Google Sheet fallback value used`, {
-          calculatedValue,
-          date,
-        });
-        return { alertStatus, expiryDate: date };
+      const calculatedValue = valueResponse.data.values?.[0]?.[0];
+      if (calculatedValue) {
+        const date = parseValueToUTCDate(calculatedValue);
+        if (date) {
+          expiryDate = date;
+          logger.debug(`Google Sheet fallback value used`, {
+            calculatedValue,
+            date,
+          });
+        }
       }
     }
 
-    logger.debug(`No valid date found in Google Sheet A1`, { spreadsheetId });
-    return { alertStatus: "none", expiryDate: null };
+    const alertStatus = calculateAlertStatus(expiryDate);
+    
+    if (!expiryDate) {
+      logger.debug(`No valid date found in Google Sheet A1`, { spreadsheetId, alertStatus: "none" });
+    }
+    
+    return { alertStatus, expiryDate };
   } catch (error) {
     logger.error("Google Sheet analysis failed", { spreadsheetId, error });
     return { alertStatus: "none", expiryDate: null };

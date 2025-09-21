@@ -58,6 +58,28 @@ describe('Excel Analysis Tests', () => {
     });
   });
 
+  it('should return none status when cell A1 is undefined', async () => {
+    mockCell.value = undefined;
+
+    const result = await analyzeExcelContent('/test/path/file.xlsx');
+
+    expect(result).toEqual({
+      alertStatus: 'none',
+      expiryDate: null
+    });
+  });
+
+  it('should return none status when cell A1 contains empty string', async () => {
+    mockCell.value = '';
+
+    const result = await analyzeExcelContent('/test/path/file.xlsx');
+
+    expect(result).toEqual({
+      alertStatus: 'none',
+      expiryDate: null
+    });
+  });
+
   it('should parse date from string format DD/MM/YYYY', async () => {
     mockCell.value = '31/12/2025';
 
