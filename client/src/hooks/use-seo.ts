@@ -90,7 +90,7 @@ export function useSEO(config: SEOConfig) {
  */
 export function usePageSEO(title: string, description?: string) {
   useSEO({
-    title: `${title} | SGI Cruscotto`,
+    title: `${title} | Pannello di Controllo SGI`,
     description,
   });
 }

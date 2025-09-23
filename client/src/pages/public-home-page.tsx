@@ -23,7 +23,7 @@ export default function PublicHomePage() {
 
   // SEO configuration per la homepage
   useSEO({
-    title: "SGI Cruscotto - Sistema di Gestione Integrata",
+    title: "Pannello di Controllo SGI - Gestione Documentale Aziendale",
     description: "Sistema completo per la gestione documentale aziendale con integrazione Google Drive, backup automatici e sicurezza avanzata. Gestisci i tuoi documenti in modo sicuro e efficiente.",
     canonicalUrl: "https://cruscotto-sgi.com/"
   });
