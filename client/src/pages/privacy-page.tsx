@@ -1,8 +1,15 @@
 import React from "react";
 import AuthNavbar from "../components/auth-navbar";
 import Footer from "../components/footer";
+import { usePageSEO } from "../hooks/use-seo";
 
 export default function PrivacyPage() {
+  // SEO per la pagina privacy
+  usePageSEO(
+    "Privacy Policy", 
+    "Informativa sulla privacy di SGI Cruscotto. Scopri come proteggiamo i tuoi dati personali e aziendali."
+  );
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
       <AuthNavbar />

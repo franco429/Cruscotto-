@@ -1,8 +1,15 @@
 import React from "react";
 import AuthNavbar from "../components/auth-navbar";
 import Footer from "../components/footer";
+import { usePageSEO } from "../hooks/use-seo";
 
 export default function TermsPage() {
+  // SEO per la pagina termini di servizio
+  usePageSEO(
+    "Termini di Servizio", 
+    "Termini e condizioni d'uso di SGI Cruscotto. Leggi i nostri termini di servizio per l'utilizzo della piattaforma."
+  );
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
       <AuthNavbar />

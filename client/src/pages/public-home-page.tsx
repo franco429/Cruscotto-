@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import Footer from "../components/footer";
 import { Button } from "../components/ui/button";
 import { Link } from "wouter";
+import { useSEO } from "../hooks/use-seo";
 import {
   Shield,
   FileText,
@@ -19,6 +20,13 @@ import {
 
 export default function PublicHomePage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // SEO configuration per la homepage
+  useSEO({
+    title: "SGI Cruscotto - Sistema di Gestione Integrata",
+    description: "Sistema completo per la gestione documentale aziendale con integrazione Google Drive, backup automatici e sicurezza avanzata. Gestisci i tuoi documenti in modo sicuro e efficiente.",
+    canonicalUrl: "https://cruscotto-sgi.com/"
+  });
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);

@@ -148,14 +148,58 @@ app.use((req, res, next) => {
     const { registerBackupRoutes } = await import("./backup-routes");
     registerBackupRoutes(app);
 
+    // Middleware per normalizzare gli URL (www -> non-www, http -> https)
+    app.use((req, res, next) => {
+      const host = req.get('host');
+      const protocol = req.get('x-forwarded-proto') || req.protocol;
+      
+      // Se in produzione, forza HTTPS e rimuovi www
+      if (process.env.NODE_ENV === 'production') {
+        let redirect = false;
+        let redirectUrl = '';
+        
+        // Forza HTTPS
+        if (protocol !== 'https') {
+          redirect = true;
+          redirectUrl = `https://${host}${req.url}`;
+        }
+        
+        // Rimuovi www dal dominio
+        if (host && host.startsWith('www.')) {
+          redirect = true;
+          const newHost = host.replace(/^www\./, '');
+          redirectUrl = `https://${newHost}${req.url}`;
+        }
+        
+        if (redirect) {
+          logger.info(`Redirect SEO: ${req.url} -> ${redirectUrl}`);
+          return res.redirect(301, redirectUrl);
+        }
+      }
+      
+      next();
+    });
+
     // Serve i file statici della build Vite
     const viteDistPath = path.join(__dirname, "..", "client", "dist");
     app.use(express.static(viteDistPath));
 
+    // robots.txt per API: BLOCCA l'indicizzazione (sicurezza)
     app.get("/robots.txt", (req, res) => {
-      res.type("text/plain");
-      res.send("User-agent: *\nDisallow: /");
+      const host = req.get('host');
+      
+      // Se il dominio contiene 'api', blocca tutto l'indicizzazione
+      if (host && host.includes('api')) {
+        res.type("text/plain");
+        res.send("User-agent: *\nDisallow: /");
+        logger.info("Served robots.txt for API domain - blocking all indexing");
+      } else {
+        // Per il dominio principale, serve il file statico (che permette indicizzazione)
+        res.sendFile(path.join(viteDistPath, "robots.txt"));
+        logger.info("Served static robots.txt for main domain");
+      }
     });
+
     // Catch-all: tutte le richieste non API servono index.html (SPA fallback)
     app.get(/^\/(?!api).*/, (req, res) => {
       res.sendFile(path.join(viteDistPath, "index.html"));

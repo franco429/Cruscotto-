@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "../hooks/use-auth";
+import { usePageSEO } from "../hooks/use-seo";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import {
@@ -81,6 +82,12 @@ export default function AuthPage() {
   const [tabValue, setTabValue] = useState("login");
   const [showLoadingSpinner, setShowLoadingSpinner] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
+  
+  // SEO per la pagina di autenticazione
+  usePageSEO(
+    "Accedi", 
+    "Accedi al tuo account SGI Cruscotto per gestire i documenti aziendali in modo sicuro."
+  );
 
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
