@@ -321,7 +321,7 @@ export default function AutoSyncSettings({ onConfigChange }: AutoSyncSettingsPro
         </Button>
       </DialogTrigger>
       
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-[95vw] sm:max-w-md lg:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Sincronizzazione Automatica</DialogTitle>
           <DialogDescription>
@@ -329,22 +329,22 @@ export default function AutoSyncSettings({ onConfigChange }: AutoSyncSettingsPro
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Stato Corrente */}
           {config && (
-            <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
                 {config.enabled ? (
                   <>
-                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-                    <span className="font-semibold text-green-700 dark:text-green-300">
+                    <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse" />
+                    <span className="text-sm font-semibold text-green-700 dark:text-green-300">
                       Attiva
                     </span>
                   </>
                 ) : (
                   <>
-                    <div className="w-3 h-3 bg-gray-400 rounded-full" />
-                    <span className="font-semibold text-gray-600 dark:text-gray-400">
+                    <div className="w-2.5 h-2.5 bg-gray-400 rounded-full" />
+                    <span className="text-sm font-semibold text-gray-600 dark:text-gray-400">
                       Inattiva
                     </span>
                   </>
@@ -352,10 +352,15 @@ export default function AutoSyncSettings({ onConfigChange }: AutoSyncSettingsPro
               </div>
               
               {config.enabled && (
-                <div className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
-                  <div>Cartella: <span className="font-mono text-xs bg-slate-200 dark:bg-slate-700 px-1 rounded">{config.watchFolder}</span></div>
-                  <div>Controllo ogni: {config.intervalMinutes} minuti</div>
-                  <div>Ultima sync: {formatLastSyncTime(config.lastSyncTime)}</div>
+                <div className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
+                  <div className="break-all">
+                    <span className="font-medium">Cartella:</span>{' '}
+                    <span className="font-mono bg-slate-200 dark:bg-slate-700 px-1 rounded">
+                      {config.watchFolder}
+                    </span>
+                  </div>
+                  <div><span className="font-medium">Ogni:</span> {config.intervalMinutes} min</div>
+                  <div><span className="font-medium">Ultima sync:</span> {formatLastSyncTime(config.lastSyncTime)}</div>
                 </div>
               )}
             </div>
@@ -365,61 +370,65 @@ export default function AutoSyncSettings({ onConfigChange }: AutoSyncSettingsPro
           <div className="space-y-4">
             <div>
               <Label htmlFor="watchFolder">Cartella da Monitorare</Label>
-              <div className="flex gap-2 mt-1">
-                <Input
-                  id="watchFolder"
-                  placeholder="es: J:\Il mio Drive\GESTEA oppure C:\Documents\SGI"
-                  value={tempConfig.watchFolder}
-                  onChange={(e) => {
-                    setTempConfig(prev => ({ ...prev, watchFolder: e.target.value }));
-                    // Reset del risultato del test quando l'utente modifica il percorso
-                    setPathTestResult(null);
-                  }}
-                  className="text-sm"
-                />
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <Input
+                    id="watchFolder"
+                    placeholder="es: J:\Il mio Drive\GESTEA"
+                    value={tempConfig.watchFolder}
+                    onChange={(e) => {
+                      setTempConfig(prev => ({ ...prev, watchFolder: e.target.value }));
+                      // Reset del risultato del test quando l'utente modifica il percorso
+                      setPathTestResult(null);
+                    }}
+                    className="text-sm flex-1 min-w-0"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleTestPath}
+                    disabled={isTestingPath || !tempConfig.watchFolder.trim()}
+                    title="Testa validità percorso"
+                    className="flex-shrink-0"
+                  >
+                    {isTestingPath ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
                 <Button
                   type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleTestPath}
-                  disabled={isTestingPath || !tempConfig.watchFolder.trim()}
-                  title="Testa validità percorso"
-                >
-                  {isTestingPath ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <CheckCircle className="h-4 w-4" />
-                  )}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
                   onClick={handleSelectFolder}
-                  title="Esempi percorsi"
+                  className="w-full text-xs text-muted-foreground hover:text-foreground"
                 >
-                  <FolderOpen className="h-4 w-4" />
+                  <FolderOpen className="h-3 w-3 mr-1" />
+                  Mostra esempi percorsi
                 </Button>
               </div>
               
               {/* Risultato test percorso */}
               {pathTestResult && (
-                <div className={`mt-2 p-2 rounded text-xs flex items-center gap-2 ${
+                <div className={`p-2 rounded-md text-xs flex items-start gap-2 ${
                   pathTestResult.success 
                     ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800'
                     : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800'
                 }`}>
                   {pathTestResult.success ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <CheckCircle className="h-3.5 w-3.5 text-green-600 mt-0.5 flex-shrink-0" />
                   ) : (
-                    <XCircle className="h-4 w-4 text-red-600" />
+                    <XCircle className="h-3.5 w-3.5 text-red-600 mt-0.5 flex-shrink-0" />
                   )}
-                  <span>{pathTestResult.message}</span>
+                  <span className="break-words">{pathTestResult.message}</span>
                 </div>
               )}
               
-              <p className="text-xs text-slate-500 mt-1">
-                Percorso completo della cartella contenente i documenti da monitorare
+              <p className="text-xs text-slate-500 mt-2">
+                Percorso completo della cartella con i documenti da monitorare
               </p>
             </div>
 
@@ -449,13 +458,14 @@ export default function AutoSyncSettings({ onConfigChange }: AutoSyncSettingsPro
           </div>
 
           {/* Azioni */}
-          <div className="flex gap-2">
+          <div className="space-y-2">
             {config?.enabled ? (
-              <>
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Button
                   onClick={handleStopAutoSync}
                   disabled={isLoading}
                   variant="destructive"
+                  size="sm"
                   className="flex-1"
                 >
                   <Square className="h-4 w-4 mr-2" />
@@ -466,17 +476,19 @@ export default function AutoSyncSettings({ onConfigChange }: AutoSyncSettingsPro
                   onClick={handleUpdateConfig}
                   disabled={isLoading}
                   variant="outline"
+                  size="sm"
                   className="flex-1"
                 >
                   <Settings className="h-4 w-4 mr-2" />
                   {isLoading ? 'Aggiornando...' : 'Aggiorna'}
                 </Button>
-              </>
+              </div>
             ) : (
               <Button
                 onClick={handleStartAutoSync}
                 disabled={isLoading || !tempConfig.watchFolder.trim() || (pathTestResult && !pathTestResult.success)}
-                className="flex-1"
+                size="sm"
+                className="w-full"
                 title={
                   !tempConfig.watchFolder.trim() 
                     ? "Inserisci un percorso prima" 
@@ -494,20 +506,19 @@ export default function AutoSyncSettings({ onConfigChange }: AutoSyncSettingsPro
           </div>
 
           {/* Informazioni */}
-          <div className="text-xs text-slate-500 space-y-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
-            <div>
-              <p><strong>Come funziona:</strong></p>
-              <p>• Il sistema monitora automaticamente la cartella specificata</p>
-              <p>• Quando rileva modifiche nei file, li aggiorna automaticamente</p>
-              <p>• Supporta Excel, Word, PDF e tutti i formati standard</p>
-              <p>• Le date di scadenza in Excel (cella A1) vengono aggiornate automaticamente</p>
+          <div className="text-xs text-slate-500 p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
+            <div className="space-y-1">
+              <p><strong>💡 Come funziona:</strong></p>
+              <p>• Monitora automaticamente la cartella • Aggiorna file modificati</p>
+              <p>• Supporta Excel, Word, PDF • Date scadenza (A1) automatiche</p>
             </div>
-            <div className="pt-2 border-t border-blue-200 dark:border-blue-700">
-              <p><strong>📁 Percorsi Google Drive Desktop:</strong></p>
-              <p>• Windows: J:\Il mio Drive\GESTEA</p>
-              <p>• Windows: G:\Il mio Drive\[cartella]</p>
-              <p>• Windows: C:\Users\[nome]\Google Drive\[cartella]</p>
-              <p className="mt-1 text-blue-600 dark:text-blue-400"><strong>💡 Copia il percorso direttamente da Esplora File</strong></p>
+            <div className="pt-2 mt-2 border-t border-blue-200 dark:border-blue-700 space-y-1">
+              <p><strong>📁 Esempi percorsi:</strong></p>
+              <p><code className="bg-blue-100 dark:bg-blue-800 px-1 rounded text-xs">J:\Il mio Drive\GESTEA</code></p>
+              <p><code className="bg-blue-100 dark:bg-blue-800 px-1 rounded text-xs">G:\Il mio Drive\[cartella]</code></p>
+              <p className="text-blue-600 dark:text-blue-400 font-medium">
+                💡 Copia dalla barra degli indirizzi di Esplora File
+              </p>
             </div>
           </div>
         </div>

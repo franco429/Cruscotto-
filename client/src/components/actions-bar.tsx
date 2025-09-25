@@ -152,8 +152,10 @@ export default function ActionsBar({
             Backup
           </Button>
 
-          {/* Auto-Sync Settings */}
-          <AutoSyncSettings onConfigChange={onSyncComplete} />
+          {/* Auto-Sync Settings - Responsive */}
+          <div className="w-full md:w-auto">
+            <AutoSyncSettings onConfigChange={onSyncComplete} />
+          </div>
 
           {/*  Aggiorna documenti locali - Dialog moderno */}
           <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
