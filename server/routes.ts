@@ -270,6 +270,25 @@ const adminRegistrationSchema = z.object({
 });
 
 import { registerLocalOpenerRoutes } from './local-opener-routes';
+import * as crypto from 'crypto';
+import { 
+  startAutoSync, 
+  stopAutoSync, 
+  getAutoSyncStatus, 
+  updateAutoSync 
+} from './auto-sync-service';
+
+// Funzione per calcolare hash SHA-256 di un file
+async function calculateFileHash(filePath: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const hash = crypto.createHash('sha256');
+    const stream = fs.createReadStream(filePath);
+    
+    stream.on('error', reject);
+    stream.on('data', chunk => hash.update(chunk));
+    stream.on('end', () => resolve(hash.digest('hex')));
+  });
+}
 
 export async function registerRoutes(app: Express): Promise<Express> {
   
@@ -325,8 +344,12 @@ export async function registerRoutes(app: Express): Promise<Express> {
             file.path // Percorso temporaneo del file caricato
           );
           if (docInfo) {
+            // Calcola hash del file per supportare aggiornamenti futuri
+            const fileHash = await calculateFileHash(file.path);
+            
             await mongoStorage.createDocument({
               ...docInfo,
+              fileHash,
               clientId: client.legacyId,
               ownerId: user.legacyId,
             });
@@ -2767,23 +2790,87 @@ async function processFileWithTimeout(
 
       let savedDoc: any;
       if (existing) {
-        logger.info("Skipping identical document (same path/title/revision)", {
-          documentId: existing.legacyId,
-          fileName: file.originalname,
-          path: docData.path,
-          title: docData.title,
-          revision: docData.revision,
-          userId,
-          clientId,
-        });
-        savedDoc = existing;
+        // Verifica se il file è stato modificato calcolando l'hash
+        const newFileHash = await calculateFileHash(file.path);
+        const hasFileChanged = !existing.fileHash || existing.fileHash !== newFileHash;
+        
+        if (hasFileChanged) {
+          logger.info("File content changed, updating existing document", {
+            documentId: existing.legacyId,
+            fileName: file.originalname,
+            oldHash: existing.fileHash ? existing.fileHash.substring(0, 8) + "..." : "null",
+            newHash: newFileHash.substring(0, 8) + "...",
+            path: docData.path,
+            title: docData.title,
+            revision: docData.revision,
+            userId,
+            clientId,
+          });
+          
+          // Aggiorna il documento esistente con i nuovi dati
+          const updateData: Partial<InsertDocument> = {
+            alertStatus: docData.alertStatus,
+            expiryDate: docData.expiryDate,
+            fileHash: newFileHash,
+          };
+          
+          // Retry document update with exponential backoff
+          dbRetries = 0;
+          while (dbRetries < maxDbRetries) {
+            try {
+              savedDoc = await mongoStorage.updateDocument(existing.legacyId, updateData);
+              if (!savedDoc) {
+                throw new Error("Document update returned null");
+              }
+              logger.info("Successfully updated existing document", {
+                documentId: existing.legacyId,
+                fileName: file.originalname,
+                attempt: dbRetries + 1
+              });
+              break; // Success, exit retry loop
+            } catch (dbError) {
+              dbRetries++;
+              if (dbRetries >= maxDbRetries) {
+                throw new Error(`Document update failed after ${maxDbRetries} retries: ${dbError instanceof Error ? dbError.message : String(dbError)}`);
+              }
+              
+              logger.warn("Document update retry", {
+                documentId: existing.legacyId,
+                fileName: file.originalname,
+                dbRetries,
+                maxDbRetries,
+                error: dbError instanceof Error ? dbError.message : String(dbError)
+              });
+              
+              // Exponential backoff
+              await new Promise(resolve => setTimeout(resolve, Math.pow(2, dbRetries) * 100));
+            }
+          }
+        } else {
+          logger.info("File content unchanged, skipping document", {
+            documentId: existing.legacyId,
+            fileName: file.originalname,
+            fileHash: existing.fileHash ? existing.fileHash.substring(0, 8) + "..." : "null",
+            path: docData.path,
+            title: docData.title,
+            revision: docData.revision,
+            userId,
+            clientId,
+          });
+          savedDoc = existing;
+        }
       } else {
+        // Calcola hash per nuovo documento
+        const newFileHash = await calculateFileHash(file.path);
+        docData.fileHash = newFileHash;
+        
         // Retry document creation with exponential backoff
         dbRetries = 0;
         while (dbRetries < maxDbRetries) {
           try {
             logger.info("Creating new document", {
               fileName: file.originalname,
+              fileHash: newFileHash.substring(0, 8) + "...",
               userId,
               clientId,
               attempt: dbRetries + 1
@@ -2985,6 +3072,171 @@ async function processFileWithTimeout(
       environment: process.env.NODE_ENV,
       version: process.version
     });
+  });
+
+  // === AUTO-SYNC ENDPOINTS ===
+  
+  // Avvia auto-sync per documenti locali
+  app.post("/api/auto-sync/start", isAdmin, async (req, res) => {
+    try {
+      const clientId = req.user?.clientId;
+      const userId = req.user?.legacyId;
+      
+      if (!clientId || !userId) {
+        return res.status(403).json({
+          message: "Accesso negato: utente non associato a nessun client"
+        });
+      }
+
+      const { watchFolder, intervalMinutes = 5 } = req.body;
+      
+      if (!watchFolder || typeof watchFolder !== 'string') {
+        return res.status(400).json({
+          message: "Percorso cartella da monitorare è obbligatorio"
+        });
+      }
+
+      const success = startAutoSync(clientId, userId, watchFolder, intervalMinutes);
+      
+      if (success) {
+        res.json({
+          success: true,
+          message: "Auto-sync avviata con successo",
+          config: {
+            watchFolder,
+            intervalMinutes,
+            enabled: true
+          }
+        });
+      } else {
+        res.status(400).json({
+          message: "Impossibile avviare auto-sync. Verifica che la cartella esista."
+        });
+      }
+    } catch (error) {
+      logger.error("Error starting auto-sync", {
+        error: error instanceof Error ? error.message : String(error),
+        clientId: req.user?.clientId,
+        userId: req.user?.legacyId,
+      });
+      
+      res.status(500).json({
+        message: "Errore nell'avvio dell'auto-sync"
+      });
+    }
+  });
+
+  // Ferma auto-sync
+  app.post("/api/auto-sync/stop", isAdmin, async (req, res) => {
+    try {
+      const clientId = req.user?.clientId;
+      
+      if (!clientId) {
+        return res.status(403).json({
+          message: "Accesso negato: utente non associato a nessun client"
+        });
+      }
+
+      const success = stopAutoSync(clientId);
+      
+      res.json({
+        success,
+        message: success ? "Auto-sync fermata con successo" : "Nessuna auto-sync attiva da fermare"
+      });
+    } catch (error) {
+      logger.error("Error stopping auto-sync", {
+        error: error instanceof Error ? error.message : String(error),
+        clientId: req.user?.clientId,
+      });
+      
+      res.status(500).json({
+        message: "Errore nel fermare l'auto-sync"
+      });
+    }
+  });
+
+  // Ottieni stato auto-sync
+  app.get("/api/auto-sync/status", isAdmin, async (req, res) => {
+    try {
+      const clientId = req.user?.clientId;
+      
+      if (!clientId) {
+        return res.status(403).json({
+          message: "Accesso negato: utente non associato a nessun client"
+        });
+      }
+
+      const status = getAutoSyncStatus(clientId);
+      
+      res.json({
+        enabled: !!status,
+        config: status ? {
+          watchFolder: status.watchFolder,
+          intervalMinutes: status.intervalMinutes,
+          lastSyncTime: status.lastSyncTime,
+          enabled: status.enabled
+        } : null
+      });
+    } catch (error) {
+      logger.error("Error getting auto-sync status", {
+        error: error instanceof Error ? error.message : String(error),
+        clientId: req.user?.clientId,
+      });
+      
+      res.status(500).json({
+        message: "Errore nel recupero dello stato auto-sync"
+      });
+    }
+  });
+
+  // Aggiorna configurazione auto-sync
+  app.put("/api/auto-sync/config", isAdmin, async (req, res) => {
+    try {
+      const clientId = req.user?.clientId;
+      
+      if (!clientId) {
+        return res.status(403).json({
+          message: "Accesso negato: utente non associato a nessun client"
+        });
+      }
+
+      const { watchFolder, intervalMinutes, enabled } = req.body;
+      const updates: any = {};
+      
+      if (watchFolder !== undefined) updates.watchFolder = watchFolder;
+      if (intervalMinutes !== undefined) updates.intervalMinutes = intervalMinutes;
+      if (enabled !== undefined) updates.enabled = enabled;
+      
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({
+          message: "Nessun aggiornamento specificato"
+        });
+      }
+
+      const success = updateAutoSync(clientId, updates);
+      
+      if (success) {
+        const currentStatus = getAutoSyncStatus(clientId);
+        res.json({
+          success: true,
+          message: "Configurazione auto-sync aggiornata",
+          config: currentStatus
+        });
+      } else {
+        res.status(400).json({
+          message: "Impossibile aggiornare configurazione auto-sync"
+        });
+      }
+    } catch (error) {
+      logger.error("Error updating auto-sync config", {
+        error: error instanceof Error ? error.message : String(error),
+        clientId: req.user?.clientId,
+      });
+      
+      res.status(500).json({
+        message: "Errore nell'aggiornamento della configurazione auto-sync"
+      });
+    }
   });
 
   return app;

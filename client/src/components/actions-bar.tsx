@@ -19,6 +19,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "./ui/dialog";
+import AutoSyncSettings from "./auto-sync-settings";
 
 interface ActionsBarProps {
   onFilterChange: (value: string) => void;
@@ -150,6 +151,9 @@ export default function ActionsBar({
             <Database className="h-4 w-4" />
             Backup
           </Button>
+
+          {/* Auto-Sync Settings */}
+          <AutoSyncSettings onConfigChange={onSyncComplete} />
 
           {/*  Aggiorna documenti locali - Dialog moderno */}
           <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
