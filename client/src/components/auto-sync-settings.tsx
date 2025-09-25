@@ -18,7 +18,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "./ui/select";
-import { Settings, Play, Square, FolderOpen } from "lucide-react";
+import { Settings, Play, Square, FolderOpen, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { apiRequest } from "../lib/queryClient";
 import { useToast } from "../hooks/use-toast";
 
@@ -37,12 +37,18 @@ export default function AutoSyncSettings({ onConfigChange }: AutoSyncSettingsPro
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isTestingPath, setIsTestingPath] = useState(false);
   const [config, setConfig] = useState<AutoSyncConfig | null>(null);
   const [tempConfig, setTempConfig] = useState<AutoSyncConfig>({
     watchFolder: '',
     intervalMinutes: 5,
     enabled: false,
   });
+  const [pathTestResult, setPathTestResult] = useState<{
+    success: boolean;
+    message: string;
+    fileCount?: number;
+  } | null>(null);
 
   // Carica stato corrente dell'auto-sync
   const loadAutoSyncStatus = async () => {
@@ -185,13 +191,99 @@ export default function AutoSyncSettings({ onConfigChange }: AutoSyncSettingsPro
     }
   };
 
+  // Testa validità del percorso
+  const handleTestPath = async () => {
+    if (!tempConfig.watchFolder.trim()) {
+      toast({
+        title: "Errore",
+        description: "Inserisci prima un percorso da testare",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsTestingPath(true);
+    setPathTestResult(null);
+
+    try {
+      const response = await apiRequest('POST', '/api/auto-sync/test-path', {
+        watchFolder: tempConfig.watchFolder,
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setPathTestResult({
+          success: true,
+          message: result.message,
+          fileCount: result.details?.fileCount
+        });
+
+        toast({
+          title: "✅ Percorso Valido",
+          description: result.message,
+        });
+      } else {
+        setPathTestResult({
+          success: false,
+          message: result.message
+        });
+
+        // Mostra suggerimenti se disponibili
+        if (result.suggestions && Array.isArray(result.suggestions)) {
+          const suggestions = result.suggestions.join('\n');
+          toast({
+            title: "❌ Percorso Non Valido",
+            description: `${result.message}\n\nSuggerimenti:\n${suggestions}`,
+            variant: "destructive",
+            duration: 10000,
+          });
+        } else {
+          toast({
+            title: "❌ Percorso Non Valido",
+            description: result.message,
+            variant: "destructive",
+          });
+        }
+      }
+    } catch (error) {
+      setPathTestResult({
+        success: false,
+        message: 'Errore di connessione durante il test'
+      });
+
+      toast({
+        title: "Errore",
+        description: "Errore di connessione durante il test del percorso",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTestingPath(false);
+    }
+  };
+
   // Seleziona cartella (simulazione - in un'app reale si userebbe l'API per aprire file dialog)
   const handleSelectFolder = () => {
-    // Per ora mostriamo un messaggio con esempi di percorsi
+    // Esempi di percorsi comuni per Google Drive Desktop
+    const examples = [
+      "Windows Google Drive Desktop:",
+      "• C:\\Users\\[nome]\\Google Drive\\SGI",
+      "• G:\\Il mio Drive\\SGI", 
+      "• J:\\Il mio Drive\\GESTEA",
+      "",
+      "Windows percorsi locali:",
+      "• C:\\Documents\\SGI",
+      "• D:\\Documenti\\SGI",
+      "",
+      "macOS/Linux:",
+      "• /Users/nome/Google Drive/SGI",
+      "• /home/nome/Documents/SGI",
+    ];
+
     toast({
-      title: "Seleziona Cartella",
-      description: "Inserisci il percorso completo della cartella da monitorare (es: C:\\Documents\\SGI oppure /Users/nome/Documents/SGI)",
-      duration: 5000,
+      title: "Esempi Percorsi Cartella",
+      description: examples.join('\n'),
+      duration: 8000,
     });
   };
 
@@ -276,21 +368,56 @@ export default function AutoSyncSettings({ onConfigChange }: AutoSyncSettingsPro
               <div className="flex gap-2 mt-1">
                 <Input
                   id="watchFolder"
-                  placeholder="C:\Documents\SGI oppure /Users/nome/Documents/SGI"
+                  placeholder="es: J:\Il mio Drive\GESTEA oppure C:\Documents\SGI"
                   value={tempConfig.watchFolder}
-                  onChange={(e) => setTempConfig(prev => ({ ...prev, watchFolder: e.target.value }))}
+                  onChange={(e) => {
+                    setTempConfig(prev => ({ ...prev, watchFolder: e.target.value }));
+                    // Reset del risultato del test quando l'utente modifica il percorso
+                    setPathTestResult(null);
+                  }}
                   className="text-sm"
                 />
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
+                  onClick={handleTestPath}
+                  disabled={isTestingPath || !tempConfig.watchFolder.trim()}
+                  title="Testa validità percorso"
+                >
+                  {isTestingPath ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCircle className="h-4 w-4" />
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={handleSelectFolder}
-                  title="Seleziona cartella"
+                  title="Esempi percorsi"
                 >
                   <FolderOpen className="h-4 w-4" />
                 </Button>
               </div>
+              
+              {/* Risultato test percorso */}
+              {pathTestResult && (
+                <div className={`mt-2 p-2 rounded text-xs flex items-center gap-2 ${
+                  pathTestResult.success 
+                    ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800'
+                    : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800'
+                }`}>
+                  {pathTestResult.success ? (
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-red-600" />
+                  )}
+                  <span>{pathTestResult.message}</span>
+                </div>
+              )}
+              
               <p className="text-xs text-slate-500 mt-1">
                 Percorso completo della cartella contenente i documenti da monitorare
               </p>
@@ -348,8 +475,17 @@ export default function AutoSyncSettings({ onConfigChange }: AutoSyncSettingsPro
             ) : (
               <Button
                 onClick={handleStartAutoSync}
-                disabled={isLoading || !tempConfig.watchFolder.trim()}
+                disabled={isLoading || !tempConfig.watchFolder.trim() || (pathTestResult && !pathTestResult.success)}
                 className="flex-1"
+                title={
+                  !tempConfig.watchFolder.trim() 
+                    ? "Inserisci un percorso prima" 
+                    : (pathTestResult && !pathTestResult.success)
+                    ? "Testa prima il percorso o correggilo"
+                    : !pathTestResult 
+                    ? "Consigliato: testa prima il percorso"
+                    : "Avvia sincronizzazione automatica"
+                }
               >
                 <Play className="h-4 w-4 mr-2" />
                 {isLoading ? 'Avviando...' : 'Avvia'}
@@ -358,12 +494,21 @@ export default function AutoSyncSettings({ onConfigChange }: AutoSyncSettingsPro
           </div>
 
           {/* Informazioni */}
-          <div className="text-xs text-slate-500 space-y-1 p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
-            <p><strong>Come funziona:</strong></p>
-            <p>• Il sistema monitora automaticamente la cartella specificata</p>
-            <p>• Quando rileva modifiche nei file, li aggiorna automaticamente</p>
-            <p>• Supporta Excel, Word, PDF e tutti i formati standard</p>
-            <p>• Le date di scadenza in Excel (cella A1) vengono aggiornate automaticamente</p>
+          <div className="text-xs text-slate-500 space-y-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
+            <div>
+              <p><strong>Come funziona:</strong></p>
+              <p>• Il sistema monitora automaticamente la cartella specificata</p>
+              <p>• Quando rileva modifiche nei file, li aggiorna automaticamente</p>
+              <p>• Supporta Excel, Word, PDF e tutti i formati standard</p>
+              <p>• Le date di scadenza in Excel (cella A1) vengono aggiornate automaticamente</p>
+            </div>
+            <div className="pt-2 border-t border-blue-200 dark:border-blue-700">
+              <p><strong>📁 Percorsi Google Drive Desktop:</strong></p>
+              <p>• Windows: J:\Il mio Drive\GESTEA</p>
+              <p>• Windows: G:\Il mio Drive\[cartella]</p>
+              <p>• Windows: C:\Users\[nome]\Google Drive\[cartella]</p>
+              <p className="mt-1 text-blue-600 dark:text-blue-400"><strong>💡 Copia il percorso direttamente da Esplora File</strong></p>
+            </div>
           </div>
         </div>
       </DialogContent>

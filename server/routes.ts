@@ -3076,6 +3076,182 @@ async function processFileWithTimeout(
 
   // === AUTO-SYNC ENDPOINTS ===
   
+  // Test validità percorso prima dell'avvio auto-sync
+  app.post("/api/auto-sync/test-path", isAdmin, async (req, res) => {
+    try {
+      const clientId = req.user?.clientId;
+      
+      if (!clientId) {
+        return res.status(403).json({
+          message: "Accesso negato: utente non associato a nessun client"
+        });
+      }
+
+      const { watchFolder } = req.body;
+      
+      if (!watchFolder || typeof watchFolder !== 'string') {
+        return res.status(400).json({
+          message: "Percorso cartella da testare è obbligatorio"
+        });
+      }
+
+      // Importa la funzione di validazione 
+      const { default: fs } = await import('fs');
+      const { default: path } = await import('path');
+      
+      // Funzione di validazione percorso (duplicata per semplicità)
+      function testPath(inputPath: string): { isValid: boolean; path?: string; error?: string; details?: any } {
+        try {
+          let normalizedPath = inputPath.trim();
+          
+          if (process.platform === 'win32') {
+            normalizedPath = normalizedPath.replace(/\//g, '\\');
+          } else {
+            normalizedPath = normalizedPath.replace(/\\/g, '/');
+          }
+          
+          const resolvedPath = path.resolve(normalizedPath);
+          
+          // Test multiple paths
+          const pathsToTest = [resolvedPath, normalizedPath, inputPath.trim()];
+          const results = [];
+          
+          for (const testPath of pathsToTest) {
+            try {
+              const exists = fs.existsSync(testPath);
+              let isDir = false;
+              let accessible = false;
+              let fileCount = 0;
+              
+              if (exists) {
+                const stats = fs.statSync(testPath);
+                isDir = stats.isDirectory();
+                
+                if (isDir) {
+                  try {
+                    fs.accessSync(testPath, fs.constants.R_OK);
+                    accessible = true;
+                    const items = fs.readdirSync(testPath);
+                    fileCount = items.filter(item => {
+                      const fullPath = path.join(testPath, item);
+                      try {
+                        const itemStats = fs.statSync(fullPath);
+                        return itemStats.isFile();
+                      } catch {
+                        return false;
+                      }
+                    }).length;
+                  } catch {
+                    accessible = false;
+                  }
+                }
+              }
+              
+              results.push({
+                path: testPath,
+                exists,
+                isDirectory: isDir,
+                accessible,
+                fileCount: accessible ? fileCount : null
+              });
+              
+              // Se troviamo un percorso valido, lo usiamo
+              if (exists && isDir && accessible) {
+                return {
+                  isValid: true,
+                  path: testPath,
+                  details: {
+                    platform: process.platform,
+                    allTests: results,
+                    selectedPath: testPath,
+                    fileCount
+                  }
+                };
+              }
+            } catch (testError) {
+              results.push({
+                path: testPath,
+                error: testError instanceof Error ? testError.message : String(testError)
+              });
+            }
+          }
+          
+          return {
+            isValid: false,
+            error: `Nessun percorso valido trovato`,
+            details: {
+              platform: process.platform,
+              inputPath,
+              normalizedPath,
+              resolvedPath,
+              allTests: results
+            }
+          };
+          
+        } catch (error) {
+          return {
+            isValid: false,
+            error: `Errore validazione: ${error instanceof Error ? error.message : String(error)}`,
+            details: {
+              platform: process.platform,
+              inputPath
+            }
+          };
+        }
+      }
+
+      const result = testPath(watchFolder);
+      
+      if (result.isValid) {
+        logger.info("Path validation successful", {
+          clientId,
+          inputPath: watchFolder,
+          validatedPath: result.path,
+          fileCount: result.details?.fileCount
+        });
+        
+        res.json({
+          success: true,
+          message: `Percorso valido! Trovati ${result.details?.fileCount || 0} file.`,
+          path: result.path,
+          details: result.details
+        });
+      } else {
+        logger.warn("Path validation failed", {
+          clientId,
+          inputPath: watchFolder,
+          error: result.error,
+          details: result.details
+        });
+        
+        res.status(400).json({
+          success: false,
+          message: result.error,
+          suggestions: [
+            "Verifica che il percorso sia corretto",
+            "Assicurati che la cartella esista",
+            "Controlla i permessi di lettura",
+            "Per Google Drive Desktop prova percorsi come:",
+            "• J:\\Il mio Drive\\GESTEA",
+            "• G:\\Il mio Drive\\[cartella]", 
+            "• C:\\Users\\[nome]\\Google Drive\\[cartella]"
+          ],
+          details: result.details
+        });
+      }
+      
+    } catch (error) {
+      logger.error("Error testing path", {
+        error: error instanceof Error ? error.message : String(error),
+        clientId: req.user?.clientId,
+      });
+      
+      res.status(500).json({
+        message: "Errore interno durante il test del percorso"
+      });
+    }
+  });
+  
   // Avvia auto-sync per documenti locali
   app.post("/api/auto-sync/start", isAdmin, async (req, res) => {
     try {

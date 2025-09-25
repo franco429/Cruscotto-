@@ -38,30 +38,69 @@ function scanFolder(folderPath: string): string[] {
 
   function scanRecursive(currentPath: string) {
     try {
-      const items = fs.readdirSync(currentPath, { withFileTypes: true });
+      logger.debug(`Scanning folder: ${currentPath}`);
+      
+      // Verifica accesso alla cartella prima di leggerla
+      try {
+        fs.accessSync(currentPath, fs.constants.R_OK);
+      } catch (accessError) {
+        logger.warn(`Cannot access folder: ${currentPath}`, {
+          error: accessError instanceof Error ? accessError.message : String(accessError)
+        });
+        return;
+      }
+      
+      const items = fs.readdirSync(currentPath, { withFileTypes: true, encoding: 'utf8' });
+      
+      logger.debug(`Found ${items.length} items in: ${currentPath}`);
       
       for (const item of items) {
         const fullPath = path.join(currentPath, item.name);
         
-        if (item.isDirectory()) {
-          // Ricorsione nelle sottocartelle
-          scanRecursive(fullPath);
-        } else if (item.isFile()) {
-          const ext = path.extname(item.name).toLowerCase();
-          if (supportedExtensions.includes(ext)) {
-            files.push(fullPath);
+        try {
+          if (item.isDirectory()) {
+            // Ricorsione nelle sottocartelle, ma salta cartelle di sistema nascoste
+            if (!item.name.startsWith('.') && !item.name.startsWith('$')) {
+              scanRecursive(fullPath);
+            } else {
+              logger.debug(`Skipping hidden/system folder: ${fullPath}`);
+            }
+          } else if (item.isFile()) {
+            const ext = path.extname(item.name).toLowerCase();
+            if (supportedExtensions.includes(ext)) {
+              files.push(fullPath);
+              logger.debug(`Found supported file: ${fullPath}`);
+            } else {
+              logger.debug(`Skipping unsupported file: ${fullPath} (ext: ${ext})`);
+            }
           }
+        } catch (itemError) {
+          logger.warn(`Error processing item: ${fullPath}`, {
+            itemName: item.name,
+            error: itemError instanceof Error ? itemError.message : String(itemError)
+          });
         }
       }
     } catch (error) {
       logger.warn(`Cannot scan folder: ${currentPath}`, {
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
+        errorCode: (error as any)?.code,
+        errorErrno: (error as any)?.errno
       });
     }
   }
 
-  if (fs.existsSync(folderPath)) {
-    scanRecursive(folderPath);
+  // Usa la validazione del percorso prima della scansione
+  const pathValidation = normalizeAndValidatePath(folderPath);
+  
+  if (pathValidation.isValid) {
+    logger.info(`Starting folder scan: ${pathValidation.path}`);
+    scanRecursive(pathValidation.path);
+    logger.info(`Folder scan completed. Found ${files.length} supported files.`);
+  } else {
+    logger.error(`Cannot scan invalid folder path: ${folderPath}`, {
+      error: pathValidation.error
+    });
   }
 
   return files;
@@ -230,6 +269,96 @@ async function performAutoSync(config: AutoSyncConfig): Promise<void> {
   }
 }
 
+// Normalizza e valida percorso Windows/Unix
+function normalizeAndValidatePath(inputPath: string): { path: string; isValid: boolean; error?: string } {
+  try {
+    // Trim spazi iniziali e finali
+    let normalizedPath = inputPath.trim();
+    
+    // Gestione percorsi Windows con caratteri speciali e spazi
+    if (process.platform === 'win32') {
+      // Normalizza separatori di percorso Windows
+      normalizedPath = normalizedPath.replace(/\//g, '\\');
+      
+      // Se il percorso contiene spazi o caratteri speciali e non è già quotato
+      if (normalizedPath.includes(' ') && !normalizedPath.startsWith('"')) {
+        // Non quotare automaticamente - path.resolve gestisce già gli spazi
+      }
+    } else {
+      // Normalizza separatori di percorso Unix/Linux
+      normalizedPath = normalizedPath.replace(/\\/g, '/');
+    }
+    
+    // Risolvi percorso assoluto e normalizza
+    const resolvedPath = path.resolve(normalizedPath);
+    
+    logger.debug("Path normalization", {
+      inputPath,
+      normalizedPath,
+      resolvedPath,
+      platform: process.platform,
+    });
+    
+    // Verifica multipla per robustezza
+    const checks = [
+      fs.existsSync(resolvedPath),
+      fs.existsSync(normalizedPath),
+      fs.existsSync(inputPath.trim())
+    ];
+    
+    logger.debug("Path existence checks", {
+      resolvedPath: { path: resolvedPath, exists: checks[0] },
+      normalizedPath: { path: normalizedPath, exists: checks[1] },
+      inputPath: { path: inputPath.trim(), exists: checks[2] },
+    });
+    
+    // Se almeno uno dei controlli passa, il percorso è valido
+    const isValid = checks.some(check => check);
+    
+    if (isValid) {
+      // Usa il primo percorso che funziona
+      let finalPath = resolvedPath;
+      if (!checks[0] && checks[1]) finalPath = normalizedPath;
+      if (!checks[0] && !checks[1] && checks[2]) finalPath = inputPath.trim();
+      
+      // Verifica ulteriore: prova ad accedere alla cartella
+      try {
+        fs.accessSync(finalPath, fs.constants.F_OK | fs.constants.R_OK);
+        const stats = fs.statSync(finalPath);
+        
+        if (!stats.isDirectory()) {
+          return {
+            path: finalPath,
+            isValid: false,
+            error: `Percorso esiste ma non è una cartella: ${finalPath}`
+          };
+        }
+        
+        return { path: finalPath, isValid: true };
+      } catch (accessError) {
+        return {
+          path: finalPath,
+          isValid: false,
+          error: `Impossibile accedere alla cartella: ${accessError instanceof Error ? accessError.message : String(accessError)}`
+        };
+      }
+    }
+    
+    return {
+      path: resolvedPath,
+      isValid: false,
+      error: `Cartella non trovata. Percorsi testati: [${resolvedPath}, ${normalizedPath}, ${inputPath.trim()}]`
+    };
+    
+  } catch (error) {
+    return {
+      path: inputPath,
+      isValid: false,
+      error: `Errore nella normalizzazione del percorso: ${error instanceof Error ? error.message : String(error)}`
+    };
+  }
+}
+
 // Avvia auto-sync per un client
 export function startAutoSync(
   clientId: number,
@@ -238,23 +367,28 @@ export function startAutoSync(
   intervalMinutes: number = 5
 ): boolean {
   try {
-    // Verifica che la cartella esista
-    if (!fs.existsSync(watchFolder)) {
-      logger.warn("Auto-sync: Watch folder does not exist", {
+    // Normalizza e valida il percorso
+    const pathValidation = normalizeAndValidatePath(watchFolder);
+    
+    if (!pathValidation.isValid) {
+      logger.warn("Auto-sync: Invalid watch folder", {
         clientId,
-        watchFolder,
+        inputPath: watchFolder,
+        error: pathValidation.error,
       });
       return false;
     }
+    
+    const validatedPath = pathValidation.path;
 
     // Ferma auto-sync esistente se presente
     stopAutoSync(clientId);
 
-    // Crea configurazione
+    // Crea configurazione con percorso validato
     const config: AutoSyncConfig = {
       clientId,
       userId,
-      watchFolder: path.resolve(watchFolder),
+      watchFolder: validatedPath,
       enabled: true,
       intervalMinutes,
       lastSyncTime: new Date(),

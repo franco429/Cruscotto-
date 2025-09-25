@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { useQueryWithErrorHandling } from "../hooks/use-query-with-error-handling";
-import { DocumentDocument as Document } from "../../../server/shared-types/schema";
+import { DocumentDocument as Document } from "../../../shared-types/schema";
 import { useAuth } from "../hooks/use-auth";
 import { useToast } from "../hooks/use-toast";
 import HeaderBar from "../components/header-bar";
