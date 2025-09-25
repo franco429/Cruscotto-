@@ -662,9 +662,6 @@ export default function LocalOpenerConfig() {
                   <FolderPlus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                   <span className="break-words">Aggiungi Cartella Manualmente</span>
                 </Button>
-                <Button variant="outline" onClick={testFileOpen} className="w-full sm:w-auto text-xs sm:text-sm">
-                  <span className="break-words">Testa Apertura File</span>
-                </Button>
               </div>
             </div>
           </CardContent>
