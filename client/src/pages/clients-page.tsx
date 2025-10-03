@@ -124,94 +124,85 @@ export default function ClientsPage() {
     }
   };
 
-  // Funzione per avviare l'autorizzazione OAuth Google Drive
-  const handleGoogleDriveAuth = async (clientId: number) => {
-    setIsBackendAuthInProgress(true);
-    try {
-      const res = await apiRequest("GET", `/api/google/auth-url/${clientId}`);
-      const data = await res.json();
-      
-      // Apri finestra popup per OAuth
-      const popup = window.open(
-        data.url,
-        "google-auth",
-        "width=500,height=600,scrollbars=yes,resizable=yes"
-      );
+ // Funzione per avviare l'autorizzazione OAuth Google Drive (VERSIONE CON POLLING)
+ const handleGoogleDriveAuth = async (clientId: number) => {
+  setIsBackendAuthInProgress(true);
+  try {
+    const res = await apiRequest("GET", `/api/google/auth-url/${clientId}`);
+    const data = await res.json();
+    
+    const popup = window.open(
+      data.url,
+      "google-auth",
+      "width=500,height=600,scrollbars=yes,resizable=yes"
+    );
 
-      // Cleanup listener dopo un timeout (fallback se il popup non invia messaggi)
-      const cleanupTimeout = setTimeout(() => {
-        window.removeEventListener("message", messageListener);
-        setIsBackendAuthInProgress(false); // Reset dello stato auth se timeout
-        toast({
-          title: "Timeout Autorizzazione",
-          description: "L'autorizzazione è scaduta. Riprova.",
-          variant: "destructive",
-        });
-      }, 300000); // 5 minuti di timeout
-
-      // Ascolta messaggio di successo dal popup
-      const messageListener = (event: MessageEvent) => {
-        if (event.data.type === "GOOGLE_DRIVE_CONNECTED") {
-          popup?.close();
-          window.removeEventListener("message", messageListener);
-          clearTimeout(cleanupTimeout); // Pulisce il timeout quando riceve il messaggio
-          
-          // IMPORTANTE: Ferma immediatamente il loading nel GoogleDrivePicker e resetta stato auth
-          setIsBackendAuthInProgress(false);
-          if (googleDrivePickerRef.current) {
-            console.log('🔄 Fermando loading nel GoogleDrivePicker immediatamente');
-            googleDrivePickerRef.current.resetToReady();
-          }
-          
-          // Mostra loading per la connessione riuscita
-          toast({
-            title: "Connessione riuscita!",
-            description: "Autorizzazione Google Drive completata con successo.",
-          });
-
-          // Imposta flag che l'autorizzazione è appena completata
-          setIsAuthJustCompleted(true);
-          
-          // Imposta il flag per l'apertura automatica del picker
-          setShouldOpenPickerAutomatically(true);
-          
-          // Timeout di sicurezza per resettare i flag dopo 15 secondi se non utilizzati
-          setTimeout(() => {
-            setIsAuthJustCompleted(false);
-            setShouldOpenPickerAutomatically(false);
-          }, 15000);
-          
-          // IMPORTANTE: Usa la funzione utility per forzare il refresh completo
-          forceRefreshClientData().then(() => {
-            console.log('✅ Refresh completo dei dati client dopo OAuth completato');
-            // Il useEffect gestirà automaticamente l'apertura del picker quando i dati sono pronti
-          }).catch((error) => {
-            console.error('❌ Errore durante il refresh completo dei dati:', error);
-            toast({
-              title: "Errore",
-              description: "Errore durante l'aggiornamento dei dati. Riprova.",
-              variant: "destructive",
-            });
-            // Reset dei flag in caso di errore
-            setIsAuthJustCompleted(false);
-            setShouldOpenPickerAutomatically(false);
-            setIsBackendAuthInProgress(false);
-          });
-        }
-      };
-
-      window.addEventListener("message", messageListener);
-
-    } catch (error) {
-      console.error("Errore autorizzazione Google Drive:", error);
-      setIsBackendAuthInProgress(false);
+    // Se il popup non si apre, ferma tutto
+    if (!popup) {
       toast({
-        title: "Errore Autorizzazione",
-        description: "Impossibile avviare l'autorizzazione Google Drive",
+        title: "Errore Apertura Popup",
+        description: "Impossibile aprire la finestra di autorizzazione. Controlla se il browser la sta bloccando.",
         variant: "destructive",
       });
+      setIsBackendAuthInProgress(false);
+      return;
     }
-  };
+
+    // Invece di 'postMessage', controlliamo ogni secondo se il popup è stato chiuso.
+    const timer = setInterval(() => {
+      // Se il popup è stato chiuso dall'utente o dal redirect di successo...
+      if (popup.closed) {
+        clearInterval(timer); // Ferma il controllo
+
+        console.log('✅ [Polling] Popup chiuso, avvio procedura di post-autenticazione.');
+
+        // Resetta IMMEDIATAMENTE lo stato del bottone figlio.
+        if (googleDrivePickerRef.current) {
+          googleDrivePickerRef.current.resetToReady();
+        }
+
+        // Resetta lo stato di loading del genitore.
+        setIsBackendAuthInProgress(false);
+        
+        toast({
+          title: "Connessione riuscita!",
+          description: "Autorizzazione Google Drive completata con successo.",
+        });
+
+        // Imposta i flag per l'apertura automatica del picker.
+        setIsAuthJustCompleted(true);
+        setShouldOpenPickerAutomatically(true);
+        
+        // Timeout di sicurezza per i flag
+        setTimeout(() => {
+          setIsAuthJustCompleted(false);
+          setShouldOpenPickerAutomatically(false);
+        }, 15000);
+        
+        // Avvia il refresh dei dati in background.
+        forceRefreshClientData().catch((error) => {
+          console.error('❌ [Polling] Errore durante il refresh dei dati:', error);
+          toast({
+            title: "Errore",
+            description: "Errore durante l'aggiornamento dei dati. Riprova.",
+            variant: "destructive",
+          });
+          setIsAuthJustCompleted(false);
+          setShouldOpenPickerAutomatically(false);
+        });
+      }
+    }, 1000); // Controlla ogni secondo
+
+  } catch (error) {
+    console.error("Errore autorizzazione Google Drive:", error);
+    setIsBackendAuthInProgress(false);
+    toast({
+      title: "Errore Autorizzazione",
+      description: "Impossibile avviare l'autorizzazione Google Drive",
+      variant: "destructive",
+    });
+  }
+};
 
   const startAutomaticSync = async () => {
     // Controlla se abbiamo tutti i requisiti per la sincronizzazione
