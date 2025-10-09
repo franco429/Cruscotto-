@@ -225,13 +225,32 @@ function parseValueToUTCDate(value: any): Date | null {
   }
   // Caso 3: È una stringa
   else if (typeof value === "string") {
-    // Tentativo #1: formato DD/MM/YYYY (comune in Italia)
-    let tempDate = parse(value, "dd/MM/yyyy", new Date());
-    if (!isNaN(tempDate.getTime())) {
-      parsed = tempDate;
-    } else {
-      // Tentativo #2: Fallback al parser nativo per formati ISO (YYYY-MM-DD) e altri.
-      tempDate = new Date(value);
+    // Array di formati da provare, in ordine di preferenza
+    // Supporta varianti italiane comuni con/senza zeri iniziali e con anno a 2 o 4 cifre
+    const dateFormats = [
+      "dd/MM/yyyy",  // 01/01/2025
+      "d/M/yyyy",    // 1/1/2025
+      "dd/M/yyyy",   // 01/1/2025
+      "d/MM/yyyy",   // 1/01/2025
+      "dd/MM/yy",    // 01/01/25 (anno a 2 cifre)
+      "d/M/yy",      // 1/1/25 (anno a 2 cifre)
+      "dd/M/yy",     // 01/1/25
+      "d/MM/yy",     // 1/01/25
+      "yyyy-MM-dd",  // ISO format
+    ];
+    
+    // Prova tutti i formati
+    for (const format of dateFormats) {
+      const tempDate = parse(value, format, new Date());
+      if (!isNaN(tempDate.getTime())) {
+        parsed = tempDate;
+        break;
+      }
+    }
+    
+    // Fallback finale al parser nativo solo se nessun formato ha funzionato
+    if (!parsed) {
+      const tempDate = new Date(value);
       if (!isNaN(tempDate.getTime())) {
         parsed = tempDate;
       }

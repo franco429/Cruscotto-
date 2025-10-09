@@ -92,6 +92,42 @@ describe('Excel Analysis Tests', () => {
     expect(result.expiryDate?.getDate()).toBe(31);
   });
 
+  it('should parse date from string format D/M/YY (1/1/25 as 2025)', async () => {
+    mockCell.value = '1/1/25';
+
+    const result = await analyzeExcelContent('/test/path/file.xlsx');
+
+    expect(result.alertStatus).toBeDefined();
+    expect(result.expiryDate).toBeInstanceOf(Date);
+    expect(result.expiryDate?.getFullYear()).toBe(2025); // NOT 1925!
+    expect(result.expiryDate?.getMonth()).toBe(0); // January is 0 (0-based)
+    expect(result.expiryDate?.getDate()).toBe(1);
+  });
+
+  it('should parse date from string format D/M/YYYY (1/1/2025)', async () => {
+    mockCell.value = '1/1/2025';
+
+    const result = await analyzeExcelContent('/test/path/file.xlsx');
+
+    expect(result.alertStatus).toBeDefined();
+    expect(result.expiryDate).toBeInstanceOf(Date);
+    expect(result.expiryDate?.getFullYear()).toBe(2025);
+    expect(result.expiryDate?.getMonth()).toBe(0);
+    expect(result.expiryDate?.getDate()).toBe(1);
+  });
+
+  it('should parse date from string format DD/MM/YY (01/01/25)', async () => {
+    mockCell.value = '01/01/25';
+
+    const result = await analyzeExcelContent('/test/path/file.xlsx');
+
+    expect(result.alertStatus).toBeDefined();
+    expect(result.expiryDate).toBeInstanceOf(Date);
+    expect(result.expiryDate?.getFullYear()).toBe(2025);
+    expect(result.expiryDate?.getMonth()).toBe(0);
+    expect(result.expiryDate?.getDate()).toBe(1);
+  });
+
   it('should parse date from string format YYYY-MM-DD', async () => {
     mockCell.value = '2025-12-31';
 
