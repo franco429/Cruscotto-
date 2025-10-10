@@ -81,6 +81,7 @@ const fileFilter = (req: Express.Request, file: Express.Multer.File, cb: multer.
     'application/vnd.ms-excel',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'application/vnd.ms-excel.sheet.macroEnabled.12',
+    'application/vnd.ms-excel.sheet.macroenabled.12',
     'image/jpeg',
     'image/png',
     'image/gif',

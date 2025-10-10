@@ -1356,6 +1356,7 @@ function isExcelFile(mimeType: string | null | undefined): boolean {
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "application/vnd.ms-excel",
     "application/vnd.ms-excel.sheet.macroEnabled.12",
+    "application/vnd.ms-excel.sheet.macroenabled.12",
   ];
 
   return excelTypes.includes(mimeType);
