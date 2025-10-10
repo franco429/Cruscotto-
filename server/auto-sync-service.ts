@@ -33,7 +33,7 @@ async function calculateFileHash(filePath: string): Promise<string> {
 
 // Scansiona ricorsivamente una cartella per trovare tutti i file supportati
 function scanFolder(folderPath: string): string[] {
-  const supportedExtensions = ['.xlsx', '.xls', '.doc', '.docx', '.pdf', '.ods', '.csv'];
+  const supportedExtensions = ['.xlsx', '.xls', '.xlsm', '.doc', '.docx', '.pdf', '.ods', '.csv'];
   const files: string[] = [];
 
   function scanRecursive(currentPath: string) {

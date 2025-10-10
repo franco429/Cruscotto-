@@ -28,7 +28,7 @@ interface SimpleFileUploadProps {
 
 export default function SimpleFileUpload({
   onFilesSelected,
-  accept = [".xlsx", ".xls", ".doc", ".docx", ".pdf", ".ods", ".csv"],
+  accept = [".xlsx", ".xls", ".xlsm", ".doc", ".docx", ".pdf", ".ods", ".csv"],
   maxFiles = 1000,
   className,
   disabled = false
@@ -48,6 +48,7 @@ export default function SimpleFileUpload({
         return <FileText className="h-3 w-3 text-blue-500" />;
       case 'xlsx':
       case 'xls':
+      case 'xlsm':
         return <FileSpreadsheet className="h-3 w-3 text-green-500" />;
       default:
         return <File className="h-3 w-3 text-gray-500" />;

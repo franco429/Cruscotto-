@@ -94,6 +94,7 @@ export default function DocumentTable({
         return <FileText className="h-4 w-4 text-slate-400" />;
       case "xlsx":
       case "xls":
+      case "xlsm":
         return <FileSpreadsheet className="h-4 w-4 text-slate-400" />;
       case "jpg":
       case "jpeg":

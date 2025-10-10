@@ -693,7 +693,7 @@ export async function processDocumentFile(
 
     if (
       localFilePath &&
-      (fileType === "xlsx" || fileType === "xls" || fileType === "gsheet")
+      (fileType === "xlsx" || fileType === "xls" || fileType === "xlsm" || fileType === "gsheet")
     ) {
       const excelAnalysis = await analyzeExcelContent(localFilePath);
       alertStatus = excelAnalysis.alertStatus;
@@ -806,6 +806,7 @@ async function processFileWithErrorHandlingOptimized(
     if (
       (doc.fileType === "xlsx" ||
         doc.fileType === "xls" ||
+        doc.fileType === "xlsm" ||
         doc.fileType === "gsheet") &&
       !SYNC_CONFIG.skipExcelAnalysis
     ) {
@@ -1659,6 +1660,7 @@ export async function updateExcelExpiryDates(
       (doc) =>
         (doc.fileType === "xlsx" ||
           doc.fileType === "xls" ||
+          doc.fileType === "xlsm" ||
           doc.fileType === "gsheet") &&
         !doc.isObsolete
     );

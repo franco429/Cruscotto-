@@ -34,6 +34,7 @@ export function FileSelectionPreview({
         return <FileText className="h-4 w-4 text-blue-500" />;
       case 'xlsx':
       case 'xls':
+      case 'xlsm':
         return <FileText className="h-4 w-4 text-green-500" />;
       default:
         return <FileText className="h-4 w-4 text-gray-500" />;

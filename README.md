@@ -322,7 +322,7 @@ Il sistema supporta il caricamento e la gestione di documenti locali, offrendo u
   - Limiti e sicurezza:
     - Dimensione max file: 100MB
     - Max file per richiesta: 2000
-    - Tipi consentiti: PDF, DOC, DOCX, XLS, XLSX, ODS, CSV, immagini (JPG/PNG), TXT
+    - Tipi consentiti: PDF, DOC, DOCX, XLS, XLSX, XLSM, ODS, CSV, immagini (JPG/PNG), TXT
     - Validazione MIME e gestione errori di upload con risposte chiare (400/207)
   - Comportamento: per ogni file
     - Estrae metadati dal nome file (percorso ISO, titolo, revisione, tipo)
@@ -359,7 +359,7 @@ Il sistema supporta il caricamento e la gestione di documenti locali, offrendo u
     - `path`: `10.2.3` (o `cartella/subcartella/10.2.3` se presente gerarchia)
     - `title`: `Manuale Qualità`
     - `revision`: `Rev.4`
-    - `fileType`: `pdf|docx|xlsx|...`
+    - `fileType`: `pdf|docx|xlsx|xlsm|...`
     - `expiryDate` e `alertStatus` per Excel/Sheets se `A1` contiene data o formula supportata (es. `=TODAY()+30`, `=DATE(2025,12,31)`)
 
 Note: i file che non rispettano il pattern vengono ignorati nella creazione del documento.
@@ -385,7 +385,7 @@ Note: i file che non rispettano il pattern vengono ignorati nella creazione del 
 
 #### Tipi di File Supportati
 
-- **Excel**: XLSX, XLS, ODS, CSV
+- **Excel**: XLSX, XLS, XLSM, ODS, CSV
 - **Word**: DOCX, DOC
 - **PDF**: Documenti PDF
 - **Google Sheets**: GSheet (se sincronizzati da Drive)
@@ -428,7 +428,7 @@ Google Drive
 ### Tipi di Documenti Supportati
 
 - PDF
-- Excel (XLSX, XLS, ODS, CSV)
+- Excel (XLSX, XLS, XLSM, ODS, CSV)
 - Word (DOCX, DOC)
 - Google Sheets (GSheet)
 
@@ -436,7 +436,7 @@ Google Drive
 
 - **Ricerca Avanzata** per titolo, contenuto, tipo
 - **Filtri** per stato, scadenza, tipo file
-- **Visualizzazione Integrata Universale** - Preview diretta di PDF, XLSX, XLS, DOCX senza download
+- **Visualizzazione Integrata Universale** - Preview diretta di PDF, XLSX, XLS, XLSM, DOCX senza download
 - **Apertura Locale Diretta** - Apri i documenti con l'applicazione predefinita del sistema (vedere [local-opener-setup.md](docs/local-opener-setup.md))
 - **Gestione Versioni** e revisioni
 - **Notifiche Scadenze** automatiche

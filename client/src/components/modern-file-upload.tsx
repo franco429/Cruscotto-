@@ -33,7 +33,7 @@ interface ModernFileUploadProps {
 export default function ModernFileUpload({
   onFilesSelected,
   onUploadComplete,
-  accept = [".xlsx", ".xls", ".doc", ".docx", ".pdf", ".ods", ".csv"],
+  accept = [".xlsx", ".xls", ".xlsm", ".doc", ".docx", ".pdf", ".ods", ".csv"],
   maxFiles = 1000,
   className,
   disabled = false
@@ -56,6 +56,7 @@ export default function ModernFileUpload({
         return <FileText className="h-4 w-4 text-blue-500" />;
       case 'xlsx':
       case 'xls':
+      case 'xlsm':
         return <FileSpreadsheet className="h-4 w-4 text-green-500" />;
       case 'jpg':
       case 'jpeg':

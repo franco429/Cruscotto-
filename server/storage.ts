@@ -805,6 +805,7 @@ export class MemStorage implements IStorage {
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       "application/vnd.ms-excel",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-excel.sheet.macroEnabled.12",
       "text/plain",
       "application/vnd.ms-powerpoint",
       "application/vnd.openxmlformats-officedocument.presentationml.presentation",
@@ -813,7 +814,7 @@ export class MemStorage implements IStorage {
     ];
     if (!allowedMimeTypes.includes(mimeType)) {
       errors.push(
-        "Tipo di file non supportato. I formati consentiti sono: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, JPG, PNG"
+        "Tipo di file non supportato. I formati consentiti sono: PDF, DOC, DOCX, XLS, XLSX, XLSM, PPT, PPTX, TXT, JPG, PNG"
       );
     }
     const filename = path.basename(filePath);
