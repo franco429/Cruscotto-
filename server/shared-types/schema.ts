@@ -9,6 +9,11 @@ export interface UserDocument {
   createdAt: Date;
   failedLoginAttempts: number;
   lockoutUntil: Date | null;
+  mfaSecret: string | null;
+  mfaEnabled: boolean;
+  mfaBackupCodes: string[] | null;
+  mfaFailedAttempts: number;
+  mfaLockoutUntil: Date | null;
 }
 
 export interface DocumentDocument {

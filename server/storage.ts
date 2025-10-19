@@ -198,6 +198,9 @@ export class MemStorage implements IStorage {
       sessionExpiry: null,
       failedLoginAttempts: 0,
       lockoutUntil: null,
+      mfaSecret: null,
+      mfaEnabled: false,
+      mfaBackupCodes: null,
     });
 
     // Create example company codes for testing in development
@@ -285,6 +288,9 @@ export class MemStorage implements IStorage {
         sessionExpiry: null,
         failedLoginAttempts: 0,
         lockoutUntil: null,
+        mfaSecret: null,
+        mfaEnabled: false,
+        mfaBackupCodes: null,
       });
 
       return { user: newUser, client: newClient };

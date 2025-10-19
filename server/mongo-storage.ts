@@ -126,6 +126,81 @@ export class MongoStorage implements IStorage {
     ).exec();
   }
 
+  /**
+   * Registra un tentativo fallito di verifica MFA
+   * Implementa lockout progressivo dopo N tentativi
+   */
+  async recordFailedMfaAttempt(userId: number): Promise<void> {
+    const userDoc = await UserModel.findOne({ legacyId: userId })
+      .lean()
+      .exec();
+    if (!userDoc) {
+      return;
+    }
+
+    // Se l'utente è già bloccato per MFA, non incrementare ulteriormente
+    if (userDoc.mfaLockoutUntil && new Date(userDoc.mfaLockoutUntil) > new Date()) {
+      return;
+    }
+
+    const now = new Date();
+    const currentAttempts = userDoc.mfaFailedAttempts || 0;
+    const newAttemptCount = currentAttempts + 1;
+
+    let newMfaLockoutUntil: Date | null = null;
+    
+    // Lockout progressivo più severo per MFA (conforme TAC Security Tier 2)
+    const mfaLockoutDurations: Record<number, number> = {
+      3: 5 * 60 * 1000,      // 3 tentativi: 5 minuti
+      5: 15 * 60 * 1000,     // 5 tentativi: 15 minuti
+      7: 60 * 60 * 1000,     // 7 tentativi: 1 ora
+      10: 24 * 60 * 60 * 1000, // 10 tentativi: 24 ore
+    };
+
+    const duration = mfaLockoutDurations[newAttemptCount];
+    if (duration) {
+      newMfaLockoutUntil = new Date(now.getTime() + duration);
+    } else if (newAttemptCount > 10) {
+      // Più di 10 tentativi: lockout permanente di 24 ore
+      newMfaLockoutUntil = new Date(now.getTime() + mfaLockoutDurations[10]);
+    }
+
+    try {
+      await UserModel.updateOne(
+        { legacyId: userId },
+        {
+          $set: {
+            mfaFailedAttempts: newAttemptCount,
+            mfaLockoutUntil: newMfaLockoutUntil,
+          },
+        }
+      ).exec();
+
+      // Log per audit trail
+      console.log(`[MFA SECURITY] Failed MFA attempt #${newAttemptCount} for userId ${userId}`, {
+        lockoutUntil: newMfaLockoutUntil,
+      });
+    } catch (error) {
+      console.error('[ERROR] recordFailedMfaAttempt:', error);
+    }
+  }
+
+  /**
+   * Resetta i tentativi falliti di MFA dopo un login riuscito
+   */
+  public async resetMfaAttempts(userId: number): Promise<void> {
+    try {
+      await UserModel.updateOne(
+        { legacyId: userId },
+        { $set: { mfaFailedAttempts: 0, mfaLockoutUntil: null } }
+      ).exec();
+
+      console.log(`[MFA SECURITY] Reset MFA attempts for userId ${userId}`);
+    } catch (error) {
+      console.error('[ERROR] resetMfaAttempts:', error);
+    }
+  }
+
   async registerNewAdminAndClient(registrationData: {
     email: string;
     passwordHash: string;
@@ -184,6 +259,9 @@ export class MongoStorage implements IStorage {
           sessionExpiry: null,
           failedLoginAttempts: 0,
           lockoutUntil: null,
+          mfaSecret: null,
+          mfaEnabled: false,
+          mfaBackupCodes: null,
         },
         session
       );
@@ -306,6 +384,20 @@ export class MongoStorage implements IStorage {
       .lean()
       .exec();
     return updatedUser ? (updatedUser as User) : undefined;
+  }
+
+  async updateUser(
+    id: number,
+    updates: Partial<User>
+  ): Promise<User | undefined> {
+    const user = await UserModel.findOneAndUpdate(
+      { legacyId: id },
+      { $set: updates },
+      { new: true }
+    )
+      .lean()
+      .exec();
+    return user ? (user as User) : undefined;
   }
 
   async getUsersByClientId(clientId: number): Promise<User[]> {

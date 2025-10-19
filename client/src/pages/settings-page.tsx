@@ -27,6 +27,7 @@ import { Separator } from "../components/ui/separator";
 // Rimossi import non più necessari
 import { apiRequest } from "../lib/queryClient";
 import LocalOpenerConfig from "../components/local-opener-config";
+import MFASetup from "../components/mfa-setup";
 
 // La funzionalità di debug dell'autenticazione è stata rimossa
 
@@ -434,9 +435,23 @@ export default function SettingsPage() {
                         </form>
                       </div>
 
-                      {/* La sezione Separator e Informazioni di Sessione è stata rimossa come richiesto */}
-
-                      {/* La sezione di Sicurezza Avanzata è stata rimossa come richiesto */}
+                      {/* Sezione MFA - Autenticazione a Due Fattori */}
+                      {(user?.role === "admin" || user?.role === "superadmin") && (
+                        <>
+                          <Separator className="my-4" />
+                          <div className="space-y-2 sm:space-y-3 md:space-y-4">
+                            <div>
+                              <h4 className="text-sm sm:text-base font-medium text-slate-900 dark:text-white">
+                                Autenticazione a Due Fattori (MFA)
+                              </h4>
+                              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                                Aggiungi un ulteriore livello di sicurezza al tuo account
+                              </p>
+                            </div>
+                            <MFASetup />
+                          </div>
+                        </>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

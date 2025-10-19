@@ -25,6 +25,11 @@ const userSchema = new Schema<UserDocument & MongooseDocument>({
   createdAt: { type: Date, default: Date.now },
   failedLoginAttempts: { type: Number, default: 0 },
   lockoutUntil: { type: Date, default: null },
+  mfaSecret: { type: String, default: null },
+  mfaEnabled: { type: Boolean, default: false },
+  mfaBackupCodes: { type: [String], default: null },
+  mfaFailedAttempts: { type: Number, default: 0 },
+  mfaLockoutUntil: { type: Date, default: null },
 });
 
 // Document Schema

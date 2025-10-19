@@ -155,6 +155,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     //  Disabilita i retry automatici
     retry: false,
     onSuccess: async (data) => {
+      // Controlla se è richiesta la verifica MFA
+      if (data.requiresMfa) {
+        // Non completare il login, lascia che il componente gestisca la verifica MFA
+        return;
+      }
+
+      // Login completato senza MFA - procedi normalmente
       // Forza un refresh della query dell'utente
       await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       // Imposta i dati dell'utente

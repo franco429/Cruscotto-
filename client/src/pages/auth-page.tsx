@@ -31,6 +31,7 @@ import AuthNavbar from "../components/auth-navbar";
 import Footer from "../components/footer";
 import LoadingSpinner from "../components/loading-spinner";
 import SimpleFileUpload from "../components/simple-file-upload";
+import MFALoginVerify from "../components/mfa-login-verify";
 import {
   Form,
   FormControl,
@@ -82,6 +83,7 @@ export default function AuthPage() {
   const [tabValue, setTabValue] = useState("login");
   const [showLoadingSpinner, setShowLoadingSpinner] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
+  const [showMFAVerify, setShowMFAVerify] = useState(false);
   
   // SEO per la pagina di autenticazione
   usePageSEO(
@@ -122,6 +124,13 @@ export default function AuthPage() {
       setShowLoadingSpinner(false);
     }
   }, [registerMutation.isPending, loginMutation.isPending]);
+
+  // Gestione MFA quando il backend lo richiede
+  useEffect(() => {
+    if (loginMutation.isSuccess && loginMutation.data?.requiresMfa) {
+      setShowMFAVerify(true);
+    }
+  }, [loginMutation.isSuccess, loginMutation.data]);
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -177,6 +186,31 @@ export default function AuthPage() {
       registerMutation.mutate(values as any);
     }
   };
+
+  // Se MFA è richiesto, mostra il componente di verifica MFA
+  if (showMFAVerify) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <AuthNavbar />
+        <div className="flex-1 flex items-center justify-center p-6 bg-slate-50 dark:bg-slate-900">
+          <MFALoginVerify
+            onBack={() => {
+              setShowMFAVerify(false);
+              loginMutation.reset();
+            }}
+            onSuccess={() => {
+              setLoadingMessage("Accesso completato con MFA...");
+              setShowLoadingSpinner(true);
+              setTimeout(() => {
+                window.location.href = "/";
+              }, 1000);
+            }}
+          />
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">

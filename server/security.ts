@@ -1,7 +1,7 @@
 import { Express, Request, Response, NextFunction } from "express";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
-import { randomBytes } from "crypto";
+import { randomBytes, timingSafeEqual } from "crypto";
 
 /**
  * Validazione anti-spam per l'endpoint di contatto
@@ -85,11 +85,135 @@ export function validateContactRequest(req: Request, res: Response, next: NextFu
 
 /**
  * Configurazione delle misure di sicurezza per l'ambiente di produzione
+ * Conforme agli standard TAC Security CASA Tier 2 e Tier 3
+ * OTTIMIZZATA: Rimozione unsafe-eval in produzione per certificazione ADA CASA
  * @param app Express application
  */
 export function setupSecurity(app: Express) {
-  // Aggiunge header di sicurezza
-  app.use(helmet());
+  const isProduction = process.env.NODE_ENV === "production";
+  
+  // Script-Src: Configurazione differenziata per dev/prod
+  // In produzione: NO unsafe-eval (richiesto ADA CASA Tier 2/3)
+  const scriptSrcDirectives = [
+    "'self'",
+    "https://accounts.google.com",
+    "https://apis.google.com",
+  ];
+  
+  // unsafe-inline solo per Vite dev mode + Google OAuth popup
+  if (!isProduction) {
+    scriptSrcDirectives.push("'unsafe-inline'");
+    scriptSrcDirectives.push("'unsafe-eval'"); // Solo in development
+  } else {
+    // In produzione NON consentiamo script inline globalmente.
+    // La pagina di callback OAuth imposta una CSP dedicata con nonce per consentire lo script inline sicuro solo lì.
+  }
+  
+  // Configurazione CSP (Content Security Policy) dettagliata
+  // Protezione contro XSS, injection attacks e data leaks
+  app.use(
+    helmet.contentSecurityPolicy({
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: scriptSrcDirectives,
+        styleSrc: [
+          "'self'",
+          "'unsafe-inline'", // Necessario per styled components e CSS-in-JS
+          "https://fonts.googleapis.com",
+        ],
+        fontSrc: [
+          "'self'",
+          "https://fonts.gstatic.com",
+          "data:",
+        ],
+        imgSrc: [
+          "'self'",
+          "data:",
+          "blob:",
+          "https:", // Necessario per immagini Google Drive
+          "https://drive.google.com",
+          "https://lh3.googleusercontent.com",
+        ],
+        connectSrc: [
+          "'self'",
+          "https://accounts.google.com",
+          "https://www.googleapis.com",
+          "https://oauth2.googleapis.com",
+          "https://drive.googleapis.com",
+        ],
+        frameSrc: [
+          "'self'",
+          "https://accounts.google.com",
+          "https://drive.google.com",
+        ],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        frameAncestors: ["'none'"], // Protezione clickjacking
+        upgradeInsecureRequests: isProduction ? [] : null,
+        // Report-URI per monitorare violazioni CSP in produzione
+        ...(isProduction && {
+          reportUri: "/api/csp-report",
+        }),
+      },
+    })
+  );
+
+  // HSTS (HTTP Strict Transport Security) - Force HTTPS
+  // Max-age di 2 anni (63072000 secondi) come raccomandato da OWASP
+  app.use(
+    helmet.hsts({
+      maxAge: 63072000, // 2 anni
+      includeSubDomains: true,
+      preload: true, // Eligibile per HSTS preload list
+    })
+  );
+
+  // X-Content-Type-Options: previene MIME type sniffing
+  app.use(helmet.noSniff());
+
+  // X-Frame-Options: protezione clickjacking (già presente ma duplicato per sicurezza)
+  app.use(helmet.frameguard({ action: "deny" }));
+
+  // X-XSS-Protection: abilita protezione XSS nel browser
+  app.use(helmet.xssFilter());
+
+  // Referrer-Policy: controlla quante informazioni vengono inviate nel referrer
+  app.use(
+    helmet.referrerPolicy({
+      policy: "strict-origin-when-cross-origin",
+    })
+  );
+
+  // Permissions-Policy (ex Feature-Policy): limita l'accesso alle API del browser
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    res.setHeader(
+      "Permissions-Policy",
+      "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()"
+    );
+    next();
+  });
+
+  // X-Permitted-Cross-Domain-Policies: blocca cross-domain policy
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    res.setHeader("X-Permitted-Cross-Domain-Policies", "none");
+    next();
+  });
+
+  // Cross-Origin-Embedder-Policy (COEP) e Cross-Origin-Opener-Policy (COOP)
+  // Per isolamento completo del contesto
+  app.use(helmet.crossOriginEmbedderPolicy({ policy: "require-corp" }));
+  app.use(helmet.crossOriginOpenerPolicy({ policy: "same-origin" }));
+  app.use(helmet.crossOriginResourcePolicy({ policy: "same-origin" }));
+
+  // DNS Prefetch Control: previene DNS prefetching non autorizzato
+  app.use(helmet.dnsPrefetchControl({ allow: false }));
+
+  // IE No Open: previene IE dall'aprire file non fidati nel contesto del sito
+  app.use(helmet.ieNoOpen());
+
+  // Nascondi informazioni server
+  app.use(helmet.hidePoweredBy());
 
   // Limita le richieste ripetute per prevenire attacchi di forza bruta
   const loginLimiter = rateLimit({
@@ -134,6 +258,23 @@ export function setupSecurity(app: Express) {
   app.use("/api/forgot-password", resetPasswordLimiter);
   app.use("/api/contact", contactLimiter); //  Applica rate limiting al contatto
 
+  // Rate limiter specifico per verifica MFA (conforme TAC Security Tier 2)
+  // Configurazione più restrittiva per prevenire brute force su MFA
+  const mfaLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minuti
+    max: 5, // 5 tentativi ogni 15 minuti (ridotto da 8/5min)
+    message: { 
+      error: "Troppi tentativi di verifica MFA. Riprova tra 15 minuti.",
+      code: "MFA_RATE_LIMIT_EXCEEDED"
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+    skipSuccessfulRequests: true, // Non conta le richieste riuscite
+  });
+
+  app.use("/api/mfa/verify", mfaLimiter);
+  app.use("/api/mfa/enable", mfaLimiter);
+
   // Limiter generale per tutte le API
   const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, 
@@ -172,24 +313,47 @@ export function setupSecurity(app: Express) {
   }
 }
 
+/**
+ * Configurazione CSRF con rotazione token automatica
+ * Conforme agli standard OWASP per la prevenzione CSRF
+ * MIGLIORATO: Rotazione token periodica e validazione temporale per ADA CASA Tier 2/3
+ */
 export function setupCSRF(app: Express) {
-  // Genera un token CSRF se non esiste nella sessione.
+  // Genera un token CSRF se non esiste nella sessione o è scaduto
   app.use((req: Request, res: Response, next: NextFunction) => {
-    if (req.session && !req.session.csrfToken) {
-      req.session.csrfToken = randomBytes(32).toString("hex");
+    if (req.session) {
+      const now = Date.now();
+      const tokenAge = req.session.csrfTokenTimestamp ? now - req.session.csrfTokenTimestamp : Infinity;
+      const TOKEN_MAX_AGE = 60 * 60 * 1000; // 1 ora
+      
+      // Genera nuovo token se non esiste o è scaduto (rotazione automatica)
+      if (!req.session.csrfToken || tokenAge > TOKEN_MAX_AGE) {
+        req.session.csrfToken = randomBytes(32).toString("hex");
+        req.session.csrfTokenTimestamp = now;
+      }
     }
     next();
   });
 
-  // Endpoint per fornire il token CSRF al client.
+  // Endpoint per fornire il token CSRF al client
   app.get("/api/csrf-token", (req: Request, res: Response) => {
     if (!req.session || !req.session.csrfToken) {
       return res.status(500).json({ error: "Sessione non inizializzata correttamente." });
     }
-    res.json({ csrfToken: req.session.csrfToken });
+    
+    // Forza la rigenerazione del token se richiesto esplicitamente
+    if (req.query.refresh === "true") {
+      req.session.csrfToken = randomBytes(32).toString("hex");
+      req.session.csrfTokenTimestamp = Date.now();
+    }
+    
+    res.json({ 
+      csrfToken: req.session.csrfToken,
+      expiresIn: 3600 // secondi
+    });
   });
 
-  // Middleware per la validazione del token CSRF sulle richieste modificanti.
+  // Middleware per la validazione del token CSRF sulle richieste modificanti
   app.use((req: Request, res: Response, next: NextFunction) => {
     if (["POST", "PUT", "DELETE", "PATCH"].includes(req.method)) {
       const csrfExemptPaths = [
@@ -199,6 +363,7 @@ export function setupCSRF(app: Express) {
         "/api/reset-password",
         "/api/contact",
         "/api/verify-reset-link",
+        "/api/csrf-token", // Escludi l'endpoint stesso
       ];
 
       if (csrfExemptPaths.some((path) => req.path.startsWith(path))) {
@@ -206,18 +371,52 @@ export function setupCSRF(app: Express) {
       }
 
       if (!req.session || !req.session.csrfToken) {
-        return res.status(403).json({ message: "Sessione o token CSRF non validi." });
+        return res.status(403).json({ 
+          message: "Sessione o token CSRF non validi.",
+          code: "CSRF_SESSION_INVALID"
+        });
       }
 
       const tokenFromHeader = req.headers["x-csrf-token"] as string;
       const sessionToken = req.session.csrfToken;
 
       if (!tokenFromHeader) {
-        return res.status(403).json({ message: "Token CSRF mancante nell'header della richiesta." });
+        return res.status(403).json({ 
+          message: "Token CSRF mancante nell'header della richiesta.",
+          code: "CSRF_TOKEN_MISSING"
+        });
       }
 
-      if (tokenFromHeader !== sessionToken) {
-        return res.status(403).json({ message: "Token CSRF non valido." });
+      // Validazione constant-time per prevenire timing attacks
+      if (tokenFromHeader.length !== sessionToken.length) {
+        return res.status(403).json({ 
+          message: "Token CSRF non valido.",
+          code: "CSRF_TOKEN_INVALID"
+        });
+      }
+
+      // Confronto constant-time usando crypto
+      const tokenBuffer = Buffer.from(tokenFromHeader);
+      const sessionBuffer = Buffer.from(sessionToken);
+      
+      if (!timingSafeEqual(tokenBuffer, sessionBuffer)) {
+        return res.status(403).json({ 
+          message: "Token CSRF non valido.",
+          code: "CSRF_TOKEN_INVALID"
+        });
+      }
+      
+      // Valida l'età del token
+      const tokenAge = req.session.csrfTokenTimestamp 
+        ? Date.now() - req.session.csrfTokenTimestamp 
+        : Infinity;
+      const TOKEN_MAX_AGE = 60 * 60 * 1000; // 1 ora
+      
+      if (tokenAge > TOKEN_MAX_AGE) {
+        return res.status(403).json({ 
+          message: "Token CSRF scaduto. Richiedi un nuovo token.",
+          code: "CSRF_TOKEN_EXPIRED"
+        });
       }
     }
     next();
@@ -225,7 +424,10 @@ export function setupCSRF(app: Express) {
 
   app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     if (err.code === 'EBADCSRFTOKEN') {
-      res.status(403).json({ message: 'Token CSRF non valido o mancante.' });
+      res.status(403).json({ 
+        message: 'Token CSRF non valido o mancante.',
+        code: 'CSRF_ERROR'
+      });
     } else {
       next(err);
     }

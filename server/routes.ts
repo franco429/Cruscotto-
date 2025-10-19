@@ -1290,6 +1290,33 @@ export async function registerRoutes(app: Express): Promise<Express> {
     }
   });
 
+  // Endpoint per ricevere report violazioni CSP (Content Security Policy)
+  // Utile per monitorare tentativi di attacco XSS in produzione
+  app.post("/api/csp-report", async (req, res) => {
+    try {
+      const report = req.body["csp-report"];
+      
+      if (report) {
+        logger.warn("CSP Violation detected", {
+          documentUri: report["document-uri"],
+          violatedDirective: report["violated-directive"],
+          blockedUri: report["blocked-uri"],
+          sourceFile: report["source-file"],
+          lineNumber: report["line-number"],
+          ip: req.ip,
+          userAgent: req.get("User-Agent"),
+          timestamp: new Date().toISOString(),
+        });
+      }
+      
+      // Rispondi sempre con 204 No Content (best practice per CSP reports)
+      res.status(204).send();
+    } catch (error) {
+      // Non loggare errori per evitare spam nei log
+      res.status(204).send();
+    }
+  });
+
   // Endpoint di contatto con protezione anti-spam
   app.post("/api/contact", validateContactRequest, async (req, res) => {
     try {
@@ -1308,7 +1335,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
       const info = await transporter.sendMail({
         from: `"${name}" <${email}>`,
-        to: to || "isodocs178@gmail.com",
+        to: to || "docgenius8@gmail.com",
         subject: subject || `Richiesta di assistenza da ${name}`,
         text: message,
         html: `

@@ -150,7 +150,7 @@ export default function CookiePage() {
                 </p>
                 <div className="mt-3 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                   <p className="font-semibold">Pannello di Controllo SGI</p>
-                  <p>Email: isodocs178@gmail.com</p>
+                  <p>Email: docgenius8@gmail.com</p>
                   <p>Telefono: +39 3351375593 / +39 3791341270</p>
                   <p>Indirizzo: 60044 Fabriano (AN), Italia</p>
                 </div>

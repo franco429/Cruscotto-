@@ -185,12 +185,102 @@ export function setupAuth(app: Express) {
           return res.status(401).json({ message: info.message });
         }
 
-        // Login riuscito, procedi con la creazione della sessione
+        // Controlla se l'utente ha MFA abilitato
+        if (user.mfaEnabled && user.mfaSecret) {
+          const remember = !!req.body.remember;
+          if (req.session) {
+            // Rigenera l'ID di sessione per prevenire session fixation prima della fase MFA
+            return req.session.regenerate(async (regenErr) => {
+              if (regenErr) {
+                return next(regenErr);
+              }
+
+              req.session.pendingMfaUserId = user.legacyId;
+              req.session.pendingMfaRemember = remember;
+
+              await storage.createLog({
+                userId: user.legacyId,
+                action: "login_mfa_required",
+                documentId: null,
+                details: { message: "MFA verification required", ipAddress: req.ip },
+              });
+
+              const { password, mfaSecret, mfaBackupCodes, ...safeUser } = user;
+              return res.status(200).json({ 
+                requiresMfa: true,
+                userId: user.legacyId,
+                email: user.email,
+                role: user.role
+              });
+            });
+          }
+
+          // Se per qualche motivo la sessione non è disponibile
+          return res.status(500).json({ message: "Sessione non disponibile per MFA" });
+        }
+
+        // Login riuscito senza MFA: rigenera l'ID di sessione e poi effettua il login
+        if (req.session) {
+          return req.session.regenerate((regenErr) => {
+            if (regenErr) {
+              return next(regenErr);
+            }
+
+            req.login(user, async (loginErr) => {
+              if (loginErr) {
+                return next(loginErr);
+              }
+
+              try {
+                const { remember } = req.body;
+                const sessionDuration = remember
+                  ? 7 * 24 * 60 * 60 * 1000
+                  : 60 * 60 * 1000;
+                const sessionExpiry = new Date(Date.now() + sessionDuration);
+                const lastLogin = new Date();
+
+                if (req.session && req.session.cookie) {
+                  req.session.cookie.maxAge = sessionDuration;
+                }
+
+                const updatedUser = await storage.updateUserSession(
+                  user.legacyId,
+                  lastLogin,
+                  sessionExpiry
+                );
+
+                await storage.createLog({
+                  userId: user.legacyId,
+                  action: "login",
+                  documentId: null,
+                  details: { message: "User logged in", ipAddress: req.ip },
+                });
+
+                let clientDetails = null;
+                if (updatedUser?.clientId) {
+                  clientDetails = await storage.getClient(updatedUser.clientId);
+                  if (clientDetails?.driveFolderId) {
+                    startAutomaticSync(
+                      clientDetails.driveFolderId,
+                      updatedUser.legacyId
+                    );
+                  }
+                }
+
+                const { password, mfaSecret, mfaBackupCodes, ...safeUser } = updatedUser || user;
+                return res.status(200).json({ ...safeUser, client: clientDetails });
+              } catch (e) {
+                return next(e);
+              }
+            });
+          });
+        }
+
+        // Fallback: se la sessione non è disponibile, esegui il flusso originale
         req.login(user, async (loginErr) => {
           if (loginErr) {
             return next(loginErr);
           }
-
           try {
             const { remember } = req.body;
             const sessionDuration = remember
@@ -198,36 +288,19 @@ export function setupAuth(app: Express) {
               : 60 * 60 * 1000;
             const sessionExpiry = new Date(Date.now() + sessionDuration);
             const lastLogin = new Date();
-
-            if (req.session.cookie) {
-              req.session.cookie.maxAge = sessionDuration;
-            }
-
             const updatedUser = await storage.updateUserSession(
               user.legacyId,
               lastLogin,
               sessionExpiry
             );
-
             await storage.createLog({
               userId: user.legacyId,
               action: "login",
+              documentId: null,
               details: { message: "User logged in", ipAddress: req.ip },
             });
-
-            let clientDetails = null;
-            if (updatedUser?.clientId) {
-              clientDetails = await storage.getClient(updatedUser.clientId);
-              if (clientDetails?.driveFolderId) {
-                startAutomaticSync(
-                  clientDetails.driveFolderId,
-                  updatedUser.legacyId
-                );
-              }
-            }
-
-            const { password, ...safeUser } = updatedUser || user;
-            return res.status(200).json({ ...safeUser, client: clientDetails });
+            const { password, mfaSecret, mfaBackupCodes, ...safeUser } = updatedUser || user;
+            return res.status(200).json({ ...safeUser, client: null });
           } catch (e) {
             return next(e);
           }
@@ -242,6 +315,7 @@ export function setupAuth(app: Express) {
         await storage.createLog({
           userId: req.user.legacyId,
           action: "logout",
+          documentId: null,
           details: { message: "User logged out" },
         });
       }

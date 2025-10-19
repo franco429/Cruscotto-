@@ -57,23 +57,47 @@ process.on('SIGINT', () => {
 
 const app = express();
 
-//  CORS config
+//  CORS config - Configurazione sicura e rigorosa
 const allowedOrigins = [
   "https://cruscotto-sgi.com",
+  "https://www.cruscotto-sgi.com",
   ...(process.env.CORS_ORIGIN
-    ? process.env.CORS_ORIGIN.split(",")
-    : ["http://localhost:5173"]),
+    ? process.env.CORS_ORIGIN.split(",").map(origin => origin.trim())
+    : ["http://localhost:5173", "http://localhost:5000"]),
 ];
+
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+      // Permetti richieste senza origin (es. mobile apps, Postman)
+      if (!origin) {
+        // In produzione, blocca richieste senza origin per maggiore sicurezza
+        if (process.env.NODE_ENV === "production") {
+          logger.warn("CORS: Request without origin blocked in production");
+          return callback(new Error("Not allowed by CORS - missing origin"));
+        }
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(new Error("Not allowed by CORS"));
+        logger.warn("CORS: Blocked request from unauthorized origin", { origin });
+        callback(new Error(`Not allowed by CORS: ${origin}`));
       }
     },
-    credentials: true,
+    credentials: true, // Permetti cookies e headers di autenticazione
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"], // Metodi permessi
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "X-CSRF-Token",
+      "Accept",
+    ], // Headers permessi
+    exposedHeaders: ["X-Total-Count", "X-Page-Count"], // Headers esposti al client
+    maxAge: 86400, // Preflight cache: 24 ore
+    optionsSuccessStatus: 200, // Alcuni browser legacy (IE11) usano 200 invece di 204
   })
 );
 
@@ -147,6 +171,10 @@ app.use((req, res, next) => {
     logger.info("Registro le route di backup...");
     const { registerBackupRoutes } = await import("./backup-routes");
     registerBackupRoutes(app);
+
+    logger.info("Registro le route MFA...");
+    const { registerMFARoutes } = await import("./mfa-routes");
+    registerMFARoutes(app);
 
     // Middleware per normalizzare gli URL (www -> non-www, http -> https)
     app.use((req, res, next) => {

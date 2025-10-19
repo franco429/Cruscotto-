@@ -194,7 +194,7 @@ export async function handleContactRequest(req: Request, res: Response) {
     // Invia l'email usando nodemailer
     const info = await transporter.sendMail({
       from: `"${name}" <${email}>`,
-      to: "isodocs178@gmail.com", // Email fissa di destinazione
+      to: "docgenius8@gmail.com", // Email fissa di destinazione
       subject: `Richiesta di assistenza da ${name}`,
       text: message,
       html: `

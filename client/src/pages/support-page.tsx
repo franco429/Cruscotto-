@@ -33,7 +33,7 @@ export default function SupportPage() {
         name: contactName,
         email: contactEmail,
         message: contactMessage,
-        to: "isodocs178@gmail.com", 
+        to: "docgenius8@gmail.com", 
         subject: `Nuovo messaggio di supporto da ${contactName}`,
       });
 
