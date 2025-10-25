@@ -1,6 +1,6 @@
 import { Express, Request, Response, NextFunction } from "express";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { randomBytes, timingSafeEqual } from "crypto";
 
 /**
@@ -249,8 +249,9 @@ export function setupSecurity(app: Express) {
     legacyHeaders: false,
     skipSuccessfulRequests: false, 
     keyGenerator: (req) => {
-      // Usa IP + User-Agent per identificare meglio i client
-      return `${req.ip}-${req.get('User-Agent') || 'unknown'}`;
+      // Usa ipKeyGenerator per gestire correttamente IPv6 + User-Agent per identificare meglio i client
+      const ip = ipKeyGenerator(req);
+      return `${ip}-${req.get('User-Agent') || 'unknown'}`;
     }
   });
 
