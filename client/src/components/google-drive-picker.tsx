@@ -54,7 +54,6 @@ const GoogleDrivePicker = forwardRef<GoogleDrivePickerRef, GoogleDrivePickerProp
     }
 
     try {
-      console.log(`🔑 Tentativo di recupero access token per client ${clientId}${forceRefresh ? ' (force refresh)' : ''}`);
       const url = forceRefresh 
         ? `/api/google/access-token/${clientId}?refresh=true`
         : `/api/google/access-token/${clientId}`;
@@ -63,7 +62,6 @@ const GoogleDrivePicker = forwardRef<GoogleDrivePickerRef, GoogleDrivePickerProp
       const data = await response.json();
       
       if (data.access_token) {
-        console.log('✅ Access token ottenuto dal backend con successo');
         return data.access_token;
       } else if (data.requiresAuth) {
         console.log('🔄 Il refresh token è scaduto/mancante - serve nuova autorizzazione');
@@ -90,7 +88,6 @@ const GoogleDrivePicker = forwardRef<GoogleDrivePickerRef, GoogleDrivePickerProp
       setIsLoading(loading);
     },
     resetToReady: () => {
-      console.log('🔄 Resettando GoogleDrivePicker a stato pronto');
       setIsLoading(false);
       accessTokenRef.current = null; // Reset del token cache
     },
@@ -117,7 +114,6 @@ const GoogleDrivePicker = forwardRef<GoogleDrivePickerRef, GoogleDrivePickerProp
       
       if (backendAccessToken) {
         // Usa il token dal backend - non serve autorizzazione frontend
-        console.log('🎉 Usando access token dal backend per aprire il picker');
         accessTokenRef.current = backendAccessToken;
         
         toast({
@@ -185,7 +181,6 @@ const GoogleDrivePicker = forwardRef<GoogleDrivePickerRef, GoogleDrivePickerProp
     // Quando requiresBackendAuth cambia da true a false, significa che l'autorizzazione è stata completata
     // e dobbiamo resettare il loading state per permettere l'uso normale del picker
     if (!requiresBackendAuth && isLoading) {
-      console.log('🔄 Autorizzazione backend completata via useEffect, reset del loading state');
       // Reset immediato senza delay per migliore UX
       setIsLoading(false);
       accessTokenRef.current = null; // Reset del token cache per forzare il refresh

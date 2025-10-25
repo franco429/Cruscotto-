@@ -151,7 +151,6 @@ export const queryClient = new QueryClient({
 
 // Funzione utility per forzare il refresh dei dati client dopo OAuth
 export async function forceRefreshClientData(): Promise<void> {
-  console.log('🔄 Forzando refresh completo dei dati client dopo OAuth');
   
   // 1. Rimuovi completamente i dati dalla cache
   queryClient.removeQueries({ queryKey: ["/api/clients"] });
@@ -165,5 +164,4 @@ export async function forceRefreshClientData(): Promise<void> {
     type: 'active'
   });
   
-  console.log('✅ Refresh completo dei dati client completato');
 }

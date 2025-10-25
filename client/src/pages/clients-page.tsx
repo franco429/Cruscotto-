@@ -156,7 +156,6 @@ export default function ClientsPage() {
         if (popup.closed) {
         clearInterval(timer); // Ferma il controllo
 
-        console.log('✅ [Polling] Popup chiuso, avvio procedura di post-autenticazione.');
 
         // Resetta IMMEDIATAMENTE lo stato del bottone figlio.
         if (googleDrivePickerRef.current) {
@@ -293,13 +292,6 @@ export default function ClientsPage() {
     // Controlla se dovremmo aprire automaticamente il picker
     if (shouldOpenPickerAutomatically) {
       
-      console.log('🎯 Controllo condizioni per apertura automatica picker', {
-        shouldOpenPickerAutomatically,
-        hasRefreshToken: !!currentClient?.google?.refreshToken,
-        connectionStatus: connectionStatus.status,
-        isLoading,
-        hasCurrentClient: !!currentClient
-      });
 
       // Usa un timer per verificare periodicamente le condizioni
       const checkAndOpenPicker = () => {
@@ -307,7 +299,6 @@ export default function ClientsPage() {
             connectionStatus.status === 'connected' &&
             !isLoading) {
           
-          console.log('✅ Tutte le condizioni soddisfatte, apertura picker automatica');
           
           // Reset dei flag
           setShouldOpenPickerAutomatically(false);
@@ -322,12 +313,10 @@ export default function ClientsPage() {
           // Apre automaticamente il picker dopo aver assicurato che sia in stato pronto
           setTimeout(() => {
             if (googleDrivePickerRef.current) {
-              console.log('🔄 Resettando picker prima dell\'apertura automatica...');
               googleDrivePickerRef.current.resetToReady();
               
               // Dopo il reset, apre il picker
               setTimeout(() => {
-                console.log('🚀 Chiamando openPickerAfterAuth()...');
                 googleDrivePickerRef.current?.openPickerAfterAuth();
               }, 200);
             } else {
@@ -343,7 +332,6 @@ export default function ClientsPage() {
       // Primo tentativo immediato
       if (!checkAndOpenPicker()) {
         // Se il primo tentativo fallisce, continua a controllare ogni 500ms per max 10 secondi
-        console.log('⏳ Primo tentativo fallito, avvio controllo periodico...');
         
         let attempts = 0;
         const maxAttempts = 20; // 10 secondi max
