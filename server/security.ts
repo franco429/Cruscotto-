@@ -185,6 +185,18 @@ export function setupSecurity(app: Express) {
     })
   );
 
+  // Cross-Origin-Opener-Policy: permette comunicazione tra finestre popup per OAuth
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    // Per le pagine OAuth e callback, usa same-origin-allow-popups
+    if (req.path.includes('/api/google/') || req.path.includes('/callback')) {
+      res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+    } else {
+      // Per le altre pagine, usa same-origin per sicurezza
+      res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    }
+    next();
+  });
+
   // Permissions-Policy (ex Feature-Policy): limita l'accesso alle API del browser
   app.use((req: Request, res: Response, next: NextFunction) => {
     res.setHeader(

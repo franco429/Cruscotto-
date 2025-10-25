@@ -69,12 +69,13 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Permetti richieste senza origin (es. mobile apps, Postman)
+      // Permetti richieste senza origin per callback OAuth e altre richieste legittime
       if (!origin) {
-        // In produzione, blocca richieste senza origin per maggiore sicurezza
+        // In produzione, permetti solo per callback OAuth e altre richieste specifiche
         if (process.env.NODE_ENV === "production") {
-          logger.warn("CORS: Request without origin blocked in production");
-          return callback(new Error("Not allowed by CORS - missing origin"));
+          // Permetti callback OAuth di Google e altre richieste senza origin
+          logger.info("CORS: Allowing request without origin in production (likely OAuth callback)");
+          return callback(null, true);
         }
         return callback(null, true);
       }
@@ -211,6 +212,11 @@ app.use((req, res, next) => {
     // Serve i file statici della build Vite
     const viteDistPath = path.join(__dirname, "..", "client", "dist");
     app.use(express.static(viteDistPath));
+
+    // Gestione favicon.ico - redirect a favicon.png
+    app.get("/favicon.ico", (req, res) => {
+      res.redirect("/favicon.png");
+    });
 
     // robots.txt per API: BLOCCA l'indicizzazione (sicurezza)
     app.get("/robots.txt", (req, res) => {

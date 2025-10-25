@@ -151,7 +151,9 @@ export default function ClientsPage() {
     // Invece di 'postMessage', controlliamo ogni secondo se il popup è stato chiuso.
     const timer = setInterval(() => {
       // Se il popup è stato chiuso dall'utente o dal redirect di successo...
-      if (popup.closed) {
+      // Gestisce il caso in cui COOP blocca l'accesso a popup.closed
+      try {
+        if (popup.closed) {
         clearInterval(timer); // Ferma il controllo
 
         console.log('✅ [Polling] Popup chiuso, avvio procedura di post-autenticazione.');
@@ -191,7 +193,34 @@ export default function ClientsPage() {
           setShouldOpenPickerAutomatically(false);
         });
       }
+      } catch (error) {
+        // Se COOP blocca l'accesso a popup.closed, usa un timeout di sicurezza
+        console.warn('⚠️ COOP policy blocked popup.closed access, using timeout fallback');
+        // Non fare nulla qui, il timeout di sicurezza gestirà il caso
+      }
     }, 1000); // Controlla ogni secondo
+
+    // Timeout di sicurezza: se dopo 5 minuti il popup non è chiuso, forza la chiusura
+    setTimeout(() => {
+      try {
+        if (!popup.closed) {
+          console.log('⏰ Timeout di sicurezza raggiunto, forzando chiusura popup');
+          popup.close();
+          clearInterval(timer);
+          setIsBackendAuthInProgress(false);
+          
+          toast({
+            title: "Timeout autorizzazione",
+            description: "Il processo di autorizzazione è stato interrotto per timeout.",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.warn('⚠️ Errore durante timeout di sicurezza:', error);
+        clearInterval(timer);
+        setIsBackendAuthInProgress(false);
+      }
+    }, 15000); // 15 secondi
 
   } catch (error) {
     console.error("Errore autorizzazione Google Drive:", error);
