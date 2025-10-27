@@ -84,6 +84,40 @@ export function validateContactRequest(req: Request, res: Response, next: NextFu
 }
 
 /**
+ * Middleware per bloccare metodi HTTP non sicuri
+ * Conforme a TAC Security DAST - Proxy Disclosure Prevention (CWE-200)
+ * Blocca TRACE, TRACK e limita OPTIONS solo a preflight CORS
+ */
+export function blockUnsafeHttpMethods(app: Express) {
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const method = req.method.toUpperCase();
+    
+    // Blocca metodi TRACE e TRACK usati per proxy disclosure
+    if (method === 'TRACE' || method === 'TRACK') {
+      res.setHeader('Allow', 'GET, POST, PUT, DELETE, PATCH, HEAD');
+      return res.status(405).json({ 
+        error: 'Method Not Allowed',
+        message: 'Il metodo HTTP richiesto non è supportato.',
+        code: 'METHOD_NOT_ALLOWED'
+      });
+    }
+    
+    // Limita OPTIONS solo a preflight CORS (con header Origin)
+    if (method === 'OPTIONS' && !req.headers.origin) {
+      // Blocca OPTIONS non-CORS (usate per fingerprinting)
+      res.setHeader('Allow', 'GET, POST, PUT, DELETE, PATCH, HEAD');
+      return res.status(405).json({ 
+        error: 'Method Not Allowed',
+        message: 'OPTIONS richiede header Origin.',
+        code: 'METHOD_NOT_ALLOWED'
+      });
+    }
+    
+    next();
+  });
+}
+
+/**
  * Configurazione delle misure di sicurezza per l'ambiente di produzione
  * Conforme agli standard TAC Security CASA Tier 2 e Tier 3
  * OTTIMIZZATA: Rimozione unsafe-eval in produzione per certificazione ADA CASA
@@ -161,6 +195,7 @@ export function setupSecurity(app: Express) {
 
   // HSTS (HTTP Strict Transport Security) - Force HTTPS
   // Max-age di 2 anni (63072000 secondi) come raccomandato da OWASP
+  // Conforme a TAC Security DAST - CWE-319 (Cleartext Transmission)
   app.use(
     helmet.hsts({
       maxAge: 63072000, // 2 anni
@@ -168,6 +203,19 @@ export function setupSecurity(app: Express) {
       preload: true, // Eligibile per HSTS preload list
     })
   );
+  
+  // Middleware esplicito per garantire presenza HSTS header su TUTTE le risposte
+  // Doppia protezione per conformità TAC Security DAST
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    // Applica HSTS solo se la richiesta è HTTPS o dietro un proxy HTTPS
+    const isSecure = req.secure || req.get('x-forwarded-proto') === 'https';
+    
+    if (isSecure || isProduction) {
+      // In produzione, forza sempre HSTS (assumiamo che Render usi sempre HTTPS)
+      res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+    }
+    next();
+  });
 
   // X-Content-Type-Options: previene MIME type sniffing
   app.use(helmet.noSniff());
@@ -185,18 +233,6 @@ export function setupSecurity(app: Express) {
     })
   );
 
-  // Cross-Origin-Opener-Policy: permette comunicazione tra finestre popup per OAuth
-  app.use((req: Request, res: Response, next: NextFunction) => {
-    // Per le pagine OAuth e callback, usa same-origin-allow-popups
-    if (req.path.includes('/api/google/') || req.path.includes('/callback')) {
-      res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
-    } else {
-      // Per le altre pagine, usa same-origin per sicurezza
-      res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-    }
-    next();
-  });
-
   // Permissions-Policy (ex Feature-Policy): limita l'accesso alle API del browser
   app.use((req: Request, res: Response, next: NextFunction) => {
     res.setHeader(
@@ -212,10 +248,23 @@ export function setupSecurity(app: Express) {
     next();
   });
 
-  // Cross-Origin-Embedder-Policy (COEP) e Cross-Origin-Opener-Policy (COOP)
-  // Per isolamento completo del contesto
+  // Cross-Origin-Embedder-Policy (COEP) - isolamento del contesto
   app.use(helmet.crossOriginEmbedderPolicy({ policy: "require-corp" }));
-  app.use(helmet.crossOriginOpenerPolicy({ policy: "same-origin" }));
+  
+  // Cross-Origin-Opener-Policy (COOP) - configurazione differenziata per OAuth
+  // IMPORTANTE: Non usare helmet.crossOriginOpenerPolicy per evitare conflitti
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    // Per le pagine OAuth e callback, usa same-origin-allow-popups
+    if (req.path.includes('/api/google/') || req.path.includes('/callback')) {
+      res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+    } else {
+      // Per le altre pagine, usa same-origin per sicurezza
+      res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    }
+    next();
+  });
+  
+  // Cross-Origin-Resource-Policy (CORP) - isolamento delle risorse
   app.use(helmet.crossOriginResourcePolicy({ policy: "same-origin" }));
 
   // DNS Prefetch Control: previene DNS prefetching non autorizzato
@@ -298,9 +347,64 @@ export function setupSecurity(app: Express) {
 
   app.use("/api/", apiLimiter);
 
-  // Previene clickjacking
+  // Previene clickjacking - Header aggiuntivo per conformità TAC Security DAST
+  // Nota: già configurato tramite helmet.frameguard, ma aggiungiamo middleware esplicito
+  // per garantire la presenza su tutte le risposte (raccomandazione TAC Security)
   app.use((req: Request, res: Response, next: NextFunction) => {
     res.setHeader("X-Frame-Options", "DENY");
+    next();
+  });
+
+  // Header di sicurezza aggiuntivi per conformità TAC Security DAST
+  // Conforme a CWE-525 (Re-examine Cache-control Directives) e CWE-524 (Storable and Cacheable Content)
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    // Cache-Control differenziato per tipo di risorsa
+    // Conforme a TAC Security DAST - Punti 7 & 8 (CWE-525, CWE-524)
+    
+    const path = req.path.toLowerCase();
+    
+    // 1. API endpoints - NO CACHING (dati sensibili)
+    if (path.startsWith('/api/')) {
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
+    }
+    // 2. Asset statici immutabili (CSS, JS, immagini con hash) - CACHING AGGRESSIVO
+    else if (path.match(/\.(css|js)$/) && path.includes('/assets/')) {
+      // File con hash nel nome (es. main-abc123.js) possono essere cachati indefinitamente
+      res.setHeader("Cache-Control", "public, max-age=63072000, immutable");
+    }
+    // 3. Immagini e font - CACHING MODERATO
+    else if (path.match(/\.(jpg|jpeg|png|gif|webp|svg|woff|woff2|ttf|eot|ico)$/)) {
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    }
+    // 4. HTML e altre pagine (potrebbero contenere dati sensibili dopo login) - NO CACHING
+    else if (path.match(/\.(html?)$/) || path === '/' || !path.includes('.')) {
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
+    }
+    // 5. robots.txt, sitemap.xml - CACHING BREVE
+    else if (path.match(/\.(txt|xml)$/)) {
+      res.setHeader("Cache-Control", "public, max-age=3600"); // 1 ora
+    }
+    // 6. Default: NO CACHING per sicurezza
+    else {
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+    }
+    
+    // X-Download-Options: previene l'apertura automatica di download in IE
+    res.setHeader("X-Download-Options", "noopen");
+    
+    // Expect-CT: Certificate Transparency per rilevare certificati SSL fraudolenti
+    if (isProduction) {
+      res.setHeader("Expect-CT", "max-age=86400, enforce");
+    }
+    
+    // Server header removal - nasconde informazioni sul server
+    res.removeHeader("X-Powered-By");
+    res.removeHeader("Server");
+    
     next();
   });
 

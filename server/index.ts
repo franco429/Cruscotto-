@@ -57,6 +57,20 @@ process.on('SIGINT', () => {
 
 const app = express();
 
+// Configurazione Express per lavorare dietro un reverse proxy (Render, Nginx, etc.)
+// Necessario per HSTS e altri security headers
+app.set('trust proxy', 1);
+
+// Disabilita X-Powered-By header per nascondere tecnologia usata
+// Conforme a TAC Security DAST - Proxy Disclosure Prevention (CWE-200)
+app.disable('x-powered-by');
+
+// PRIORITÀ MASSIMA: Blocca metodi HTTP non sicuri (TRACE, TRACK)
+// Applicato PRIMA di qualsiasi altro middleware per prevenire proxy disclosure
+// Conforme a TAC Security DAST - Proxy Disclosure Prevention (CWE-200)
+const { blockUnsafeHttpMethods } = await import("./security");
+blockUnsafeHttpMethods(app);
+
 //  CORS config - Configurazione sicura e rigorosa
 const allowedOrigins = [
   "https://cruscotto-sgi.com",
@@ -65,6 +79,16 @@ const allowedOrigins = [
     ? process.env.CORS_ORIGIN.split(",").map(origin => origin.trim())
     : ["http://localhost:5173", "http://localhost:5000"]),
 ];
+
+// Header anti-clickjacking su TUTTE le risposte
+// Applicato PRIMA di qualsiasi altro middleware per garantire presenza su file statici
+// Conforme a TAC Security DAST requirements (CWE-1021)
+app.use((req, res, next) => {
+  // Doppia protezione anti-clickjacking
+  res.setHeader('X-Frame-Options', 'DENY');
+  // CSP frame-ancestors sarà aggiunto da Helmet, ma questo garantisce X-Frame-Options
+  next();
+});
 
 app.use(
   cors({
@@ -231,6 +255,30 @@ app.use((req, res, next) => {
         // Per il dominio principale, serve il file statico (che permette indicizzazione)
         res.sendFile(path.join(viteDistPath, "robots.txt"));
         logger.info("Served static robots.txt for main domain");
+      }
+    });
+
+    // sitemap.xml - Handler esplicito per garantire header di sicurezza
+    app.get("/sitemap.xml", (req, res) => {
+      // Assicura che gli header anti-clickjacking siano presenti
+      res.setHeader('X-Frame-Options', 'DENY');
+      
+      const sitemapPath = path.join(viteDistPath, "sitemap.xml");
+      // Verifica se il file esiste
+      if (require('fs').existsSync(sitemapPath)) {
+        res.sendFile(sitemapPath);
+      } else {
+        // Se non esiste, genera una sitemap base
+        res.type("application/xml");
+        res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://cruscotto-sgi.com/</loc>
+    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+    <priority>1.0</priority>
+  </url>
+</urlset>`);
+        logger.info("Served dynamic sitemap.xml with security headers");
       }
     });
 

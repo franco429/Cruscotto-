@@ -26,5 +26,18 @@ export default defineConfig({
   build: {
     outDir: "dist", // dentro client/
     emptyOutDir: true,
+    // TAC Security: CWE-615 - Rimozione commenti sospetti dal bundle
+    sourcemap: false, // Disabilita sourcemaps in produzione
+    minify: 'terser', // Usa terser per minificazione avanzata
+    terserOptions: {
+      compress: {
+        drop_console: true, // Rimuove console.log in produzione
+        drop_debugger: true, // Rimuove debugger
+      },
+      format: {
+        comments: false, // Rimuove TUTTI i commenti dal bundle finale
+        preamble: '', // Rimuove eventuali commenti iniziali
+      },
+    },
   },
 });

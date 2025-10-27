@@ -74,6 +74,7 @@
     "autoprefixer": "^10.4.21",
     "jsdom": "^27.0.1",
     "postcss": "^8.5.6",
+    "terser": "^5.44.0",
     "typescript": "^5.9.3",
     "vite": "^7.1.12",
     "vitest": "^4.0.3"
