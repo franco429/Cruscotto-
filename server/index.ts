@@ -65,10 +65,15 @@ app.set('trust proxy', 1);
 // Conforme a TAC Security DAST - Proxy Disclosure Prevention (CWE-200)
 app.disable('x-powered-by');
 
+// PRIORITÀ ASSOLUTA: Rimuovi header informativi su TUTTE le risposte
+// Deve essere il PRIMO middleware per garantire che nessun header venga esposto
+// Conforme a TAC Security DAST - Proxy Disclosure Prevention (CWE-200)
+const { removeServerHeaders, blockUnsafeHttpMethods } = await import("./security");
+removeServerHeaders(app);
+
 // PRIORITÀ MASSIMA: Blocca metodi HTTP non sicuri (TRACE, TRACK)
 // Applicato PRIMA di qualsiasi altro middleware per prevenire proxy disclosure
 // Conforme a TAC Security DAST - Proxy Disclosure Prevention (CWE-200)
-const { blockUnsafeHttpMethods } = await import("./security");
 blockUnsafeHttpMethods(app);
 
 //  CORS config - Configurazione sicura e rigorosa
@@ -108,7 +113,9 @@ app.use(
         callback(null, true);
       } else {
         logger.warn("CORS: Blocked request from unauthorized origin", { origin });
-        callback(new Error(`Not allowed by CORS: ${origin}`));
+        // Messaggio generico per prevenire information disclosure
+        // NON rivelare informazioni su origin consentite o tecnologie
+        callback(new Error("Not allowed by CORS"));
       }
     },
     credentials: true, // Permetti cookies e headers di autenticazione
@@ -288,19 +295,51 @@ app.use((req, res, next) => {
     });
 
     //  Middleware per gestione errori centralizzata 
+    // AGGIORNATO: Messaggi generici per prevenire information disclosure
+    // Conforme a TAC Security DAST - Proxy Disclosure Prevention (CWE-200)
     app.use((err: any, req: Request, res: Response, next: NextFunction) => {
       const status = err.status || err.statusCode || 500;
-      const message = err.message || "Internal Server Error";
-
+      
+      // Log dettagliato per debug (solo server-side)
       logError(err, {
         url: req.url,
         method: req.method,
         ip: req.ip,
         userId: (req as any).user?.legacyId || "anonymous",
         statusCode: status,
+        originalMessage: err.message, // Log completo per debug
       });
 
-      res.status(status).json({ message });
+      // Rimuovi header informativi anche in caso di errore
+      res.removeHeader('Server');
+      res.removeHeader('X-Powered-By');
+      res.removeHeader('X-AspNet-Version');
+      res.removeHeader('X-AspNetMvc-Version');
+
+      // Messaggi generici al client per prevenire information disclosure
+      // NON esporre dettagli tecnici, stack traces o nomi di tecnologie
+      let genericMessage = "Si è verificato un errore";
+      
+      if (status === 400) {
+        genericMessage = "Richiesta non valida";
+      } else if (status === 401) {
+        genericMessage = "Autenticazione richiesta";
+      } else if (status === 403) {
+        genericMessage = "Accesso negato";
+      } else if (status === 404) {
+        genericMessage = "Risorsa non trovata";
+      } else if (status === 405) {
+        genericMessage = "Metodo non consentito";
+      } else if (status === 429) {
+        genericMessage = "Troppe richieste. Riprova più tardi";
+      } else if (status >= 500) {
+        genericMessage = "Errore del server";
+      }
+
+      res.status(status).json({ 
+        error: genericMessage,
+        code: status
+      });
     });
 
     logger.info("Avvio sincronizzazione automatica...");

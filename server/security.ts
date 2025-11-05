@@ -87,31 +87,72 @@ export function validateContactRequest(req: Request, res: Response, next: NextFu
  * Middleware per bloccare metodi HTTP non sicuri
  * Conforme a TAC Security DAST - Proxy Disclosure Prevention (CWE-200)
  * Blocca TRACE, TRACK e limita OPTIONS solo a preflight CORS
+ * AGGIORNATO: Risposte generiche senza informazioni sul server
  */
 export function blockUnsafeHttpMethods(app: Express) {
   app.use((req: Request, res: Response, next: NextFunction) => {
     const method = req.method.toUpperCase();
     
     // Blocca metodi TRACE e TRACK usati per proxy disclosure
+    // Risposta minimalista senza dettagli per prevenire fingerprinting
     if (method === 'TRACE' || method === 'TRACK') {
-      res.setHeader('Allow', 'GET, POST, PUT, DELETE, PATCH, HEAD');
-      return res.status(405).json({ 
-        error: 'Method Not Allowed',
-        message: 'Il metodo HTTP richiesto non è supportato.',
-        code: 'METHOD_NOT_ALLOWED'
-      });
+      // NON impostare header Allow per prevenire information disclosure
+      // Rimuovi tutti gli header che potrebbero rivelare informazioni
+      res.removeHeader('Server');
+      res.removeHeader('X-Powered-By');
+      res.removeHeader('X-AspNet-Version');
+      res.removeHeader('X-AspNetMvc-Version');
+      
+      // Risposta vuota 405 senza body JSON per minimizzare informazioni
+      return res.status(405).end();
     }
     
     // Limita OPTIONS solo a preflight CORS (con header Origin)
+    // Blocca OPTIONS non-CORS usate per fingerprinting del server
     if (method === 'OPTIONS' && !req.headers.origin) {
-      // Blocca OPTIONS non-CORS (usate per fingerprinting)
-      res.setHeader('Allow', 'GET, POST, PUT, DELETE, PATCH, HEAD');
-      return res.status(405).json({ 
-        error: 'Method Not Allowed',
-        message: 'OPTIONS richiede header Origin.',
-        code: 'METHOD_NOT_ALLOWED'
-      });
+      // NON impostare header Allow per prevenire information disclosure
+      res.removeHeader('Server');
+      res.removeHeader('X-Powered-By');
+      res.removeHeader('X-AspNet-Version');
+      res.removeHeader('X-AspNetMvc-Version');
+      
+      // Risposta vuota 405 senza body JSON
+      return res.status(405).end();
     }
+    
+    next();
+  });
+}
+
+/**
+ * Middleware globale per rimozione header informativi su OGNI risposta
+ * Conforme a TAC Security DAST - Proxy Disclosure Prevention (CWE-200)
+ * Questo middleware viene applicato per PRIMO per garantire che nessun header
+ * informativo venga mai esposto, indipendentemente da altri middleware
+ */
+export function removeServerHeaders(app: Express) {
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    // Rimuovi header che rivelano informazioni sul server/tecnologie
+    // Applicato su OGNI risposta per massima sicurezza
+    res.removeHeader('Server');
+    res.removeHeader('X-Powered-By');
+    res.removeHeader('X-AspNet-Version');
+    res.removeHeader('X-AspNetMvc-Version');
+    
+    // Override del metodo setHeader per prevenire che altri middleware
+    // reimpostino questi header
+    const originalSetHeader = res.setHeader.bind(res);
+    res.setHeader = function(name: string, value: string | number | readonly string[]) {
+      const lowerName = name.toLowerCase();
+      // Blocca l'impostazione di header informativi
+      if (lowerName === 'server' || 
+          lowerName === 'x-powered-by' || 
+          lowerName === 'x-aspnet-version' || 
+          lowerName === 'x-aspnetmvc-version') {
+        return res; // Ignora silenziosamente
+      }
+      return originalSetHeader(name, value);
+    };
     
     next();
   });
