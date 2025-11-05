@@ -68,8 +68,13 @@ app.disable('x-powered-by');
 // PRIORITÀ ASSOLUTA: Rimuovi header informativi su TUTTE le risposte
 // Deve essere il PRIMO middleware per garantire che nessun header venga esposto
 // Conforme a TAC Security DAST - Proxy Disclosure Prevention (CWE-200)
-const { removeServerHeaders, blockUnsafeHttpMethods } = await import("./security");
+const { removeServerHeaders, blockUnsafeHttpMethods, applyCorpHeader } = await import("./security");
 removeServerHeaders(app);
+
+// PRIORITÀ CRITICA: Applica Cross-Origin-Resource-Policy su TUTTE le risposte
+// Protezione contro Spectre e side-channel attacks
+// Conforme a TAC Security DAST - Insufficient Site Isolation Against Spectre Vulnerability
+applyCorpHeader(app);
 
 // PRIORITÀ MASSIMA: Blocca metodi HTTP non sicuri (TRACE, TRACK)
 // Applicato PRIMA di qualsiasi altro middleware per prevenire proxy disclosure
@@ -242,7 +247,17 @@ app.use((req, res, next) => {
 
     // Serve i file statici della build Vite
     const viteDistPath = path.join(__dirname, "..", "client", "dist");
-    app.use(express.static(viteDistPath));
+    
+    // Middleware per garantire header di sicurezza su file statici
+    // Conforme a TAC Security DAST - Spectre Protection
+    app.use(express.static(viteDistPath, {
+      setHeaders: (res, filePath) => {
+        // Applica header di sicurezza su tutti i file statici
+        res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('X-Frame-Options', 'DENY');
+      }
+    }));
 
     // Gestione favicon.ico - redirect a favicon.png
     app.get("/favicon.ico", (req, res) => {
@@ -252,6 +267,11 @@ app.use((req, res, next) => {
     // robots.txt per API: BLOCCA l'indicizzazione (sicurezza)
     app.get("/robots.txt", (req, res) => {
       const host = req.get('host');
+      
+      // Applica header di sicurezza CORP
+      res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('X-Frame-Options', 'DENY');
       
       // Se il dominio contiene 'api', blocca tutto l'indicizzazione
       if (host && host.includes('api')) {
@@ -267,7 +287,10 @@ app.use((req, res, next) => {
 
     // sitemap.xml - Handler esplicito per garantire header di sicurezza
     app.get("/sitemap.xml", (req, res) => {
-      // Assicura che gli header anti-clickjacking siano presenti
+      // Assicura che gli header di sicurezza siano presenti
+      // Conforme a TAC Security DAST - Spectre Protection
+      res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
       res.setHeader('X-Frame-Options', 'DENY');
       
       const sitemapPath = path.join(viteDistPath, "sitemap.xml");

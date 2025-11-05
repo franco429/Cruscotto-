@@ -159,6 +159,23 @@ export function removeServerHeaders(app: Express) {
 }
 
 /**
+ * Middleware globale per applicare Cross-Origin-Resource-Policy su TUTTE le risposte
+ * Conforme a TAC Security DAST - Insufficient Site Isolation Against Spectre Vulnerability
+ * Questo middleware garantisce protezione contro side-channel attacks come Spectre
+ * applicando l'header CORP su ogni singola risposta, inclusi file statici
+ */
+export function applyCorpHeader(app: Express) {
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    // Applica Cross-Origin-Resource-Policy: same-origin su TUTTE le risposte
+    // Questo previene che le risorse del sito possano essere lette da altri origins
+    // Protezione essenziale contro Spectre e altri side-channel attacks
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+    
+    next();
+  });
+}
+
+/**
  * Configurazione delle misure di sicurezza per l'ambiente di produzione
  * Conforme agli standard TAC Security CASA Tier 2 e Tier 3
  * OTTIMIZZATA: Rimozione unsafe-eval in produzione per certificazione ADA CASA
@@ -306,6 +323,8 @@ export function setupSecurity(app: Express) {
   });
   
   // Cross-Origin-Resource-Policy (CORP) - isolamento delle risorse
+  // Conforme a TAC Security DAST - Protection Against Spectre Vulnerability
+  // Applica su TUTTE le risposte per protezione contro side-channel attacks
   app.use(helmet.crossOriginResourcePolicy({ policy: "same-origin" }));
 
   // DNS Prefetch Control: previene DNS prefetching non autorizzato
