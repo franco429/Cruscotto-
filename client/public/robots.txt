@@ -1,2 +1,24 @@
 User-agent: *
 Allow: /
+
+# Sitemap reference for web crawlers and DAST scanners
+Sitemap: https://cruscotto-sgi.com/sitemap.xml
+
+# Allow crawling of all public pages
+Allow: /auth
+Allow: /reset-password
+Allow: /assistenza
+Allow: /chi-siamo
+Allow: /privacy
+Allow: /terms
+Allow: /cookie
+
+# Protected pages (accessible with authentication)
+Allow: /dashboard
+Allow: /settings
+Allow: /company-codes
+Allow: /users
+Allow: /clients
+Allow: /audit-logs
+Allow: /backup
+Allow: /obsolete

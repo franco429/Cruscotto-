@@ -25,10 +25,58 @@
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="Pannello di Controllo SGI - Gestione Documentale Aziendale" />
     <meta name="twitter:description" content="Sistema completo per la gestione documentale aziendale." />
+    
+    <!-- Sitemap for DAST scanners -->
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
     <script type="module" crossorigin src="/assets/index-Bgol_5bv.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-DrTXI_-G.css">
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Hidden navigation links for DAST scanners and web crawlers (TAC Security compliance) -->
+    <nav id="dast-navigation" style="position: absolute; left: -9999px; top: -9999px;" aria-hidden="true">
+      <h2>Navigation Links for Crawlers</h2>
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li><a href="/auth">Autenticazione</a></li>
+        <li><a href="/reset-password">Reset Password</a></li>
+        <li><a href="/dashboard">Dashboard</a></li>
+        <li><a href="/settings">Impostazioni</a></li>
+        <li><a href="/company-codes">Codici Azienda</a></li>
+        <li><a href="/users">Utenti</a></li>
+        <li><a href="/clients">Clienti</a></li>
+        <li><a href="/audit-logs">Log di Audit</a></li>
+        <li><a href="/backup">Backup</a></li>
+        <li><a href="/obsolete">Obsoleti</a></li>
+        <li><a href="/assistenza">Assistenza</a></li>
+        <li><a href="/chi-siamo">Chi Siamo</a></li>
+        <li><a href="/privacy">Privacy Policy</a></li>
+        <li><a href="/terms">Termini e Condizioni</a></li>
+        <li><a href="/cookie">Cookie Policy</a></li>
+      </ul>
+    </nav>
+    
+    <!-- Noscript fallback for crawlers without JavaScript support -->
+    <noscript>
+      <div style="padding: 20px; text-align: center;">
+        <h1>Pannello di Controllo SGI</h1>
+        <p>Questa applicazione richiede JavaScript per funzionare correttamente.</p>
+        <nav>
+          <h2>Pagine Disponibili:</h2>
+          <ul style="list-style: none; padding: 0;">
+            <li><a href="/">Home</a></li>
+            <li><a href="/auth">Accedi</a></li>
+            <li><a href="/reset-password">Reset Password</a></li>
+            <li><a href="/assistenza">Assistenza</a></li>
+            <li><a href="/chi-siamo">Chi Siamo</a></li>
+            <li><a href="/privacy">Privacy Policy</a></li>
+            <li><a href="/terms">Termini e Condizioni</a></li>
+            <li><a href="/cookie">Cookie Policy</a></li>
+          </ul>
+        </nav>
+      </div>
+    </noscript>
+    
+    <div id="root"></div>
+
   </body>
 </html>

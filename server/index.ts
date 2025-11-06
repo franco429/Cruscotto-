@@ -248,14 +248,44 @@ app.use((req, res, next) => {
     // Serve i file statici della build Vite
     const viteDistPath = path.join(__dirname, "..", "client", "dist");
     
-    // Middleware per garantire header di sicurezza su file statici
-    // Conforme a TAC Security DAST - Spectre Protection
+    // Middleware per garantire header di sicurezza E CACHE APPROPRIATA su file statici
+    // Conforme a TAC Security DAST - Spectre Protection & Cache Optimization (CWE-525, CWE-524)
     app.use(express.static(viteDistPath, {
       setHeaders: (res, filePath) => {
+        const relativePath = filePath.replace(viteDistPath, '').toLowerCase();
+        
         // Applica header di sicurezza su tutti i file statici
         res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
         res.setHeader('X-Content-Type-Options', 'nosniff');
         res.setHeader('X-Frame-Options', 'DENY');
+        
+        // Applica Cache-Control appropriato per tipo di file
+        // Asset statici con hash (CSS, JS) - CACHING AGGRESSIVO (2 anni)
+        if (relativePath.match(/\.(css|js)$/) && relativePath.includes('/assets/')) {
+          res.setHeader('Cache-Control', 'public, max-age=63072000, immutable');
+        }
+        // Immagini, icone e font - CACHING MODERATO (1 anno)
+        else if (relativePath.match(/\.(jpg|jpeg|png|gif|webp|svg|woff|woff2|ttf|eot|ico)$/)) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+        // robots.txt, sitemap.xml - CACHING BREVE (1 ora)
+        else if (relativePath.match(/\.(txt|xml)$/)) {
+          res.setHeader('Cache-Control', 'public, max-age=3600');
+        }
+        // Privacy e Terms HTML - CACHING BREVE (pagine informative pubbliche)
+        else if (relativePath.includes('privacy.html') || relativePath.includes('terms.html')) {
+          res.setHeader('Cache-Control', 'public, max-age=3600');
+        }
+        // Altri HTML (index.html, etc.) - NO CACHING (possono contenere dati dopo login)
+        else if (relativePath.match(/\.(html?)$/)) {
+          res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+          res.setHeader('Pragma', 'no-cache');
+          res.setHeader('Expires', '0');
+        }
+        // Default per altri file statici - CACHING BREVE
+        else {
+          res.setHeader('Cache-Control', 'public, max-age=3600');
+        }
       }
     }));
 
@@ -273,6 +303,10 @@ app.use((req, res, next) => {
       res.setHeader('X-Content-Type-Options', 'nosniff');
       res.setHeader('X-Frame-Options', 'DENY');
       
+      // Cache-Control per robots.txt - CACHING BREVE (1 ora)
+      // Conforme TAC Security DAST - Non-Storable Content Resolution
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      
       // Se il dominio contiene 'api', blocca tutto l'indicizzazione
       if (host && host.includes('api')) {
         res.type("text/plain");
@@ -285,13 +319,17 @@ app.use((req, res, next) => {
       }
     });
 
-    // sitemap.xml - Handler esplicito per garantire header di sicurezza
+    // sitemap.xml - Handler esplicito per garantire header di sicurezza e cache
     app.get("/sitemap.xml", (req, res) => {
       // Assicura che gli header di sicurezza siano presenti
       // Conforme a TAC Security DAST - Spectre Protection
       res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
       res.setHeader('X-Content-Type-Options', 'nosniff');
       res.setHeader('X-Frame-Options', 'DENY');
+      
+      // Cache-Control per sitemap.xml - CACHING BREVE (1 ora)
+      // Conforme TAC Security DAST - Non-Storable Content Resolution
+      res.setHeader('Cache-Control', 'public, max-age=3600');
       
       const sitemapPath = path.join(viteDistPath, "sitemap.xml");
       // Verifica se il file esiste
@@ -308,7 +346,7 @@ app.use((req, res, next) => {
     <priority>1.0</priority>
   </url>
 </urlset>`);
-        logger.info("Served dynamic sitemap.xml with security headers");
+        logger.info("Served dynamic sitemap.xml with security headers and cache");
       }
     });
 

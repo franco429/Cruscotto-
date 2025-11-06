@@ -64,13 +64,11 @@ const GoogleDrivePicker = forwardRef<GoogleDrivePickerRef, GoogleDrivePickerProp
       if (data.access_token) {
         return data.access_token;
       } else if (data.requiresAuth) {
-        console.log('🔄 Il refresh token è scaduto/mancante - serve nuova autorizzazione');
         return null;
       } else {
         throw new Error(data.error || 'Errore sconosciuto');
       }
     } catch (error) {
-      console.error('❌ Errore nel recupero access token dal backend:', error);
       // Non mostrare toast di errore qui per evitare spam, lasciamo che il fallback gestisca
       return null;
     }
@@ -129,7 +127,6 @@ const GoogleDrivePicker = forwardRef<GoogleDrivePickerRef, GoogleDrivePickerProp
       }
       
       // Fallback: se non c'è token dal backend, usa Google Identity Services
-      console.log('⚠️ Token backend non disponibile, fallback a Google Identity Services');
       
       const tokenClient = window.google.accounts.oauth2.initTokenClient({
         client_id: CLIENT_ID,
@@ -139,7 +136,6 @@ const GoogleDrivePicker = forwardRef<GoogleDrivePickerRef, GoogleDrivePickerProp
             console.error('Errore OAuth durante apertura picker:', response.error);
             
             // Se fallisce senza prompt, riprova con prompt
-            console.log('Riprovo con prompt consent...');
             const fallbackTokenClient = window.google.accounts.oauth2.initTokenClient({
               client_id: CLIENT_ID,
               scope: SCOPES,
@@ -335,12 +331,10 @@ const GoogleDrivePicker = forwardRef<GoogleDrivePickerRef, GoogleDrivePickerProp
     try {
       // Prima prova a ottenere l'access token dal backend se disponibile
       if (!requiresBackendAuth) {
-        console.log('🔍 Tentativo di uso dell\'access token dal backend');
         const backendAccessToken = await getAccessTokenFromBackend(true);
         
         if (backendAccessToken) {
           // Usa il token dal backend - non serve autorizzazione frontend
-          console.log('🎉 Usando access token dal backend per handleAuthAndOpen');
           accessTokenRef.current = backendAccessToken;
           
           toast({

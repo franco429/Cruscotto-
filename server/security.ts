@@ -423,35 +423,34 @@ export function setupSecurity(app: Express) {
     
     const path = req.path.toLowerCase();
     
+    // NOTA: I file statici (assets, immagini, robots.txt, sitemap.xml) sono gestiti da:
+    // 1. express.static middleware in index.ts (con setHeaders callback)
+    // 2. Handler espliciti per robots.txt e sitemap.xml in index.ts
+    // Questo middleware gestisce SOLO le richieste API e HTML non gestite da express.static
+    
     // 1. API endpoints - NO CACHING (dati sensibili)
     if (path.startsWith('/api/')) {
       res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
       res.setHeader("Pragma", "no-cache");
       res.setHeader("Expires", "0");
     }
-    // 2. Asset statici immutabili (CSS, JS, immagini con hash) - CACHING AGGRESSIVO
-    else if (path.match(/\.(css|js)$/) && path.includes('/assets/')) {
-      // File con hash nel nome (es. main-abc123.js) possono essere cachati indefinitamente
-      res.setHeader("Cache-Control", "public, max-age=63072000, immutable");
-    }
-    // 3. Immagini e font - CACHING MODERATO
-    else if (path.match(/\.(jpg|jpeg|png|gif|webp|svg|woff|woff2|ttf|eot|ico)$/)) {
-      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-    }
-    // 4. HTML e altre pagine (potrebbero contenere dati sensibili dopo login) - NO CACHING
+    // 2. HTML e pagine SPA (catch-all) - NO CACHING
+    // Nota: File statici sono gestiti da express.static, questo gestisce solo SPA routing
     else if (path.match(/\.(html?)$/) || path === '/' || !path.includes('.')) {
       res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
       res.setHeader("Pragma", "no-cache");
       res.setHeader("Expires", "0");
     }
-    // 5. robots.txt, sitemap.xml - CACHING BREVE
-    else if (path.match(/\.(txt|xml)$/)) {
-      res.setHeader("Cache-Control", "public, max-age=3600"); // 1 ora
-    }
-    // 6. Default: NO CACHING per sicurezza
-    else {
+    // 3. Altri file non gestiti da express.static - Default NO CACHING per sicurezza
+    // Nota: Asset statici, immagini, robots.txt, sitemap.xml sono gestiti da express.static in index.ts
+    // Questo gestisce solo eventuali richieste non previste
+    else if (!path.startsWith('/assets/') && 
+             !path.match(/\.(css|js|jpg|jpeg|png|gif|webp|svg|woff|woff2|ttf|eot|ico|txt|xml)$/)) {
       res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
     }
+    // Nota: Per file statici (CSS, JS, immagini, robots.txt, sitemap.xml),
+    // NON impostiamo Cache-Control qui perché è gestito da express.static in index.ts
+    // con logica più precisa basata sul percorso del file fisico
     
     // X-Download-Options: previene l'apertura automatica di download in IE
     res.setHeader("X-Download-Options", "noopen");
