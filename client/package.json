@@ -3,12 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "scripts": {
+ "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/fix-suspicious-patterns.js",
+    "build": "vite build && node scripts/fix-suspicious-patterns.js && find dist -name '*.map' -delete",
     "build:only": "vite build",
     "preview": "vite preview",
-    "postbuild": "echo Build completata con rimozione pattern sospetti per TAC Security"
+    "postbuild": "echo Build completata (mappe rimosse)"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

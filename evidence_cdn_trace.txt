@@ -1,0 +1,16 @@
+fl=977f50
+h=cruscotto-sgi.com
+ip=151.47.95.6
+ts=1762550741.012
+visit_scheme=https
+uag=curl/8.10.1
+colo=MXP
+sliver=none
+http=http/1.1
+loc=IT
+tls=TLSv1.3
+sni=plaintext
+warp=off
+gateway=off
+rbi=off
+kex=X25519
