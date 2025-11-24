@@ -1,0 +1,23 @@
+HTTP/1.1 200 OK
+Date: Sun, 09 Nov 2025 20:14:16 GMT
+Content-Type: text/html; charset=utf-8
+Connection: keep-alive
+CF-RAY: 99bff9ba9d69d815-MXP
+Cache-Control: public, max-age=0, s-maxage=300
+content-security-policy: default-src 'self'; script-src 'self' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'https://api.cruscotto-sgi.com/; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self'
+cross-origin-embedder-policy: require-corp
+cross-origin-opener-policy: same-origin
+cross-origin-resource-policy: same-origin
+etag: W/"7bcabb932f0e9b73a27416d7f8c90778"
+last-modified: Sun, 09 Nov 2025 18:59:35 UTC
+permissions-policy: geolocation=(), microphone=(), camera=(), payment=(), usb=()
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=63072000; includeSubDomains; preload
+vary: Accept-Encoding
+vary: Accept-Encoding
+x-content-type-options: nosniff
+x-frame-options: DENY
+CF-Cache-Status: EXPIRED
+Server: cloudflare
+alt-svc: h3=":443"; ma=86400
+
