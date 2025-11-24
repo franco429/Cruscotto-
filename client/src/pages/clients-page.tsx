@@ -15,6 +15,9 @@ import {
 } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { 
   FolderOpen, 
   CheckCircle, 
@@ -22,7 +25,9 @@ import {
   RefreshCw, 
   Settings,
   Cloud,
-  Loader2
+  Loader2,
+  Link2,
+  Check
 } from "lucide-react";
 import { apiRequest, queryClient, forceRefreshClientData } from "../lib/queryClient";
 import { format } from "date-fns";
@@ -37,6 +42,8 @@ export default function ClientsPage() {
   const [isAuthJustCompleted, setIsAuthJustCompleted] = useState(false);
   const [shouldOpenPickerAutomatically, setShouldOpenPickerAutomatically] = useState(false);
   const [isBackendAuthInProgress, setIsBackendAuthInProgress] = useState(false);
+  const [manualUrl, setManualUrl] = useState("");
+  const [isValidatingUrl, setIsValidatingUrl] = useState(false);
   const googleDrivePickerRef = useRef<GoogleDrivePickerRef>(null);
 
   const {
@@ -108,6 +115,82 @@ export default function ClientsPage() {
       setIsSyncing(false);
     }
   });
+
+  // Funzione per estrarre il Folder ID da un URL Google Drive
+  const extractFolderIdFromUrl = (url: string): { folderId: string | null; folderName: string } => {
+    // Pulisci l'URL
+    const cleanUrl = url.trim();
+    
+    // Pattern per URL Google Drive:
+    // https://drive.google.com/drive/folders/FOLDER_ID
+    // https://drive.google.com/drive/folders/FOLDER_ID?usp=sharing
+    // https://drive.google.com/drive/u/0/folders/FOLDER_ID
+    const patterns = [
+      /folders\/([a-zA-Z0-9_-]+)/,  // Standard folder URL
+      /^([a-zA-Z0-9_-]{25,})$/,      // Just the ID itself
+    ];
+    
+    for (const pattern of patterns) {
+      const match = cleanUrl.match(pattern);
+      if (match) {
+        return {
+          folderId: match[1],
+          folderName: "Cartella da URL" // Nome generico, non possiamo recuperarlo dall'URL
+        };
+      }
+    }
+    
+    return { folderId: null, folderName: "" };
+  };
+
+  // Gestisci l'input manuale dell'URL
+  const handleManualUrlSubmit = async () => {
+    if (!manualUrl.trim()) {
+      toast({
+        title: "URL mancante",
+        description: "Inserisci l'URL della cartella Google Drive",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsValidatingUrl(true);
+    
+    const { folderId, folderName } = extractFolderIdFromUrl(manualUrl);
+    
+    if (!folderId) {
+      setIsValidatingUrl(false);
+      toast({
+        title: "URL non valido",
+        description: "L'URL inserito non sembra essere una cartella Google Drive valida. Assicurati di copiare l'URL completo dalla barra degli indirizzi.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validazione formato Folder ID (28-44 caratteri alfanumerici, underscore e trattini)
+    if (folderId.length < 20 || folderId.length > 50) {
+      setIsValidatingUrl(false);
+      toast({
+        title: "ID cartella non valido",
+        description: "L'ID della cartella estratto non ha un formato valido",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "URL valido!",
+      description: `Folder ID estratto: ${folderId.substring(0, 10)}...`,
+    });
+
+    // Usa la stessa funzione del picker per salvare
+    handleFolderSelected(folderId, folderName);
+    
+    // Pulisci l'input
+    setManualUrl("");
+    setIsValidatingUrl(false);
+  };
 
   const handleFolderSelected = (folderId: string, folderName: string) => {
     setSelectedFolder({ id: folderId, name: folderName });
@@ -490,84 +573,203 @@ export default function ClientsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Google Drive Picker */}
-                  <div className="space-y-3">
-                    <h4 className="font-semibold flex items-center gap-2">
+                {/* Folder Selection Tabs */}
+                <Tabs defaultValue="manual" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="manual" className="flex items-center gap-2">
+                      <Link2 className="h-4 w-4" />
+                      Incolla URL (Raccomandato)
+                    </TabsTrigger>
+                    <TabsTrigger value="picker" className="flex items-center gap-2">
                       <FolderOpen className="h-4 w-4" />
-                      {hasGoogleDriveFolder ? "Cambia Cartella" : "Seleziona Cartella"}
-                    </h4>
-                    <p className="text-sm text-muted-foreground">
-                      {hasGoogleDriveFolder 
-                        ? "Modifica la cartella Google Drive attualmente configurata"
-                        : "Scegli la cartella Google Drive da sincronizzare"
-                      }
-                    </p>
-                    <GoogleDrivePicker
-                      ref={googleDrivePickerRef}
-                      onFolderSelected={handleFolderSelected}
-                      disabled={updateClientFolderMutation.isPending}
-                      buttonText={hasGoogleDriveFolder ? "Cambia Cartella" : "Seleziona Cartella"}
-                      requiresBackendAuth={((connectionStatus.status === 'needs-auth' || !currentClient.google?.refreshToken) && !isAuthJustCompleted) || isBackendAuthInProgress}
-                      onAuthRequired={() => handleGoogleDriveAuth(currentClient.legacyId)}
-                      onPickerClosed={() => {
-                        setIsAuthJustCompleted(false); // Reset del flag quando il picker si chiude
-                        setShouldOpenPickerAutomatically(false); // Reset anche questo flag
-                      }}
-                      clientId={currentClient.legacyId} // Passa il clientId per recuperare access token dal backend
-                    />
-                    
-                    {/* Autorizzazione OAuth (se necessaria) */}
-                    {hasGoogleDriveFolder && connectionStatus.status === 'needs-auth' && (
-                      <div className="pt-2 border-t border-yellow-200">
-                        <p className="text-sm text-yellow-700 mb-2">
-                          ⚠️ Autorizzazione richiesta per sincronizzare
-                        </p>
-                        <Button
-                          onClick={() => handleGoogleDriveAuth(currentClient.legacyId)}
-                          variant="outline"
-                          className="w-full border-yellow-300 text-yellow-800 hover:bg-yellow-50"
-                        >
-                          <Cloud className="h-4 w-4 mr-2" />
-                          Autorizza Google Drive
-                        </Button>
-                      </div>
-                    )}
-                  </div>
+                      Google Picker
+                    </TabsTrigger>
+                  </TabsList>
 
-                  {/* Manual Sync */}
-                  <div className="space-y-3">
-                    <h4 className="font-semibold flex items-center gap-2">
-                      <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                      Sincronizzazione Manuale
-                    </h4>
-                    <p className="text-sm text-muted-foreground">
-                      Forza la sincronizzazione dei documenti dalla cartella configurata
-                    </p>
-                    <Button
-                      onClick={handleManualSync}
-                      disabled={!hasGoogleDriveFolder || isSyncing || connectionStatus.status !== 'connected'}
-                      variant="outline"
-                      className="w-full"
-                    >
-                      {isSyncing ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Sincronizzazione...
-                        </>
-                      ) : connectionStatus.status !== 'connected' ? (
-                        <>
-                          <AlertTriangle className="h-4 w-4 mr-2" />
-                          {connectionStatus.status === 'needs-auth' ? 'Autorizzazione necessaria' : 'Configura prima'}
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="h-4 w-4 mr-2" />
-                          Sincronizza Ora
-                        </>
+                  {/* Manual URL Input Tab */}
+                  <TabsContent value="manual" className="space-y-4 mt-4">
+                    <div className="space-y-3">
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                        <div className="flex items-start gap-2">
+                          <Check className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                          <div className="space-y-2 flex-1">
+                            <h4 className="font-semibold text-blue-900">Metodo Consigliato</h4>
+                            <p className="text-sm text-blue-800">
+                              Questo metodo è più affidabile e non richiede configurazioni complesse.
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2 text-sm text-blue-800 pl-7">
+                          <p className="font-medium">Come ottenere l'URL:</p>
+                          <ol className="list-decimal list-inside space-y-1 pl-2">
+                            <li>Apri <a href="https://drive.google.com" target="_blank" rel="noopener noreferrer" className="underline font-medium">Google Drive</a> in una nuova scheda</li>
+                            <li>Vai alla cartella che vuoi sincronizzare</li>
+                            <li>Copia l'URL dalla barra degli indirizzi del browser</li>
+                            <li>Incolla l'URL qui sotto</li>
+                          </ol>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="folder-url" className="text-base font-semibold">
+                          URL Cartella Google Drive
+                        </Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="folder-url"
+                            type="text"
+                            placeholder="https://drive.google.com/drive/folders/..."
+                            value={manualUrl}
+                            onChange={(e) => setManualUrl(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !isValidatingUrl && !updateClientFolderMutation.isPending) {
+                                handleManualUrlSubmit();
+                              }
+                            }}
+                            disabled={isValidatingUrl || updateClientFolderMutation.isPending}
+                            className="flex-1"
+                          />
+                          <Button
+                            onClick={handleManualUrlSubmit}
+                            disabled={isValidatingUrl || updateClientFolderMutation.isPending || !manualUrl.trim()}
+                            className="px-6"
+                          >
+                            {isValidatingUrl || updateClientFolderMutation.isPending ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Verifica...
+                              </>
+                            ) : (
+                              <>
+                                <Check className="h-4 w-4 mr-2" />
+                                Conferma
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Esempio: https://drive.google.com/drive/folders/1ABC...XYZ
+                        </p>
+                      </div>
+
+                      {/* Autorizzazione OAuth necessaria */}
+                      {hasGoogleDriveFolder && connectionStatus.status === 'needs-auth' && (
+                        <div className="pt-3 border-t border-yellow-200 bg-yellow-50 rounded-lg p-4">
+                          <div className="flex items-start gap-2 mb-3">
+                            <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-medium text-yellow-900">Autorizzazione Richiesta</p>
+                              <p className="text-sm text-yellow-700 mt-1">
+                                Per sincronizzare i documenti, devi autorizzare l'accesso al tuo Google Drive
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            onClick={() => handleGoogleDriveAuth(currentClient.legacyId)}
+                            variant="outline"
+                            className="w-full border-yellow-300 text-yellow-800 hover:bg-yellow-100"
+                          >
+                            <Cloud className="h-4 w-4 mr-2" />
+                            Autorizza Google Drive
+                          </Button>
+                        </div>
                       )}
-                    </Button>
-                  </div>
+                    </div>
+                  </TabsContent>
+
+                  {/* Google Picker Tab */}
+                  <TabsContent value="picker" className="space-y-4 mt-4">
+                    <div className="space-y-3">
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                          <div className="space-y-1">
+                            <h4 className="font-semibold text-amber-900">Metodo Alternativo</h4>
+                            <p className="text-sm text-amber-800">
+                              Il Google Picker potrebbe avere problemi di compatibilità. Si consiglia di usare il metodo "Incolla URL".
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-base font-semibold">
+                          {hasGoogleDriveFolder ? "Cambia Cartella" : "Seleziona Cartella"}
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          {hasGoogleDriveFolder 
+                            ? "Modifica la cartella Google Drive attualmente configurata"
+                            : "Usa il Google Picker per scegliere la cartella"
+                          }
+                        </p>
+                        <GoogleDrivePicker
+                          ref={googleDrivePickerRef}
+                          onFolderSelected={handleFolderSelected}
+                          disabled={updateClientFolderMutation.isPending}
+                          buttonText={hasGoogleDriveFolder ? "Cambia Cartella" : "Seleziona Cartella"}
+                          requiresBackendAuth={((connectionStatus.status === 'needs-auth' || !currentClient.google?.refreshToken) && !isAuthJustCompleted) || isBackendAuthInProgress}
+                          onAuthRequired={() => handleGoogleDriveAuth(currentClient.legacyId)}
+                          onPickerClosed={() => {
+                            setIsAuthJustCompleted(false);
+                            setShouldOpenPickerAutomatically(false);
+                          }}
+                          clientId={currentClient.legacyId}
+                        />
+                      </div>
+                      
+                      {/* Autorizzazione OAuth necessaria */}
+                      {hasGoogleDriveFolder && connectionStatus.status === 'needs-auth' && (
+                        <div className="pt-3 border-t border-yellow-200 bg-yellow-50 rounded-lg p-4">
+                          <p className="text-sm font-medium text-yellow-900 mb-2">
+                            ⚠️ Autorizzazione necessaria per sincronizzare
+                          </p>
+                          <Button
+                            onClick={() => handleGoogleDriveAuth(currentClient.legacyId)}
+                            variant="outline"
+                            className="w-full border-yellow-300 text-yellow-800 hover:bg-yellow-100"
+                          >
+                            <Cloud className="h-4 w-4 mr-2" />
+                            Autorizza Google Drive
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
+
+                {/* Manual Sync Section */}
+                <div className="pt-4 border-t space-y-3">
+                  <h4 className="font-semibold flex items-center gap-2">
+                    <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                    Sincronizzazione Manuale
+                  </h4>
+                  <p className="text-sm text-muted-foreground">
+                    Forza la sincronizzazione dei documenti dalla cartella configurata
+                  </p>
+                  <Button
+                    onClick={handleManualSync}
+                    disabled={!hasGoogleDriveFolder || isSyncing || connectionStatus.status !== 'connected'}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    {isSyncing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Sincronizzazione...
+                      </>
+                    ) : connectionStatus.status !== 'connected' ? (
+                      <>
+                        <AlertTriangle className="h-4 w-4 mr-2" />
+                        {connectionStatus.status === 'needs-auth' ? 'Autorizzazione necessaria' : 'Configura prima'}
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Sincronizza Ora
+                      </>
+                    )}
+                  </Button>
                 </div>
 
                 {/* Navigate to Documents */}
@@ -595,30 +797,30 @@ export default function ClientsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                 <div className="flex flex-col items-center text-center space-y-2 p-3">
                   <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold">1</div>
-                  <h4 className="font-semibold">Seleziona Cartella</h4>
+                  <h4 className="font-semibold">Copia URL Cartella</h4>
                   <p className="text-muted-foreground">
-                    Usa il Google Picker per scegliere la cartella da sincronizzare
+                    Vai su Google Drive, apri la cartella desiderata e copia l'URL dalla barra degli indirizzi
                   </p>
                 </div>
                 <div className="flex flex-col items-center text-center space-y-2 p-3">
                   <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold">2</div>
-                  <h4 className="font-semibold">Autorizza Accesso</h4>
+                  <h4 className="font-semibold">Incolla e Conferma</h4>
                   <p className="text-muted-foreground">
-                    Completa l'autorizzazione OAuth per l'accesso permanente a Google Drive
+                    Incolla l'URL nel campo "Incolla URL" e clicca su Conferma per configurare la cartella
                   </p>
                 </div>
                 <div className="flex flex-col items-center text-center space-y-2 p-3">
                   <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold">3</div>
-                  <h4 className="font-semibold">Sincronizza</h4>
+                  <h4 className="font-semibold">Autorizza e Sincronizza</h4>
                   <p className="text-muted-foreground">
-                    Il sistema sincronizza automaticamente tutti i documenti della cartella
+                    Autorizza l'accesso a Google Drive e avvia la sincronizzazione dei documenti
                   </p>
                 </div>
                 <div className="flex flex-col items-center text-center space-y-2 p-3">
                   <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold">4</div>
                   <h4 className="font-semibold">Gestisci</h4>
                   <p className="text-muted-foreground">
-                    Accedi alla dashboard per visualizzare e gestire i tuoi documenti
+                    Accedi alla dashboard per visualizzare e gestire tutti i tuoi documenti
                   </p>
                 </div>
               </div>
