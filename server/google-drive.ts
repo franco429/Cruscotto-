@@ -1290,7 +1290,10 @@ async function processBatchWithAnalysis(
       );
 
       if (!docInfo) {
-        logger.debug(`Skipping file with invalid name format: ${file.name}`);
+        logger.warn(`❌ SKIPPED file (invalid name format): ${file.name}`, {
+          fileName: file.name,
+          mimeType: file.mimeType,
+        });
         return;
       }
 
@@ -1305,20 +1308,56 @@ async function processBatchWithAnalysis(
         lastSynced: new Date(),
       };
 
+      // Debug per file Excel
+      const isExcel = docInfo.fileType === 'xlsx' || docInfo.fileType === 'xls' || docInfo.fileType === 'xlsm';
+      if (isExcel) {
+        logger.info(`📊 Processing Excel file for DB:`, {
+          fileName: file.name,
+          fileType: docInfo.fileType,
+          googleFileId: file.id,
+          title: docInfo.title,
+          path: docInfo.path,
+          revision: docInfo.revision,
+          clientId,
+        });
+      }
+
       const existingDoc = await mongoStorage.getDocumentByGoogleFileId(file.id);
 
       if (existingDoc) {
         await mongoStorage.updateDocument(existingDoc.legacyId, documentData);
-        logger.debug(`Updated document: ${file.name}`, {
-          alertStatus: analysis.alertStatus,
-          expiryDate: analysis.expiryDate,
-        });
+        if (isExcel) {
+          logger.info(`✅ EXCEL Updated in DB: ${file.name}`, {
+            docId: existingDoc.legacyId,
+            fileType: documentData.fileType,
+            title: documentData.title,
+          });
+        }
       } else {
-        await mongoStorage.createDocument(documentData);
-        logger.debug(`Created document: ${file.name}`, {
-          alertStatus: analysis.alertStatus,
-          expiryDate: analysis.expiryDate,
-        });
+        try {
+          const savedDoc = await mongoStorage.createDocument(documentData);
+          if (isExcel) {
+            logger.info(`✅ EXCEL Created NEW in DB: ${file.name}`, {
+              docId: savedDoc.legacyId,
+              fileType: documentData.fileType,
+              title: documentData.title,
+              path: documentData.path,
+              revision: documentData.revision,
+              clientId: documentData.clientId,
+              googleFileId: savedDoc.googleFileId,
+            });
+          }
+        } catch (dbError) {
+          logger.error(`❌ FAILED to save EXCEL to DB: ${file.name}`, {
+            fileType: documentData.fileType,
+            title: documentData.title,
+            googleFileId: file.id,
+            error: dbError instanceof Error ? dbError.message : String(dbError),
+            errorCode: (dbError as any)?.code,
+            errorName: (dbError as any)?.name,
+          });
+          throw dbError;
+        }
       }
 
       result.processed++;
@@ -1336,10 +1375,12 @@ async function processBatchWithAnalysis(
       );
       result.errors.push(syncError);
 
-      logger.error("Failed to process file in batch", {
+      logger.error("❌ FAILED to process file in batch", {
         fileName: file.name,
         fileId: file.id,
+        mimeType: file.mimeType,
         error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
       });
     }
   });

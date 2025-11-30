@@ -740,14 +740,45 @@ export class MongoStorage implements IStorage {
     session?: ClientSession
   ): Promise<Document> {
     const legacyId = await getNextSequence("documentId");
+    
+    // Debug logging per file Excel
+    const isExcel = insertDocument.fileType === 'xlsx' || insertDocument.fileType === 'xls' || insertDocument.fileType === 'xlsm';
+    if (isExcel) {
+      console.log(`[MONGO] 📊 Creating Excel document in DB:`, {
+        title: insertDocument.title,
+        fileType: insertDocument.fileType,
+        googleFileId: insertDocument.googleFileId,
+        path: insertDocument.path,
+        revision: insertDocument.revision,
+        clientId: insertDocument.clientId,
+      });
+    }
+    
     const document = new DocumentModel({
       ...insertDocument,
       legacyId,
       alertStatus: insertDocument.alertStatus || "none",
       googleFileId: insertDocument.googleFileId || undefined,
     });
-    await document.save({ session });
-    return document.toObject();
+    
+    try {
+      await document.save({ session });
+      if (isExcel) {
+        console.log(`[MONGO] ✅ Excel document SAVED successfully: ${insertDocument.title} (ID: ${legacyId})`);
+      }
+      return document.toObject();
+    } catch (saveError) {
+      if (isExcel) {
+        console.error(`[MONGO] ❌ FAILED to save Excel document:`, {
+          title: insertDocument.title,
+          googleFileId: insertDocument.googleFileId,
+          error: saveError instanceof Error ? saveError.message : String(saveError),
+          errorCode: (saveError as any)?.code,
+          errorName: (saveError as any)?.name,
+        });
+      }
+      throw saveError;
+    }
   }
 
   async updateDocument(
