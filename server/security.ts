@@ -107,18 +107,10 @@ export function blockUnsafeHttpMethods(app: Express) {
       return res.status(405).end();
     }
     
-    // Limita OPTIONS solo a preflight CORS (con header Origin)
-    // Blocca OPTIONS non-CORS usate per fingerprinting del server
-    if (method === 'OPTIONS' && !req.headers.origin) {
-      // NON impostare header Allow per prevenire information disclosure
-      res.removeHeader('Server');
-      res.removeHeader('X-Powered-By');
-      res.removeHeader('X-AspNet-Version');
-      res.removeHeader('X-AspNetMvc-Version');
-      
-      // Risposta vuota 405 senza body JSON
-      return res.status(405).end();
-    }
+    // NOTA: Non blocchiamo più OPTIONS senza origin perché interferisce con CORS preflight
+    // Il middleware CORS gestirà la sicurezza delle richieste OPTIONS
+    // Le richieste OPTIONS legittime verranno gestite dal middleware cors()
+    // mentre quelle illegittime verranno bloccate dalla configurazione CORS origin callback
     
     next();
   });

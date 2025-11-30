@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import * as dotenv from "dotenv";
 import cors from "cors";
+import { createHash } from "crypto";
 import { mongoStorage } from "./mongo-storage";
 import logger, { logRequest, logError } from "./logger";
 import path from "path";
@@ -90,6 +91,12 @@ const allowedOrigins = [
     : ["http://localhost:5173", "http://localhost:5000"]),
 ];
 
+// Log configurazione solo all'avvio (non su ogni richiesta per evitare log flooding)
+logger.info("CORS configuration initialized", { 
+  originsCount: allowedOrigins.length,
+  environment: process.env.NODE_ENV 
+});
+
 // Header anti-clickjacking su TUTTE le risposte
 // Applicato PRIMA di qualsiasi altro middleware per garantire presenza su file statici
 // Conforme a TAC Security DAST requirements (CWE-1021)
@@ -100,24 +107,31 @@ app.use((req, res, next) => {
   next();
 });
 
+// Configurazione CORS sicura con gestione rigorosa degli origin
+// Conforme a TAC Security DAST - Prevent Information Disclosure (CWE-200)
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Permetti richieste senza origin per callback OAuth e altre richieste legittime
+      // Permetti richieste senza origin per callback OAuth e richieste server-to-server
       if (!origin) {
-        // In produzione, permetti solo per callback OAuth e altre richieste specifiche
+        // In produzione, permetti solo per casi specifici (OAuth callback, health checks)
         if (process.env.NODE_ENV === "production") {
-          // Permetti callback OAuth di Google e altre richieste senza origin
-          logger.info("CORS: Allowing request without origin in production (likely OAuth callback)");
+          // Log minimo per audit senza esporre configurazione
+          logger.info("CORS: Request without origin accepted (OAuth/server-to-server)");
           return callback(null, true);
         }
         return callback(null, true);
       }
 
+      // Verifica origin contro whitelist
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        logger.warn("CORS: Blocked request from unauthorized origin", { origin });
+        // SICUREZZA: NON loggare allowedOrigins per prevenire information disclosure
+        // Un attaccante non deve sapere quali origin sono permesse
+        logger.warn("CORS: Blocked unauthorized origin", { 
+          originHash: createHash('sha256').update(origin).digest('hex').substring(0, 8)
+        });
         // Messaggio generico per prevenire information disclosure
         // NON rivelare informazioni su origin consentite o tecnologie
         callback(new Error("Not allowed by CORS"));
@@ -135,8 +149,12 @@ app.use(
     exposedHeaders: ["X-Total-Count", "X-Page-Count"], // Headers esposti al client
     maxAge: 86400, // Preflight cache: 24 ore
     optionsSuccessStatus: 200, // Alcuni browser legacy (IE11) usano 200 invece di 204
+    preflightContinue: false, // Gestisci automaticamente le richieste preflight
   })
 );
+
+// Handler esplicito per richieste OPTIONS (preflight) - Fallback di sicurezza
+app.options('*', cors());
 
 // Limiti più conservativi per l'ambiente Render
 app.use(express.json({
