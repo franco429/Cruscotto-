@@ -1,7 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import * as dotenv from "dotenv";
 import cors from "cors";
-import { createHash } from "crypto";
 import { mongoStorage } from "./mongo-storage";
 import logger, { logRequest, logError } from "./logger";
 import path from "path";
@@ -114,27 +113,16 @@ app.use(
     origin: function (origin, callback) {
       // Permetti richieste senza origin per callback OAuth e richieste server-to-server
       if (!origin) {
-        // In produzione, permetti solo per casi specifici (OAuth callback, health checks)
-        if (process.env.NODE_ENV === "production") {
-          // Log minimo per audit senza esporre configurazione
-          logger.info("CORS: Request without origin accepted (OAuth/server-to-server)");
-          return callback(null, true);
-        }
         return callback(null, true);
       }
 
       // Verifica origin contro whitelist
       if (allowedOrigins.includes(origin)) {
-        callback(null, true);
+        return callback(null, true);
       } else {
-        // SICUREZZA: NON loggare allowedOrigins per prevenire information disclosure
-        // Un attaccante non deve sapere quali origin sono permesse
-        logger.warn("CORS: Blocked unauthorized origin", { 
-          originHash: createHash('sha256').update(origin).digest('hex').substring(0, 8)
-        });
-        // Messaggio generico per prevenire information disclosure
-        // NON rivelare informazioni su origin consentite o tecnologie
-        callback(new Error("Not allowed by CORS"));
+        // SICUREZZA: Blocca senza loggare dettagli per prevenire information disclosure
+        // Ritorna false invece di Error per evitare problemi con il middleware CORS
+        return callback(null, false);
       }
     },
     credentials: true, // Permetti cookies e headers di autenticazione
@@ -149,12 +137,8 @@ app.use(
     exposedHeaders: ["X-Total-Count", "X-Page-Count"], // Headers esposti al client
     maxAge: 86400, // Preflight cache: 24 ore
     optionsSuccessStatus: 200, // Alcuni browser legacy (IE11) usano 200 invece di 204
-    preflightContinue: false, // Gestisci automaticamente le richieste preflight
   })
 );
-
-// Handler esplicito per richieste OPTIONS (preflight) - Fallback di sicurezza
-app.options('*', cors());
 
 // Limiti più conservativi per l'ambiente Render
 app.use(express.json({
