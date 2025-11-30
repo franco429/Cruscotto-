@@ -1,7 +1,7 @@
 export interface UserDocument {
   email: string;
   password: string;
-  role: string;
+  role: "superadmin" | "admin" | "viewer" | "developer";
   clientId: number | null;
   lastLogin: Date | null;
   sessionExpiry: Date | null;

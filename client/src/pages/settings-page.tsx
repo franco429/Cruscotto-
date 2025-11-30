@@ -460,21 +460,23 @@ export default function SettingsPage() {
 
             <TabsContent value="application">
               <div className="grid gap-3 sm:gap-4 md:gap-6">
-                {/* Local Opener Configuration */}
-                <Card>
-                  <CardHeader className="p-3 sm:p-4 md:p-5 lg:p-6">
-                    <CardTitle className="flex items-center gap-1 sm:gap-2 text-base sm:text-lg md:text-xl">
-                      <FolderOpen className="h-4 sm:h-5 w-4 sm:w-5" />
-                      Apertura File Locali
-                    </CardTitle>
-                    <CardDescription className="text-xs sm:text-sm">
-                      Configura il servizio per aprire i documenti direttamente dal tuo PC
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-3 sm:p-4 md:p-5 lg:p-6 pt-0">
-                    <LocalOpenerConfig />
-                  </CardContent>
-                </Card>
+                {/* Local Opener Configuration - Solo per Developer */}
+                {user?.role === "developer" && (
+                  <Card>
+                    <CardHeader className="p-3 sm:p-4 md:p-5 lg:p-6">
+                      <CardTitle className="flex items-center gap-1 sm:gap-2 text-base sm:text-lg md:text-xl">
+                        <FolderOpen className="h-4 sm:h-5 w-4 sm:w-5" />
+                        Apertura File Locali
+                      </CardTitle>
+                      <CardDescription className="text-xs sm:text-sm">
+                        Configura il servizio per aprire i documenti direttamente dal tuo PC
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-3 sm:p-4 md:p-5 lg:p-6 pt-0">
+                      <LocalOpenerConfig />
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Google Drive Integration */}
                 <Card>
@@ -488,7 +490,7 @@ export default function SettingsPage() {
                   <CardContent className="p-3 sm:p-4 md:p-5 lg:p-6 pt-0 space-y-2 sm:space-y-3 md:space-y-4 lg:space-y-6">
                     <div className="space-y-2 sm:space-y-3 md:space-y-4">
                       <div className="space-y-2">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
                           <div className="flex-1">
                             <h4 className="text-sm sm:text-base font-medium text-slate-900 dark:text-white">
                               Sincronizzazione Automatica
@@ -498,7 +500,7 @@ export default function SettingsPage() {
                               Drive
                             </p>
                           </div>
-                          <Switch defaultChecked />
+                          <Switch checked={true} disabled={true} />
                         </div>
                       </div>
 
@@ -528,7 +530,7 @@ export default function SettingsPage() {
                             scadenze
                           </p>
                         </div>
-                        <Switch defaultChecked />
+                        <Switch checked={true} disabled={true} />
                       </div>
                     </div>
 
@@ -541,7 +543,7 @@ export default function SettingsPage() {
                           Visualizza notifiche all'interno dell'applicazione
                         </p>
                       </div>
-                      <Switch defaultChecked />
+                      <Switch checked={true} disabled={true} />
                     </div>
 
                     {/* La sezione di preavviso scadenza è stata rimossa come richiesto

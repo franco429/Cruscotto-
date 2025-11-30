@@ -498,6 +498,69 @@ export async function registerRoutes(app: Express): Promise<Express> {
     }
   });
 
+  // Elimina tutti i documenti del client corrente
+  app.delete("/api/documents/delete-all", isAdmin, async (req, res) => {
+    try {
+      if (!req.user?.clientId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Ottieni tutti i documenti del client (inclusi obsoleti)
+      const documents = await mongoStorage.getDocumentsByClientId(req.user.clientId);
+      const obsoleteDocs = await mongoStorage.getObsoleteDocumentsByClientId(req.user.clientId);
+      const allDocs = [...documents, ...obsoleteDocs];
+
+      if (allDocs.length === 0) {
+        return res.json({ 
+          message: "Nessun documento da eliminare",
+          deleted: 0 
+        });
+      }
+
+      let deletedCount = 0;
+      const errors: string[] = [];
+
+      // Elimina tutti i documenti
+      for (const doc of allDocs) {
+        try {
+          const success = await mongoStorage.deleteDocument(doc.legacyId);
+          if (success) {
+            deletedCount++;
+          } else {
+            errors.push(`Impossibile eliminare documento: ${doc.title}`);
+          }
+        } catch (err) {
+          errors.push(`Errore eliminazione documento ${doc.title}: ${err}`);
+        }
+      }
+
+      // Log dell'operazione
+      if (req.user) {
+        await mongoStorage.createLog({
+          userId: req.user.legacyId,
+          action: "bulk-delete",
+          details: {
+            message: `Bulk delete: ${deletedCount} documents deleted`,
+            clientId: req.user.clientId,
+            totalDocuments: allDocs.length,
+            deletedCount,
+            errors: errors.length > 0 ? errors : undefined,
+          },
+        });
+      }
+
+      res.json({ 
+        message: `Eliminati ${deletedCount} di ${allDocs.length} documenti`,
+        deleted: deletedCount,
+        total: allDocs.length,
+        errors: errors.length > 0 ? errors : undefined,
+      });
+    } catch (error) {
+      console.error("Error in bulk delete:", error);
+      res.status(500).json({ message: "Error deleting documents" });
+    }
+  });
+
   app.delete("/api/documents/:legacyId", isAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.legacyId, 10);
@@ -1110,6 +1173,66 @@ export async function registerRoutes(app: Express): Promise<Express> {
       res.json(logs);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch audit logs" });
+    }
+  });
+
+  // Audit logs statistics API (admin only)
+  app.get("/api/logs/statistics", isAdmin, async (req, res) => {
+    try {
+      const { getLogStatistics } = await import("./log-cleanup-service");
+      const stats = await getLogStatistics();
+      
+      if (!stats) {
+        return res.status(500).json({ message: "Failed to get log statistics" });
+      }
+
+      res.json(stats);
+    } catch (error) {
+      logger.error("Failed to get log statistics", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      res.status(500).json({ message: "Failed to get log statistics" });
+    }
+  });
+
+  // Manual log cleanup API (admin only)
+  app.post("/api/logs/cleanup", isAdmin, async (req, res) => {
+    try {
+      const userId = req.user?.legacyId;
+      const userEmail = req.user?.email;
+
+      logger.info("Manual log cleanup requested", { 
+        userId, 
+        userEmail,
+        role: req.user?.role 
+      });
+
+      const { cleanupOldLogs } = await import("./log-cleanup-service");
+      const deletedCount = await cleanupOldLogs();
+
+      if (userId) {
+        await mongoStorage.createLog({
+          userId: userId,
+          action: "log-cleanup",
+          documentId: null,
+          details: {
+            message: `Pulizia manuale dei log eseguita. ${deletedCount} log eliminati.`,
+            deletedCount,
+            timestamp: new Date().toISOString(),
+          },
+        });
+      }
+
+      res.json({
+        success: true,
+        deletedCount,
+        message: `${deletedCount} log eliminati con successo`,
+      });
+    } catch (error) {
+      logger.error("Failed to cleanup logs", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      res.status(500).json({ message: "Failed to cleanup logs" });
     }
   });
 

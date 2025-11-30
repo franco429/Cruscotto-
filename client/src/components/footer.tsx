@@ -5,13 +5,70 @@ import {
   MapPin,
   Phone,
   Mail,
+  Trash2,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Separator } from "../components/ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../components/ui/alert-dialog";
+import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "../lib/queryClient";
+import { useToast } from "../hooks/use-toast";
+import { useAuth } from "../hooks/use-auth";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
+
+  // Mutation per eliminare tutti i documenti
+  const deleteAllMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", "/api/documents/delete-all");
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Documenti eliminati",
+        description: data.message || `Eliminati ${data.deleted} documenti con successo.`,
+      });
+      // Invalida tutte le query relative ai documenti per aggiornare le tabelle
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/obsolete"] });
+      setShowDeleteAllDialog(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore eliminazione",
+        description: error.message || "Impossibile eliminare i documenti.",
+        variant: "destructive",
+      });
+      setShowDeleteAllDialog(false);
+    },
+  });
+
+  const handleDeleteAllClick = () => {
+    setShowDeleteAllDialog(true);
+  };
+
+  const confirmDeleteAll = () => {
+    deleteAllMutation.mutate();
+  };
+
+  const cancelDeleteAll = () => {
+    setShowDeleteAllDialog(false);
+  };
 
   return (
     <footer className="bg-slate-50 dark:bg-slate-900 border-t mt-auto">
@@ -36,20 +93,23 @@ export default function Footer() {
               controllo delle revisioni, tracciamento delle scadenze e
               monitoraggio della conformità.
             </p>
-            <div className="flex space-x-3 sm:space-x-4">
+            <div className="flex items-center space-x-3 sm:space-x-4">
               <a
                 href="https://www.facebook.com/?locale=it_IT"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Facebook"
+                className="inline-flex"
               >
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="hover:text-primary h-4 w-4"
+                  className="hover:text-primary h-8 w-8 p-0"
                   asChild
                 >
-                  <Facebook className="h-3 w-3" />
+                  <span className="inline-flex items-center justify-center">
+                    <Facebook className="h-4 w-4" />
+                  </span>
                 </Button>
               </a>
               <a
@@ -57,16 +117,32 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Instagram"
+                className="inline-flex"
               >
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="hover:text-primary h-4 w-4"
+                  className="hover:text-primary h-8 w-8 p-0"
                   asChild
                 >
-                  <Instagram className="h-3 w-3" />
+                  <span className="inline-flex items-center justify-center">
+                    <Instagram className="h-4 w-4" />
+                  </span>
                 </Button>
               </a>
+              {user?.role === "admin" && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleDeleteAllClick}
+                  aria-label="Elimina tutti i documenti"
+                  className="hover:text-destructive h-8 w-8 p-0 inline-flex items-center justify-center"
+                  title="Elimina tutti i documenti"
+                  disabled={deleteAllMutation.isPending}
+                >
+                  <Trash2 className="h-4 w-4 text-black dark:text-white" />
+                </Button>
+              )}
             </div>
           </div>
 
@@ -146,6 +222,48 @@ export default function Footer() {
           </div>
         </div>
       </div>
+
+      {/* Alert Dialog per conferma eliminazione tutti i documenti */}
+      <AlertDialog open={showDeleteAllDialog} onOpenChange={setShowDeleteAllDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-destructive" />
+              Conferma eliminazione totale
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-left">
+              <span className="font-semibold text-destructive text-base block mb-2">
+                Attenzione! Questa azione è irreversibile.
+              </span>
+              Sei sicuro di voler eliminare <strong>TUTTI</strong> i documenti presenti?
+              <br />
+              <span className="text-sm text-muted-foreground mt-2 block">
+                Questa operazione eliminerà permanentemente tutti i documenti della Tabella ,
+                 per recuperarli cliccare il bottone blu "Sincronizza Google Drive".
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelDeleteAll}>
+              No, annulla
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteAll}
+              disabled={deleteAllMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteAllMutation.isPending ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
+                  Eliminazione...
+                </>
+              ) : (
+                "Sì, elimina tutto"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </footer>
   );
 }

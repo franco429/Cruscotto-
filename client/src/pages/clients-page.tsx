@@ -273,13 +273,9 @@ export default function ClientsPage() {
       return;
     }
 
-    // Se non abbiamo i token OAuth, avvisa che è necessaria l'autorizzazione
+    // Se non abbiamo i token OAuth, non mostrare errore ma semplicemente non sincronizzare
+    // L'utente vedrà il badge "Richiesta autorizzazione" e il pulsante "Autorizza Google Drive"
     if (!currentClient.google?.refreshToken) {
-      toast({
-        title: "Autorizzazione necessaria",
-        description: "Clicca su 'Seleziona Cartella' per completare l'autorizzazione",
-        variant: "destructive",
-      });
       return;
     }
 
@@ -321,51 +317,51 @@ export default function ClientsPage() {
     <div className="flex flex-col min-h-screen">
       <HeaderBar user={user} />
 
-      <main className="flex-1 container mx-auto py-8 px-4 max-w-4xl">
-        <div className="space-y-6">
+      <main className="flex-1 container mx-auto py-4 sm:py-6 md:py-8 px-3 sm:px-4 max-w-4xl">
+        <div className="space-y-4 sm:space-y-5 md:space-y-6">
           {/* Header Section */}
-          <div className="text-center space-y-3">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+          <div className="text-center space-y-2 sm:space-y-3">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent px-2">
               Configurazione Google Drive
             </h1>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+            <p className="text-muted-foreground text-sm sm:text-base md:text-lg max-w-2xl mx-auto px-2">
               Collega la tua cartella Google Drive per sincronizzare automaticamente i tuoi documenti
             </p>
           </div>
 
           {/* Status Card */}
           <Card className="border-2">
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-full">
-                    <Cloud className="h-6 w-6 text-primary" />
+            <CardHeader className="pb-3 sm:pb-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                  <div className="p-1.5 sm:p-2 bg-primary/10 rounded-full flex-shrink-0">
+                    <Cloud className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                   </div>
-                  <div>
-                    <CardTitle className="text-xl">Stato Connessione</CardTitle>
-                    <CardDescription>
+                  <div className="min-w-0 flex-1">
+                    <CardTitle className="text-lg sm:text-xl">Stato Connessione</CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">
                       Stato attuale della connessione Google Drive
                     </CardDescription>
                   </div>
                 </div>
-                <Badge variant={connectionStatus.variant} className="px-3 py-1">
+                <Badge variant={connectionStatus.variant} className="px-2 sm:px-3 py-1 text-xs sm:text-sm self-start sm:self-auto flex-shrink-0">
                   {connectionStatus.text}
                 </Badge>
               </div>
             </CardHeader>
             <CardContent className="pt-0">
               {isLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                  <span className="ml-2 text-muted-foreground">Caricamento...</span>
+                <div className="flex items-center justify-center py-6 sm:py-8">
+                  <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-muted-foreground" />
+                  <span className="ml-2 text-sm sm:text-base text-muted-foreground">Caricamento...</span>
                 </div>
               ) : isError ? (
-                <div className="text-center py-8">
-                  <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-3" />
-                  <p className="text-destructive font-medium">Errore nel caricamento dei dati</p>
+                <div className="text-center py-6 sm:py-8 px-2">
+                  <AlertTriangle className="h-10 w-10 sm:h-12 sm:w-12 text-destructive mx-auto mb-3" />
+                  <p className="text-destructive font-medium text-sm sm:text-base">Errore nel caricamento dei dati</p>
                   <Button 
                     variant="outline" 
-                    className="mt-3"
+                    className="mt-3 text-sm"
                     onClick={() => refetchClients()}
                   >
                     <RefreshCw className="h-4 w-4 mr-2" />
@@ -373,24 +369,24 @@ export default function ClientsPage() {
                   </Button>
                 </div>
               ) : !currentClient ? (
-                <div className="text-center py-8">
-                  <FolderOpen className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-muted-foreground font-medium">Nessun client configurato</p>
-                  <p className="text-sm text-muted-foreground mt-1">
+                <div className="text-center py-6 sm:py-8 px-2">
+                  <FolderOpen className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground font-medium text-sm sm:text-base">Nessun client configurato</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                     Contatta il supporto per configurare il tuo account
                   </p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {/* Client Info */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 p-3 sm:p-4 bg-muted/50 rounded-lg">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">Azienda</p>
-                      <p className="font-semibold">{currentClient.name}</p>
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">Azienda</p>
+                      <p className="font-semibold text-sm sm:text-base break-words">{currentClient.name}</p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">Data creazione</p>
-                      <p className="font-semibold">
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">Data creazione</p>
+                      <p className="font-semibold text-sm sm:text-base">
                         {format(new Date(currentClient.createdAt), "dd/MM/yyyy HH:mm")}
                       </p>
                     </div>
@@ -398,33 +394,33 @@ export default function ClientsPage() {
 
                   {/* Google Drive Folder Info */}
                   {hasGoogleDriveFolder ? (
-                    <div className="p-4 border-2 border-green-200 bg-green-50 rounded-lg">
-                      <div className="flex items-center gap-2 mb-3">
-                        <CheckCircle className="h-5 w-5 text-green-600" />
-                        <h3 className="font-semibold text-green-800">Cartella Configurata</h3>
+                    <div className="p-3 sm:p-4 border-2 border-green-200 bg-green-50 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                        <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 flex-shrink-0" />
+                        <h3 className="font-semibold text-sm sm:text-base text-green-800">Cartella Configurata</h3>
                       </div>
                       <div className="space-y-2">
                         <div>
-                          <p className="text-sm font-medium text-green-700">ID Cartella</p>
-                          <p className="text-sm bg-green-100 p-2 rounded font-mono break-all text-gray-900">
+                          <p className="text-xs sm:text-sm font-medium text-green-700">ID Cartella</p>
+                          <p className="text-xs sm:text-sm bg-green-100 p-2 rounded font-mono break-all text-gray-900 overflow-x-auto">
                             {currentClient.driveFolderId}
                           </p>
                         </div>
                         {selectedFolder && (
                           <div>
-                            <p className="text-sm font-medium text-green-700">Nome Cartella</p>
-                            <p className="text-sm text-green-800 font-medium">{selectedFolder.name}</p>
+                            <p className="text-xs sm:text-sm font-medium text-green-700">Nome Cartella</p>
+                            <p className="text-xs sm:text-sm text-green-800 font-medium break-words">{selectedFolder.name}</p>
                           </div>
                         )}
                       </div>
                     </div>
                   ) : (
-                    <div className="p-4 border-2 border-yellow-200 bg-yellow-50 rounded-lg">
-                      <div className="flex items-center gap-2 mb-3">
-                        <AlertTriangle className="h-5 w-5 text-yellow-600" />
-                        <h3 className="font-semibold text-yellow-800">Cartella Non Configurata</h3>
+                    <div className="p-3 sm:p-4 border-2 border-yellow-200 bg-yellow-50 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                        <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600 flex-shrink-0" />
+                        <h3 className="font-semibold text-sm sm:text-base text-yellow-800">Cartella Non Configurata</h3>
                       </div>
-                      <p className="text-sm text-yellow-700 mb-4">
+                      <p className="text-xs sm:text-sm text-yellow-700 mb-3 sm:mb-4">
                         Per iniziare a sincronizzare i tuoi documenti, seleziona una cartella dal tuo Google Drive.
                       </p>
                     </div>
@@ -437,45 +433,45 @@ export default function ClientsPage() {
           {/* Action Card */}
           {currentClient && (
             <Card className="border-2">
-              <CardHeader>
-                <CardTitle className="text-xl">Azioni Rapide</CardTitle>
-                <CardDescription>
+              <CardHeader className="pb-3 sm:pb-6">
+                <CardTitle className="text-lg sm:text-xl">Azioni Rapide</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
                   Gestisci la connessione e la sincronizzazione dei documenti
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3 sm:space-y-4">
                 {/* Folder Selection - Manual URL Input */}
-                <div className="space-y-4">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                <div className="space-y-3 sm:space-y-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 space-y-2 sm:space-y-3">
                     <div className="flex items-start gap-2">
-                      <Check className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                      <div className="space-y-2 flex-1">
-                        <h4 className="font-semibold text-blue-900 flex items-center gap-2">
-                          <Link2 className="h-5 w-5" />
-                          Configura la Cartella Google Drive
+                      <Check className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <div className="space-y-1 sm:space-y-2 flex-1 min-w-0">
+                        <h4 className="font-semibold text-sm sm:text-base text-blue-900 flex items-center gap-1 sm:gap-2 flex-wrap">
+                          <Link2 className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                          <span>Configura la Cartella Google Drive</span>
                         </h4>
-                        <p className="text-sm text-blue-800">
+                        <p className="text-xs sm:text-sm text-blue-800">
                           Metodo semplice e affidabile per collegare la tua cartella Google Drive.
                         </p>
                       </div>
                     </div>
                     
-                    <div className="space-y-2 text-sm text-blue-800 pl-7">
+                    <div className="space-y-2 text-xs sm:text-sm text-blue-800 pl-0 sm:pl-7">
                       <p className="font-medium">Come ottenere l'URL:</p>
-                      <ol className="list-decimal list-inside space-y-1 pl-2">
-                        <li>Apri <a href="https://drive.google.com" target="_blank" rel="noopener noreferrer" className="underline font-medium hover:text-blue-900">Google Drive</a> in una nuova scheda</li>
-                        <li>Vai alla cartella che vuoi sincronizzare</li>
-                        <li>Copia l'URL dalla barra degli indirizzi del browser</li>
-                        <li>Incolla l'URL qui sotto e clicca Conferma</li>
+                      <ol className="list-decimal list-inside space-y-1 pl-2 sm:pl-2">
+                        <li className="break-words">Apri <a href="https://drive.google.com" target="_blank" rel="noopener noreferrer" className="underline font-medium hover:text-blue-900">Google Drive</a> in una nuova scheda</li>
+                        <li className="break-words">Vai alla cartella che vuoi sincronizzare</li>
+                        <li className="break-words">Copia l'URL dalla barra degli indirizzi del browser</li>
+                        <li className="break-words">Incolla l'URL qui sotto e clicca Conferma</li>
                       </ol>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="folder-url" className="text-base font-semibold">
+                    <Label htmlFor="folder-url" className="text-sm sm:text-base font-semibold">
                       URL Cartella Google Drive
                     </Label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <Input
                         id="folder-url"
                         type="text"
@@ -488,12 +484,12 @@ export default function ClientsPage() {
                           }
                         }}
                         disabled={isValidatingUrl || updateClientFolderMutation.isPending}
-                        className="flex-1"
+                        className="flex-1 text-sm sm:text-base"
                       />
                       <Button
                         onClick={handleManualUrlSubmit}
                         disabled={isValidatingUrl || updateClientFolderMutation.isPending || !manualUrl.trim()}
-                        className="px-6"
+                        className="px-4 sm:px-6 w-full sm:w-auto text-sm"
                       >
                         {isValidatingUrl || updateClientFolderMutation.isPending ? (
                           <>
@@ -508,19 +504,19 @@ export default function ClientsPage() {
                         )}
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground break-all">
                       Esempio: https://drive.google.com/drive/folders/1ABC...XYZ
                     </p>
                   </div>
 
                   {/* Autorizzazione OAuth necessaria */}
                   {hasGoogleDriveFolder && connectionStatus.status === 'needs-auth' && (
-                    <div className="pt-3 border-t border-yellow-200 bg-yellow-50 rounded-lg p-4">
+                    <div className="pt-3 border-t border-yellow-200 bg-yellow-50 rounded-lg p-3 sm:p-4">
                       <div className="flex items-start gap-2 mb-3">
-                        <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-yellow-900">Autorizzazione Richiesta</p>
-                          <p className="text-sm text-yellow-700 mt-1">
+                        <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs sm:text-sm font-medium text-yellow-900">Autorizzazione Richiesta</p>
+                          <p className="text-xs sm:text-sm text-yellow-700 mt-1">
                             Per sincronizzare i documenti, devi autorizzare l'accesso al tuo Google Drive
                           </p>
                         </div>
@@ -528,7 +524,7 @@ export default function ClientsPage() {
                       <Button
                         onClick={() => handleGoogleDriveAuth(currentClient.legacyId)}
                         variant="outline"
-                        className="w-full border-yellow-300 text-yellow-800 hover:bg-yellow-100"
+                        className="w-full border-yellow-300 text-yellow-800 hover:bg-yellow-100 text-sm"
                       >
                         <Cloud className="h-4 w-4 mr-2" />
                         Autorizza Google Drive
@@ -538,19 +534,19 @@ export default function ClientsPage() {
                 </div>
 
                 {/* Manual Sync Section */}
-                <div className="pt-4 border-t space-y-3">
-                  <h4 className="font-semibold flex items-center gap-2">
+                <div className="pt-3 sm:pt-4 border-t space-y-2 sm:space-y-3">
+                  <h4 className="font-semibold text-sm sm:text-base flex items-center gap-2">
                     <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
                     Sincronizzazione Manuale
                   </h4>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs sm:text-sm text-muted-foreground">
                     Forza la sincronizzazione dei documenti dalla cartella configurata
                   </p>
                   <Button
                     onClick={handleManualSync}
                     disabled={!hasGoogleDriveFolder || isSyncing || connectionStatus.status !== 'connected'}
                     variant="outline"
-                    className="w-full"
+                    className="w-full text-sm"
                   >
                     {isSyncing ? (
                       <>
@@ -560,7 +556,7 @@ export default function ClientsPage() {
                     ) : connectionStatus.status !== 'connected' ? (
                       <>
                         <AlertTriangle className="h-4 w-4 mr-2" />
-                        {connectionStatus.status === 'needs-auth' ? 'Autorizzazione necessaria' : 'Configura prima'}
+                        <span className="truncate">{connectionStatus.status === 'needs-auth' ? 'Autorizzazione necessaria' : 'Configura prima'}</span>
                       </>
                     ) : (
                       <>
@@ -573,10 +569,10 @@ export default function ClientsPage() {
 
                 {/* Navigate to Documents */}
                 {connectionStatus.status === 'connected' && (
-                  <div className="pt-4 border-t">
+                  <div className="pt-3 sm:pt-4 border-t">
                     <Button 
                       onClick={() => setLocation("/home-page")}
-                      className="w-full"
+                      className="w-full text-sm"
                     >
                       <Settings className="h-4 w-4 mr-2" />
                       Vai ai Documenti
@@ -589,35 +585,35 @@ export default function ClientsPage() {
 
           {/* Help Card */}
           <Card className="bg-muted/30">
-            <CardHeader>
-              <CardTitle className="text-lg">Come Funziona</CardTitle>
+            <CardHeader className="pb-3 sm:pb-6">
+              <CardTitle className="text-base sm:text-lg">Come Funziona</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                <div className="flex flex-col items-center text-center space-y-2 p-3">
-                  <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold">1</div>
-                  <h4 className="font-semibold">Copia URL Cartella</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-xs sm:text-sm">
+                <div className="flex flex-col items-center text-center space-y-2 p-2 sm:p-3">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-sm sm:text-base">1</div>
+                  <h4 className="font-semibold text-sm sm:text-base">Copia URL Cartella</h4>
                   <p className="text-muted-foreground">
                     Vai su Google Drive, apri la cartella desiderata e copia l'URL dalla barra degli indirizzi
                   </p>
                 </div>
-                <div className="flex flex-col items-center text-center space-y-2 p-3">
-                  <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold">2</div>
-                  <h4 className="font-semibold">Incolla e Conferma</h4>
+                <div className="flex flex-col items-center text-center space-y-2 p-2 sm:p-3">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-sm sm:text-base">2</div>
+                  <h4 className="font-semibold text-sm sm:text-base">Incolla e Conferma</h4>
                   <p className="text-muted-foreground">
                     Incolla l'URL nel campo "Incolla URL" e clicca su Conferma per configurare la cartella
                   </p>
                 </div>
-                <div className="flex flex-col items-center text-center space-y-2 p-3">
-                  <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold">3</div>
-                  <h4 className="font-semibold">Autorizza e Sincronizza</h4>
+                <div className="flex flex-col items-center text-center space-y-2 p-2 sm:p-3">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-sm sm:text-base">3</div>
+                  <h4 className="font-semibold text-sm sm:text-base">Autorizza e Sincronizza</h4>
                   <p className="text-muted-foreground">
                     Autorizza l'accesso a Google Drive e avvia la sincronizzazione dei documenti
                   </p>
                 </div>
-                <div className="flex flex-col items-center text-center space-y-2 p-3">
-                  <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold">4</div>
-                  <h4 className="font-semibold">Gestisci</h4>
+                <div className="flex flex-col items-center text-center space-y-2 p-2 sm:p-3">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-sm sm:text-base">4</div>
+                  <h4 className="font-semibold text-sm sm:text-base">Gestisci</h4>
                   <p className="text-muted-foreground">
                     Accedi alla dashboard per visualizzare e gestire tutti i tuoi documenti
                   </p>

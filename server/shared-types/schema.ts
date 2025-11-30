@@ -2,7 +2,7 @@ export interface UserDocument {
   legacyId: number;
   email: string;
   password: string;
-  role: "superadmin" | "admin" | "viewer";
+  role: "superadmin" | "admin" | "viewer" | "developer";
   clientId: number | null;
   lastLogin: Date | null;
   sessionExpiry: Date | null;

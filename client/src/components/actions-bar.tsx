@@ -12,6 +12,7 @@ import { apiRequest } from "../lib/queryClient";
 import { useState } from "react";
 import ModernFileUpload from "./modern-file-upload";
 import { useToast } from "../hooks/use-toast";
+import { useAuth } from "../hooks/use-auth";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +46,7 @@ export default function ActionsBar({
 }: ActionsBarProps) {
   const { toast } = useToast();
   const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const { user } = useAuth();
   const handleSearch = (value: string) => {
     onSearch(value);
   };
@@ -151,7 +153,30 @@ export default function ActionsBar({
             Backup
           </Button>
 
+          {/* Sync Button */}
+          <Button
+            onClick={handleSyncNow}
+            disabled={isSyncing || !driveFolderId}
+            className="flex items-center gap-2 w-full md:w-auto"
+          >
+            {isSyncing ? (
+              <>
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                Sincronizzando...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-4 w-4" />
+                Sincronizza Google Drive
+              </>
+            )}
+          </Button>
+        </div>
+      )}
 
+      {/* Developer Actions */}
+      {user?.role === "developer" && (
+        <div className="flex flex-col gap-2 w-full md:w-auto md:flex-row md:gap-2">
           {/*  Aggiorna documenti locali - Dialog moderno */}
           <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
             <DialogTrigger asChild>
@@ -435,25 +460,6 @@ export default function ActionsBar({
               />
             </DialogContent>
           </Dialog>
-
-          {/* Sync Button */}
-          <Button
-            onClick={handleSyncNow}
-            disabled={isSyncing || !driveFolderId}
-            className="flex items-center gap-2 w-full md:w-auto"
-          >
-            {isSyncing ? (
-              <>
-                <RefreshCw className="h-4 w-4 animate-spin" />
-                Sincronizzando...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="h-4 w-4" />
-                Sincronizza Google Drive
-              </>
-            )}
-          </Button>
         </div>
       )}
     </div>

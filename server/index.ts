@@ -411,6 +411,11 @@ app.use((req, res, next) => {
     const { startExpirationChecks } = await import("./notification-service");
     startExpirationChecks();
 
+    logger.info("Avvio pulizia automatica log (retention 30 giorni)...");
+    const { startLogCleanupScheduler } = await import("./log-cleanup-service");
+    startLogCleanupScheduler();
+    logger.info("Pulizia automatica log avviata (ogni 24 ore)");
+
     const port = process.env.PORT || 5000;
     app.listen(port, () => {
       logger.info(`Server avviato su porta ${port}`, {

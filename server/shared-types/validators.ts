@@ -34,7 +34,7 @@ export const insertDocumentSchema = z.object({
 export const insertUserSchema = z.object({
   email: z.string().email(),
   password: strongPasswordSchema,
-  role: z.enum(["superadmin", "admin", "viewer"]),
+  role: z.enum(["superadmin", "admin", "viewer", "developer"]),
   clientId: z.number().nullable(),
   lastLogin: z.date().nullable(),
   sessionExpiry: z.date().nullable(),

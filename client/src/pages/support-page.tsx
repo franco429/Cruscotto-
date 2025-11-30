@@ -126,9 +126,7 @@ export default function SupportPage() {
                     Come posso caricare documenti?
                   </AccordionTrigger>
                   <AccordionContent className="px-4">
-                    I documenti possono essere caricati direttamente dalla
-                    dashboard utilizzando il pulsante "Carica Documento" oppure
-                    possono essere sincronizzati automaticamente da Google Drive
+                    I documenti vengono sincronizzati automaticamente da Google Drive
                     configurando le impostazioni di sincronizzazione.
                   </AccordionContent>
                 </AccordionItem>

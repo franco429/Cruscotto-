@@ -16,7 +16,7 @@ const userSchema = new Schema<UserDocument & MongooseDocument>({
   role: {
     type: String,
     required: true,
-    enum: ["superadmin", "admin", "viewer"],
+    enum: ["superadmin", "admin", "viewer", "developer"],
     default: "viewer",
   },
   clientId: { type: Number, default: null, index: true },
@@ -119,7 +119,7 @@ const backupSchema = new Schema<BackupDocument & MongooseDocument>({
     userRole: {
       type: String,
       required: true,
-      enum: ["superadmin", "admin", "viewer"],
+      enum: ["superadmin", "admin", "viewer", "developer"],
     },
   },
   clientId: { type: Number, default: null, index: true },

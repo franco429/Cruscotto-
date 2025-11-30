@@ -343,14 +343,6 @@ export default function HomePage() {
           </p>
           {/* Privacy Policy Link - Richiesto da Google Cloud Console */}
           <div className="mt-3 flex items-center justify-center">
-            <a
-              href="/privacy"
-              className="inline-flex items-center text-xs xs:text-sm text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-primary transition-colors underline decoration-dotted underline-offset-2"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Norme sulla Privacy
-            </a>
           </div>
         </div>
 

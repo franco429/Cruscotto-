@@ -307,3 +307,4 @@ curl -X GET https://<host>/api/documents/999 \
 - `client/src/lib/protected-route.tsx` - Client-side routing (UI only)
 
 
+
