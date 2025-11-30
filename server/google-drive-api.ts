@@ -11,6 +11,7 @@ export async function googleDriveDownloadFile(
   const metadata = await drive.files.get({
     fileId,
     fields: "mimeType, name",
+    supportsAllDrives: true,
   });
 
   const mimeType = metadata.data.mimeType;
@@ -42,13 +43,15 @@ export async function googleDriveDownloadFile(
         throw new Error(`Tipo Google non supportato: ${mimeType}`);
     }
 
+    // Note: files.export does not support supportsAllDrives parameter
+    // Access to shared drives is controlled by the authentication token
     streamRes = await drive.files.export(
       { fileId, mimeType: exportMime },
       { responseType: "stream" }
     );
   } else {
     streamRes = await drive.files.get(
-      { fileId, alt: "media" },
+      { fileId, alt: "media", supportsAllDrives: true },
       { responseType: "stream" }
     );
   }

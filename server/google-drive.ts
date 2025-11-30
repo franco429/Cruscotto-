@@ -576,6 +576,7 @@ export async function analyzeExcelContentOptimized(
     metadata = await drive.files.get({
       fileId,
       fields: "name,mimeType,modifiedTime,createdTime",
+      supportsAllDrives: true,
     });
 
     const fileName = metadata.data.name;
@@ -1257,29 +1258,39 @@ async function processBatchWithAnalysis(
       // Analisi del contenuto del file
       let analysis: ExcelAnalysis = { alertStatus: "none", expiryDate: null };
 
-      if (file.mimeType === "application/vnd.google-apps.spreadsheet") {
-        // Google Sheets - API diretta con drive esistente
-        logger.debug(`Analyzing Google Sheet: ${file.name}`, {
+      // Prova ad analizzare il contenuto Excel, ma non bloccare se fallisce
+      try {
+        if (file.mimeType === "application/vnd.google-apps.spreadsheet") {
+          // Google Sheets - API diretta con drive esistente
+          logger.debug(`Analyzing Google Sheet: ${file.name}`, {
+            fileId: file.id,
+          });
+          analysis = await analyzeGoogleSheet(drive, file.id);
+        } else if (isExcelFile(file.mimeType)) {
+          // Excel - download e analisi
+          logger.debug(`Analyzing Excel file: ${file.name}`, { fileId: file.id });
+          const tempPath = await downloadToTemp(drive, file);
+          try {
+            analysis = await analyzeExcelContent(tempPath);
+          } finally {
+            // Cleanup file temporaneo
+            if (fs.existsSync(tempPath)) {
+              fs.unlinkSync(tempPath);
+            }
+          }
+        } else {
+          logger.debug(
+            `Skipping analysis for unsupported file type: ${file.mimeType}`,
+            { fileName: file.name }
+          );
+        }
+      } catch (analysisError) {
+        // Se l'analisi fallisce (es. permessi mancanti), continua comunque
+        logger.warn(`⚠️ Could not analyze Excel file (will save without expiry data): ${file.name}`, {
+          error: analysisError instanceof Error ? analysisError.message : String(analysisError),
           fileId: file.id,
         });
-        analysis = await analyzeGoogleSheet(drive, file.id);
-      } else if (isExcelFile(file.mimeType)) {
-        // Excel - download e analisi
-        logger.debug(`Analyzing Excel file: ${file.name}`, { fileId: file.id });
-        const tempPath = await downloadToTemp(drive, file);
-        try {
-          analysis = await analyzeExcelContent(tempPath);
-        } finally {
-          // Cleanup file temporaneo
-          if (fs.existsSync(tempPath)) {
-            fs.unlinkSync(tempPath);
-          }
-        }
-      } else {
-        logger.debug(
-          `Skipping analysis for unsupported file type: ${file.mimeType}`,
-          { fileName: file.name }
-        );
+        // Mantieni analysis = { alertStatus: "none", expiryDate: null }
       }
 
       // Crea/aggiorna documento nel DB con logica completa
@@ -1429,6 +1440,8 @@ async function analyzeGoogleSheet(
       spreadsheetId,
       range: "Sheet1!A1",
       valueRenderOption: "FORMULA",
+      // Note: Google Sheets API does not support supportsAllDrives parameter
+      // Access is controlled by the OAuth2 token used to authenticate
     });
 
     const formula = formulaResponse.data.values?.[0]?.[0];
@@ -1452,6 +1465,8 @@ async function analyzeGoogleSheet(
         spreadsheetId,
         range: "Sheet1!A1",
         valueRenderOption: "UNFORMATTED_VALUE",
+        // Note: Google Sheets API does not support supportsAllDrives parameter
+        // Access is controlled by the OAuth2 token used to authenticate
       });
 
       const calculatedValue = valueResponse.data.values?.[0]?.[0];
