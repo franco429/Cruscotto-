@@ -97,6 +97,7 @@ export async function googleDriveListFiles(
         pageSize: 1000,
         pageToken,
         spaces: "drive",
+        corpora: "allDrives", // Cerca in tutti i drive: My Drive + Shared Drives
         includeItemsFromAllDrives: true, // Includi file da Drive condivisi.
         supportsAllDrives: true,
       });
