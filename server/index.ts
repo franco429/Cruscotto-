@@ -19,7 +19,47 @@ if (process.env.NODE_ENV === "production") {
   dotenv.config();
 }
 
+// ⚠️ CRITICAL: Handler per Promise rejection non gestite
+// Questo previene crash silenzioso su Render e fornisce log utili per debug
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ UNHANDLED REJECTION! Questo potrebbe causare crash del server:');
+  console.error('   Reason:', reason instanceof Error ? reason.message : reason);
+  if (reason instanceof Error && reason.stack) {
+    console.error('   Stack:', reason.stack);
+  }
+  // Log anche con logger se disponibile
+  try {
+    logger.error('Unhandled Promise Rejection', { 
+      reason: reason instanceof Error ? reason.message : String(reason),
+      stack: reason instanceof Error ? reason.stack : undefined 
+    });
+  } catch {}
+});
+
+// ⚠️ CRITICAL: Handler per eccezioni non catturate
+process.on('uncaughtException', (error) => {
+  console.error('❌ UNCAUGHT EXCEPTION! Il server sta per crashare:');
+  console.error('   Error:', error.message);
+  console.error('   Stack:', error.stack);
+  // Log anche con logger se disponibile
+  try {
+    logger.error('Uncaught Exception', { 
+      message: error.message,
+      stack: error.stack 
+    });
+  } catch {}
+  // Termina il processo dopo un breve delay per permettere il logging
+  setTimeout(() => process.exit(1), 1000);
+});
+
 logger.info("Avvio server...");
+
+// Log configurazione ambiente per debug (solo all'avvio)
+console.log("📋 Configurazione ambiente:");
+console.log("   NODE_ENV:", process.env.NODE_ENV || "development");
+console.log("   DB_URI:", process.env.DB_URI ? "✅ configurata" : "❌ MANCANTE!");
+console.log("   PORT:", process.env.PORT || "5000 (default)");
+console.log("   SMTP_HOST:", process.env.SMTP_HOST ? "✅ configurata" : "⚠️ non configurata");
 
 // Monitoraggio /tmp ogni 5 minuti per prevenire overflow
 const tmpMonitor = setInterval(() => {

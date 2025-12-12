@@ -45,25 +45,49 @@ export class MongoStorage implements IStorage {
   private backupService: BackupService;
 
   constructor() {
-    this.connect();
+    // NOTA: NON chiamiamo this.connect() qui!
+    // La connessione deve essere fatta esplicitamente in index.ts con await mongoStorage.connect()
+    // Questo evita unhandled promise rejections che causavano crash silenzioso su Render
+    
+    // Valida DB_URI prima di creare sessionStore
+    const dbUri = process.env.DB_URI;
+    if (!dbUri) {
+      console.error("❌ ERRORE CRITICO: DB_URI non configurata!");
+      console.error("   Questo causerà il fallimento della connessione MongoDB.");
+      // Non lanciamo errore qui per permettere al server di avviarsi
+      // e mostrare un messaggio di errore più chiaro in connect()
+    }
+    
     this.sessionStore = new MongoStore({
-      uri: process.env.DB_URI || "",
+      uri: dbUri || "mongodb://placeholder-will-fail",
       collection: "sessions",
+      connectionOptions: {
+        serverSelectionTimeoutMS: 10000, // Timeout più veloce per fallimento
+      }
     });
     this.backupService = new BackupService();
   }
 
   public async connect(): Promise<void> {
     if (this.connected) return;
-    if (!process.env.DB_URI) {
-      throw new Error("La variabile d'ambiente DB_URI non è configurata.");
+    
+    const dbUri = process.env.DB_URI;
+    if (!dbUri) {
+      console.error("❌ ERRORE CRITICO: DB_URI non configurata!");
+      console.error("   Variabili d'ambiente disponibili:", Object.keys(process.env).filter(k => k.startsWith('DB_') || k.startsWith('MONGO')).join(', ') || 'nessuna DB_*');
+      throw new Error("La variabile d'ambiente DB_URI non è configurata. Controlla le Environment Variables su Render.");
     }
+    
     try {
-      await mongoose.connect(process.env.DB_URI);
+      console.log("🔄 Tentativo connessione MongoDB...");
+      await mongoose.connect(dbUri, {
+        serverSelectionTimeoutMS: 15000, // 15 secondi timeout
+        socketTimeoutMS: 45000,
+      });
       this.connected = true;
+      console.log("✅ MongoDB connesso con successo");
     } catch (error) {
-      // In un'applicazione reale, questo errore critico dovrebbe essere gestito
-      // da un sistema di logging centralizzato e potrebbe causare il riavvio del processo.
+      console.error("❌ ERRORE connessione MongoDB:", error instanceof Error ? error.message : error);
       throw error;
     }
   }
