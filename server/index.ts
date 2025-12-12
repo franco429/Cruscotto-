@@ -6,6 +6,8 @@ import logger, { logRequest, logError } from "./logger";
 import path from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+import fs from "fs";
+import os from "os";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -18,6 +20,72 @@ if (process.env.NODE_ENV === "production") {
 }
 
 logger.info("Avvio server...");
+
+// #region agent log - DEBUG: Monitoraggio /tmp ogni 2 minuti
+const tmpMonitor = setInterval(async () => {
+  try {
+    const tmpDir = os.tmpdir();
+    let tmpFiles: string[] = [];
+    let totalSize = 0;
+    let excelAnalysisCount = 0;
+    let syncCount = 0;
+    let largestFiles: { name: string; size: number }[] = [];
+    
+    try {
+      const allFiles = fs.readdirSync(tmpDir);
+      tmpFiles = allFiles.filter(f => 
+        f.startsWith('excel_analysis_') || f.startsWith('sync_')
+      );
+      
+      for (const file of tmpFiles) {
+        try {
+          const stat = fs.statSync(path.join(tmpDir, file));
+          totalSize += stat.size;
+          if (file.startsWith('excel_analysis_')) excelAnalysisCount++;
+          if (file.startsWith('sync_')) syncCount++;
+          largestFiles.push({ name: file, size: stat.size });
+        } catch {}
+      }
+      
+      largestFiles.sort((a, b) => b.size - a.size);
+    } catch {}
+    
+    // Log usando il logger interno (visibile nei log di Render)
+    logger.info(`[TMP_DEBUG] PERIODIC_TMP_CHECK`, {
+      location: 'index.ts:tmpMonitor',
+      action: 'PERIODIC_TMP_CHECK',
+      tmpDir,
+      tmpFileCount: tmpFiles.length,
+      excelAnalysisCount,
+      syncCount,
+      tmpTotalSizeMB: Math.round(totalSize / 1024 / 1024 * 100) / 100,
+      largestFiles: largestFiles.slice(0, 5).map(f => ({ name: f.name, sizeMB: Math.round(f.size / 1024 / 1024 * 100) / 100 })),
+      hypothesisId: 'B'
+    });
+    
+    // Anche verso server locale per debug in development
+    fetch('http://127.0.0.1:7242/ingest/4fef5989-df30-409c-a404-49ccccbe3a1e', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location: 'index.ts:tmpMonitor',
+        message: 'TMP_MONITOR: Periodic check',
+        data: {
+          action: 'PERIODIC_TMP_CHECK',
+          tmpDir,
+          tmpFileCount: tmpFiles.length,
+          excelAnalysisCount,
+          syncCount,
+          tmpTotalSizeMB: Math.round(totalSize / 1024 / 1024 * 100) / 100,
+          largestFiles: largestFiles.slice(0, 5).map(f => ({ name: f.name, sizeMB: Math.round(f.size / 1024 / 1024 * 100) / 100 }))
+        },
+        timestamp: Date.now(),
+        sessionId: 'debug-session'
+      })
+    }).catch(() => {});
+  } catch {}
+}, 2 * 60 * 1000); // Ogni 2 minuti
+// #endregion
 
 // Monitoraggio memoria per prevenire out of memory
 const memoryMonitor = setInterval(() => {
@@ -47,7 +115,8 @@ const memoryMonitor = setInterval(() => {
 // Cleanup al termine del processo
 process.on('SIGTERM', () => {
   clearInterval(memoryMonitor);
-  logger.info("Memory monitor stopped");
+  clearInterval(tmpMonitor);
+  logger.info("Memory and TMP monitors stopped");
 });
 
 process.on('SIGINT', () => {

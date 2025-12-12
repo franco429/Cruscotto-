@@ -20,6 +20,62 @@ import { sendSyncErrorNotifications } from "./notification-service";
 import { parse } from "date-fns";
 import { appEvents } from "./app-events";
 
+// #region agent log - DEBUG: Funzione per tracciare file temporanei in /tmp
+async function debugLogTmpUsage(location: string, action: string, filePath?: string, fileSize?: number) {
+  try {
+    const tmpDir = os.tmpdir();
+    let tmpFiles: string[] = [];
+    let totalSize = 0;
+    
+    try {
+      tmpFiles = fs.readdirSync(tmpDir).filter(f => 
+        f.startsWith('excel_analysis_') || f.startsWith('sync_')
+      );
+      for (const file of tmpFiles) {
+        try {
+          const stat = fs.statSync(path.join(tmpDir, file));
+          totalSize += stat.size;
+        } catch {}
+      }
+    } catch {}
+    
+    // Log usando il logger interno (visibile nei log di Render)
+    logger.info(`[TMP_DEBUG] ${action}`, {
+      location,
+      action,
+      filePath: filePath || 'N/A',
+      fileSizeMB: fileSize ? Math.round(fileSize / 1024 / 1024 * 100) / 100 : 0,
+      tmpDir,
+      tmpFileCount: tmpFiles.length,
+      tmpTotalSizeMB: Math.round(totalSize / 1024 / 1024 * 100) / 100,
+      tmpFiles: tmpFiles.slice(0, 10),
+      hypothesisId: action.includes('CREATE') ? 'A' : action.includes('DELETE') ? 'B' : 'C'
+    });
+    
+    // Anche verso server locale per debug in development
+    fetch('http://127.0.0.1:7242/ingest/4fef5989-df30-409c-a404-49ccccbe3a1e', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location,
+        message: `TMP_DEBUG: ${action}`,
+        data: {
+          action,
+          filePath: filePath || 'N/A',
+          fileSizeMB: fileSize ? Math.round(fileSize / 1024 / 1024 * 100) / 100 : 0,
+          tmpDir,
+          tmpFileCount: tmpFiles.length,
+          tmpTotalSizeMB: Math.round(totalSize / 1024 / 1024 * 100) / 100,
+          tmpFiles: tmpFiles.slice(0, 10)
+        },
+        timestamp: Date.now(),
+        sessionId: 'debug-session'
+      })
+    }).catch(() => {});
+  } catch {}
+}
+// #endregion
+
 const syncIntervals: Record<number, NodeJS.Timeout> = {};
 
 // Configurazione ottimizzata per Render con timeout ridotti
@@ -617,8 +673,18 @@ export async function analyzeExcelContentOptimized(
       tempFilePath,
     });
 
+    // #region agent log - DEBUG: Prima del download
+    await debugLogTmpUsage('google-drive.ts:analyzeExcelContentOptimized:BEFORE_DOWNLOAD', 'BEFORE_DOWNLOAD', tempFilePath);
+    // #endregion
+
     // Scarica il file (Excel nativo o Google Sheets esportato)
     await googleDriveDownloadFile(drive, fileId, tempFilePath);
+
+    // #region agent log - DEBUG: Dopo il download, calcola dimensione
+    let downloadedFileSize = 0;
+    try { downloadedFileSize = fs.statSync(tempFilePath).size; } catch {}
+    await debugLogTmpUsage('google-drive.ts:analyzeExcelContentOptimized:FILE_CREATED', 'FILE_CREATED', tempFilePath, downloadedFileSize);
+    // #endregion
 
     // Analizza il contenuto del file (timeout già gestito internamente)
     const analysis = await analyzeExcelContent(tempFilePath);
@@ -645,9 +711,24 @@ export async function analyzeExcelContentOptimized(
     // Pulisci il file temporaneo
     if (tempFilePath && fs.existsSync(tempFilePath)) {
       try {
+        // #region agent log - DEBUG: Prima della cancellazione
+        let fileSize = 0;
+        try { fileSize = fs.statSync(tempFilePath).size; } catch {}
+        await debugLogTmpUsage('google-drive.ts:analyzeExcelContentOptimized:BEFORE_DELETE', 'BEFORE_DELETE', tempFilePath, fileSize);
+        // #endregion
+        
         fs.unlinkSync(tempFilePath);
+        
+        // #region agent log - DEBUG: Dopo la cancellazione
+        await debugLogTmpUsage('google-drive.ts:analyzeExcelContentOptimized:FILE_DELETED', 'FILE_DELETED', tempFilePath);
+        // #endregion
+        
         logger.debug("Temporary file cleaned up", { tempFilePath });
       } catch (cleanupError) {
+        // #region agent log - DEBUG: Errore durante cancellazione
+        await debugLogTmpUsage('google-drive.ts:analyzeExcelContentOptimized:DELETE_FAILED', 'DELETE_FAILED: ' + (cleanupError instanceof Error ? cleanupError.message : String(cleanupError)), tempFilePath);
+        // #endregion
+        
         logger.warn("Failed to cleanup temporary file", {
           tempFilePath,
           error:
@@ -656,6 +737,10 @@ export async function analyzeExcelContentOptimized(
               : String(cleanupError),
         });
       }
+    } else if (tempFilePath) {
+      // #region agent log - DEBUG: File non esisteva al momento del cleanup
+      await debugLogTmpUsage('google-drive.ts:analyzeExcelContentOptimized:FILE_NOT_FOUND_AT_CLEANUP', 'FILE_NOT_FOUND_AT_CLEANUP', tempFilePath);
+      // #endregion
     }
     
     // Forza garbage collection per ottimizzare memoria su Render
@@ -1275,7 +1360,21 @@ async function processBatchWithAnalysis(
           } finally {
             // Cleanup file temporaneo
             if (fs.existsSync(tempPath)) {
+              // #region agent log - DEBUG: Cleanup in processBatchWithAnalysis
+              let fileSize = 0;
+              try { fileSize = fs.statSync(tempPath).size; } catch {}
+              await debugLogTmpUsage('google-drive.ts:processBatchWithAnalysis:BEFORE_DELETE', 'BATCH_BEFORE_DELETE', tempPath, fileSize);
+              // #endregion
+              
               fs.unlinkSync(tempPath);
+              
+              // #region agent log - DEBUG: Dopo cleanup in processBatchWithAnalysis
+              await debugLogTmpUsage('google-drive.ts:processBatchWithAnalysis:FILE_DELETED', 'BATCH_FILE_DELETED', tempPath);
+              // #endregion
+            } else {
+              // #region agent log - DEBUG: File non esisteva al momento del cleanup batch
+              await debugLogTmpUsage('google-drive.ts:processBatchWithAnalysis:FILE_NOT_FOUND', 'BATCH_FILE_NOT_FOUND_AT_CLEANUP', tempPath);
+              // #endregion
             }
           }
         } else {
@@ -1422,7 +1521,18 @@ async function downloadToTemp(
   const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
   const tempPath = path.join(tempDir, `sync_${Date.now()}_${sanitizedName}`);
 
+  // #region agent log - DEBUG: Prima del download in downloadToTemp
+  await debugLogTmpUsage('google-drive.ts:downloadToTemp:BEFORE_DOWNLOAD', 'SYNC_BEFORE_DOWNLOAD', tempPath);
+  // #endregion
+
   await googleDriveDownloadFile(drive, file.id, tempPath);
+
+  // #region agent log - DEBUG: Dopo il download in downloadToTemp
+  let fileSize = 0;
+  try { fileSize = fs.statSync(tempPath).size; } catch {}
+  await debugLogTmpUsage('google-drive.ts:downloadToTemp:FILE_CREATED', 'SYNC_FILE_CREATED', tempPath, fileSize);
+  // #endregion
+
   return tempPath;
 }
 
@@ -1585,6 +1695,10 @@ async function syncAllClientsOnce(): Promise<void> {
   let totalFailed = 0;
   const allErrors: SyncError[] = [];
 
+  // #region agent log - DEBUG: Inizio sync globale
+  await debugLogTmpUsage('google-drive.ts:syncAllClientsOnce:START', 'GLOBAL_SYNC_START');
+  // #endregion
+
   try {
     logger.info("Starting global sync for all clients");
 
@@ -1688,6 +1802,10 @@ async function syncAllClientsOnce(): Promise<void> {
       duration,
     });
   } finally {
+    // #region agent log - DEBUG: Fine sync globale
+    await debugLogTmpUsage('google-drive.ts:syncAllClientsOnce:END', 'GLOBAL_SYNC_END', undefined, undefined);
+    // #endregion
+
     // Il 'finally' assicura che venga emesso anche in caso di errore.
     appEvents.emit("initialSyncComplete", {
       totalProcessed,
