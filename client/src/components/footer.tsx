@@ -76,11 +76,11 @@ export default function Footer() {
         <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 lg:gap-10 xl:gap-12 2xl:gap-16">
           {/* Company Info */}
           <div className="space-y-3 sm:space-y-4">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center">
               <img
                 src="/logo/logo sgi.jpg"
                 alt="Logo SGI"
-                className="h-8 w-8 sm:h-10 sm:w-10 object-cover"
+                className="h-8 w-8 sm:h-10 sm:w-10 object-cover mr-2"
                 width="40"
                 height="40"
               />
@@ -147,7 +147,7 @@ export default function Footer() {
           </div>
 
           {/* Quick Links */}
-          <div className="space-y-3 sm:space-y-4">
+          <div className="space-y-3 sm:space-y-4 lg:ml-24 xl:ml-28 2xl:ml-32">
             <h3 className="font-semibold text-base sm:text-lg">
               Collegamenti Rapidi
             </h3>
