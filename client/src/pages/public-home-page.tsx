@@ -36,38 +36,37 @@ export default function PublicHomePage() {
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-950">
       {/* Header */}
       <header className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700 sticky top-0 z-50">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            <div className="flex items-center space-x-3">
+            {/* Logo e Titolo - Estrema Sinistra */}
+            <div className="flex items-center gap-2 sm:gap-3">
               <img
                 src="/logo/logo sgi.jpg"
                 alt="Logo SGI"
                 className="h-10 w-10 object-cover"
               />
-              <span className="font-bold text-lg sm:text-xl text-slate-900 dark:text-white">
-                <span className="hidden sm:inline">Pannello di Controllo SGI</span>
-                <span className="sm:hidden">SGI</span>
+              <span className="hidden md:inline font-bold text-lg lg:text-xl text-slate-900 dark:text-white whitespace-nowrap">
+                Pannello di Controllo SGI
               </span>
             </div>
 
-            {/* Desktop Navigation */}
+            {/* Desktop Navigation - Estrema Destra */}
             <div className="hidden md:flex items-center space-x-4">
               <a
                 href="/privacy"
-                className="text-slate-600 hover:text-primary dark:text-slate-400 dark:hover:text-primary transition-colors text-sm"
+                className="text-slate-600 hover:text-primary dark:text-slate-400 dark:hover:text-primary transition-colors text-sm whitespace-nowrap"
               >
                 Privacy Policy
               </a>
               <a
                 href="/terms"
-                className="text-slate-600 hover:text-primary dark:text-slate-400 dark:hover:text-primary transition-colors text-sm"
+                className="text-slate-600 hover:text-primary dark:text-slate-400 dark:hover:text-primary transition-colors text-sm whitespace-nowrap"
               >
                 Terms of Service
               </a>
             </div>
 
-            {/* Mobile Menu Button */}
+            {/* Mobile Menu Button - Estrema Destra */}
             <button
               onClick={toggleMobileMenu}
               className="md:hidden p-2 rounded-md text-slate-600 hover:text-primary dark:text-slate-400 dark:hover:text-primary transition-colors"

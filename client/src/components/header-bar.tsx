@@ -92,7 +92,7 @@ export default function HeaderBar({ onSearch, user }: HeaderBarProps) {
                 width="40"
                 height="40"
               />
-              <h1 className="text-sm xs:text-base sm:text-lg font-semibold text-slate-800 dark:text-white truncate max-w-[120px] xs:max-w-[160px] sm:max-w-full">
+              <h1 className="hidden md:block text-sm xs:text-base sm:text-lg font-semibold text-slate-800 dark:text-white truncate max-w-[120px] xs:max-w-[160px] sm:max-w-full">
                 Pannello di Controllo SGI
               </h1>
             </div>

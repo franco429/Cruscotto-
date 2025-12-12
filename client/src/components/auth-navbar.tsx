@@ -34,8 +34,8 @@ export default function AuthNavbar() {
 
   return (
     <header className="w-full border-b bg-white dark:bg-slate-900 sticky top-0 z-40">
-      <div className="container px-4 mx-auto flex items-center justify-between h-16">
-        <div className="flex items-center space-x-2">
+      <div className="px-3 xs:px-4 sm:px-6 lg:px-8 py-2 sm:py-3 flex items-center justify-between">
+        <div className="flex items-center space-x-2 sm:space-x-4">
           {/* Mobile Sidebar */}
           <div className="md:hidden">
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -100,31 +100,34 @@ export default function AuthNavbar() {
 
           <Link
             href="/auth"
-            className="flex items-center space-x-2 cursor-pointer"
+            className="flex items-center cursor-pointer"
           >
             <img
               src="/logo/logo sgi.jpg"
               alt="Logo SGI"
-              className="h-12 w-12 object-cover"
+              className="h-12 w-12 object-cover mr-2"
               width="48"
               height="48"
             />
-            <span className="font-bold text-lg lg:text-xl">
+            <span className="hidden md:inline font-bold text-lg lg:text-xl">
               Pannello di Controllo SGI
             </span>
           </Link>
         </div>
 
-        <div className="flex items-center space-x-4">
-          {/* Chi Siamo e Assistenza Link - Nascondi su mobile */}
-          <div className="hidden md:flex md:items-center md:space-x-4">
+        <div className="flex items-center space-x-1 xs:space-x-2 sm:space-x-3">
+          {/* Chi Siamo Link - Nascondi in mobile */}
+          <div className="hidden md:block">
             <Link href="/chi-siamo">
               <Button variant="ghost" className="flex items-center space-x-1">
                 <Info className="h-4 w-4" />
                 <span>Chi Siamo</span>
               </Button>
             </Link>
+          </div>
 
+          {/* Assistenza Link - Nascondi in mobile */}
+          <div className="hidden md:block">
             <Link href="/assistenza">
               <Button variant="ghost" className="flex items-center space-x-1">
                 <HelpCircle className="h-4 w-4" />
