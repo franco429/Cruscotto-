@@ -21,71 +21,54 @@ if (process.env.NODE_ENV === "production") {
 
 logger.info("Avvio server...");
 
-// #region agent log - DEBUG: Monitoraggio /tmp ogni 2 minuti
-const tmpMonitor = setInterval(async () => {
+// Monitoraggio /tmp ogni 5 minuti per prevenire overflow
+const tmpMonitor = setInterval(() => {
   try {
     const tmpDir = os.tmpdir();
-    let tmpFiles: string[] = [];
-    let totalSize = 0;
-    let excelAnalysisCount = 0;
-    let syncCount = 0;
-    let largestFiles: { name: string; size: number }[] = [];
+    const tmpFiles = fs.readdirSync(tmpDir).filter(f => 
+      f.startsWith('excel_analysis_') || f.startsWith('sync_')
+    );
     
-    try {
-      const allFiles = fs.readdirSync(tmpDir);
-      tmpFiles = allFiles.filter(f => 
-        f.startsWith('excel_analysis_') || f.startsWith('sync_')
-      );
+    let totalSize = 0;
+    for (const file of tmpFiles) {
+      try {
+        const stat = fs.statSync(path.join(tmpDir, file));
+        totalSize += stat.size;
+      } catch {}
+    }
+    
+    const totalSizeMB = Math.round(totalSize / 1024 / 1024 * 100) / 100;
+    
+    // Log solo se ci sono file temporanei (per ridurre rumore nei log)
+    if (tmpFiles.length > 0) {
+      logger.info("TMP monitor check", {
+        tmpFileCount: tmpFiles.length,
+        tmpTotalSizeMB: totalSizeMB
+      });
+    }
+    
+    // Warning se /tmp si sta riempiendo (>500MB)
+    if (totalSizeMB > 500) {
+      logger.warn("High /tmp usage detected - cleaning orphan files", {
+        tmpFileCount: tmpFiles.length,
+        tmpTotalSizeMB: totalSizeMB
+      });
       
+      // Cleanup automatico file orfani vecchi di più di 10 minuti
+      const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
       for (const file of tmpFiles) {
         try {
-          const stat = fs.statSync(path.join(tmpDir, file));
-          totalSize += stat.size;
-          if (file.startsWith('excel_analysis_')) excelAnalysisCount++;
-          if (file.startsWith('sync_')) syncCount++;
-          largestFiles.push({ name: file, size: stat.size });
+          const filePath = path.join(tmpDir, file);
+          const stat = fs.statSync(filePath);
+          if (stat.mtimeMs < tenMinutesAgo) {
+            fs.unlinkSync(filePath);
+            logger.info("Cleaned orphan temp file", { file });
+          }
         } catch {}
       }
-      
-      largestFiles.sort((a, b) => b.size - a.size);
-    } catch {}
-    
-    // Log usando il logger interno (visibile nei log di Render)
-    logger.info(`[TMP_DEBUG] PERIODIC_TMP_CHECK`, {
-      location: 'index.ts:tmpMonitor',
-      action: 'PERIODIC_TMP_CHECK',
-      tmpDir,
-      tmpFileCount: tmpFiles.length,
-      excelAnalysisCount,
-      syncCount,
-      tmpTotalSizeMB: Math.round(totalSize / 1024 / 1024 * 100) / 100,
-      largestFiles: largestFiles.slice(0, 5).map(f => ({ name: f.name, sizeMB: Math.round(f.size / 1024 / 1024 * 100) / 100 })),
-      hypothesisId: 'B'
-    });
-    
-    // Anche verso server locale per debug in development
-    fetch('http://127.0.0.1:7242/ingest/4fef5989-df30-409c-a404-49ccccbe3a1e', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        location: 'index.ts:tmpMonitor',
-        message: 'TMP_MONITOR: Periodic check',
-        data: {
-          action: 'PERIODIC_TMP_CHECK',
-          tmpDir,
-          tmpFileCount: tmpFiles.length,
-          excelAnalysisCount,
-          syncCount,
-          tmpTotalSizeMB: Math.round(totalSize / 1024 / 1024 * 100) / 100,
-          largestFiles: largestFiles.slice(0, 5).map(f => ({ name: f.name, sizeMB: Math.round(f.size / 1024 / 1024 * 100) / 100 }))
-        },
-        timestamp: Date.now(),
-        sessionId: 'debug-session'
-      })
-    }).catch(() => {});
+    }
   } catch {}
-}, 2 * 60 * 1000); // Ogni 2 minuti
-// #endregion
+}, 5 * 60 * 1000); // Ogni 5 minuti
 
 // Monitoraggio memoria per prevenire out of memory
 const memoryMonitor = setInterval(() => {
@@ -121,7 +104,8 @@ process.on('SIGTERM', () => {
 
 process.on('SIGINT', () => {
   clearInterval(memoryMonitor);
-  logger.info("Memory monitor stopped");
+  clearInterval(tmpMonitor);
+  logger.info("Memory and TMP monitors stopped");
 });
 
 const app = express();
@@ -266,6 +250,28 @@ app.use((req, res, next) => {
 
 (async () => {
   try {
+    // Cleanup file temporanei orfani all'avvio (prevenzione overflow /tmp)
+    try {
+      const tmpDir = os.tmpdir();
+      const orphanFiles = fs.readdirSync(tmpDir).filter(f => 
+        f.startsWith('excel_analysis_') || f.startsWith('sync_')
+      );
+      
+      if (orphanFiles.length > 0) {
+        logger.info(`Cleaning ${orphanFiles.length} orphan temp files from previous run`);
+        for (const file of orphanFiles) {
+          try {
+            fs.unlinkSync(path.join(tmpDir, file));
+          } catch {}
+        }
+        logger.info("Orphan temp files cleanup completed");
+      }
+    } catch (cleanupError) {
+      logger.warn("Failed to cleanup orphan temp files", {
+        error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError)
+      });
+    }
+
     logger.info("Connessione a MongoDB...");
     await mongoStorage.connect();
 
