@@ -72,8 +72,8 @@ export default function Footer() {
 
   return (
     <footer className="bg-slate-50 dark:bg-slate-900 border-t mt-auto">
-      <div className="container py-6 xs:py-8 sm:py-10 md:py-12 px-3 xs:px-4 sm:px-6 md:px-8 2xl:max-w-[85%] 2xl:px-16 mx-auto">
-        <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 2xl:gap-16">
+      <div className="container py-6 xs:py-8 sm:py-10 md:py-12 px-3 xs:px-4 sm:px-6 md:px-8 lg:max-w-[92%] lg:px-10 xl:max-w-[88%] xl:px-12 2xl:max-w-[85%] 2xl:px-16 mx-auto">
+        <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 lg:gap-10 xl:gap-12 2xl:gap-16">
           {/* Company Info */}
           <div className="space-y-3 sm:space-y-4">
             <div className="flex items-center space-x-2">
