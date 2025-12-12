@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { apiRequest } from "../lib/queryClient";
 
 export interface SyncProgress {
   status: 'idle' | 'pending' | 'syncing' | 'completed' | 'error';
@@ -36,164 +37,110 @@ const initialProgress: SyncProgress = {
   totalBatches: 0,
 };
 
+// Polling interval in ms (veloce per aggiornamenti real-time)
+const POLLING_INTERVAL = 1000;
+
 export function useSyncSSE(options: UseSyncSSEOptions = {}): UseSyncSSEReturn {
   const { onProgress, onCompleted, onError, autoConnect = false } = options;
   
   const [progress, setProgress] = useState<SyncProgress>(initialProgress);
   const [isConnected, setIsConnected] = useState(false);
   
-  const eventSourceRef = useRef<EventSource | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const reconnectAttemptsRef = useRef(0);
-  const maxReconnectAttempts = 5;
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isSyncingRef = useRef(false);
 
   // Cleanup function
   const cleanup = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
     }
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-    }
+    isSyncingRef.current = false;
     setIsConnected(false);
   }, []);
 
-  // Connect to SSE stream
-  const connect = useCallback(() => {
-    // Cleanup existing connection
-    cleanup();
+  // Polling per stato sincronizzazione (fallback robusto invece di SSE)
+  const startPolling = useCallback(() => {
+    // Evita polling multipli
+    if (pollingIntervalRef.current) {
+      return;
+    }
 
-    const eventSource = new EventSource('/api/sync/stream', {
-      withCredentials: true,
-    });
+    setIsConnected(true);
+    console.log('[Sync] Started polling for sync status');
 
-    eventSourceRef.current = eventSource;
-
-    eventSource.onopen = () => {
-      setIsConnected(true);
-      reconnectAttemptsRef.current = 0;
-      console.log('[SSE] Connected to sync stream');
-    };
-
-    eventSource.onerror = (error) => {
-      console.error('[SSE] Connection error:', error);
-      setIsConnected(false);
-      
-      // Auto-reconnect with exponential backoff
-      if (reconnectAttemptsRef.current < maxReconnectAttempts) {
-        const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
-        console.log(`[SSE] Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current + 1}/${maxReconnectAttempts})`);
-        
-        reconnectTimeoutRef.current = setTimeout(() => {
-          reconnectAttemptsRef.current++;
-          connect();
-        }, delay);
-      } else {
-        console.log('[SSE] Max reconnect attempts reached');
-        setProgress(prev => ({
-          ...prev,
-          status: 'error',
-          error: 'Connessione persa. Riprova a sincronizzare.',
-        }));
-        onError?.('Connessione al server persa');
-      }
-    };
-
-    // Handle status event
-    eventSource.addEventListener('status', (event) => {
+    const pollStatus = async () => {
       try {
-        const data = JSON.parse(event.data);
-        console.log('[SSE] Status:', data);
-        if (data.status === 'idle') {
-          setProgress(initialProgress);
+        const response = await apiRequest('GET', '/api/sync/status');
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Aggiorna lo stato del progresso
+          if (isSyncingRef.current) {
+            const newProgress: SyncProgress = {
+              status: data.status === 'synced' ? 'completed' : 'syncing',
+              processed: data.documentCount || 0,
+              total: data.documentCount || 0,
+              currentBatch: 0,
+              totalBatches: 0,
+              duration: 0,
+            };
+
+            setProgress(newProgress);
+            
+            // Se ci sono nuovi documenti, notifica il progresso
+            if (data.recentDocumentCount > 0) {
+              onProgress?.(newProgress);
+            }
+
+            // Se la sync è completata (nessun documento recente per un po')
+            if (data.status === 'synced' && data.recentDocumentCount === 0 && data.documentCount > 0) {
+              // Aspetta ancora un po' per confermare che sia finita
+              setTimeout(() => {
+                if (isSyncingRef.current) {
+                  const completedProgress: SyncProgress = {
+                    status: 'completed',
+                    processed: data.documentCount,
+                    total: data.documentCount,
+                    currentBatch: 0,
+                    totalBatches: 0,
+                    success: true,
+                    failed: 0,
+                  };
+                  
+                  setProgress(completedProgress);
+                  onCompleted?.(completedProgress);
+                  cleanup();
+                }
+              }, 3000); // Attendi 3 secondi di conferma
+            }
+          }
         }
-      } catch (e) {
-        console.error('[SSE] Failed to parse status:', e);
+      } catch (error) {
+        console.error('[Sync] Polling error:', error);
+        // Non fermare il polling per errori temporanei
       }
-    });
+    };
 
-    // Handle progress event
-    eventSource.addEventListener('progress', (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('[SSE] Progress:', data);
-        
-        const newProgress: SyncProgress = {
-          status: data.status || 'syncing',
-          processed: data.processed || 0,
-          total: data.total || 0,
-          currentBatch: data.currentBatch || 0,
-          totalBatches: data.totalBatches || 0,
-          duration: data.duration,
-        };
-        
-        setProgress(newProgress);
-        onProgress?.(newProgress);
-      } catch (e) {
-        console.error('[SSE] Failed to parse progress:', e);
-      }
-    });
+    // Prima chiamata immediata
+    pollStatus();
 
-    // Handle completed event
-    eventSource.addEventListener('completed', (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('[SSE] Completed:', data);
-        
-        const completedProgress: SyncProgress = {
-          status: 'completed',
-          processed: data.processed || 0,
-          total: data.processed + (data.failed || 0),
-          currentBatch: 0,
-          totalBatches: 0,
-          duration: data.duration,
-          success: data.success,
-          failed: data.failed,
-        };
-        
-        setProgress(completedProgress);
-        onCompleted?.(completedProgress);
-      } catch (e) {
-        console.error('[SSE] Failed to parse completed:', e);
-      }
-    });
+    // Poi polling regolare
+    pollingIntervalRef.current = setInterval(pollStatus, POLLING_INTERVAL);
+  }, [onProgress, onCompleted, cleanup]);
 
-    // Handle error event from server
-    eventSource.addEventListener('error', (event) => {
-      try {
-        const data = JSON.parse((event as MessageEvent).data);
-        console.error('[SSE] Server error:', data);
-        
-        const errorProgress: SyncProgress = {
-          ...initialProgress,
-          status: 'error',
-          error: data.message || 'Errore durante la sincronizzazione',
-        };
-        
-        setProgress(errorProgress);
-        onError?.(data.message || 'Errore durante la sincronizzazione');
-      } catch (e) {
-        // This might be a connection error, not a server error event
-        console.error('[SSE] Error event handling failed:', e);
-      }
-    });
+  // Connect (alias per startPolling per compatibilità)
+  const connect = useCallback(() => {
+    startPolling();
+  }, [startPolling]);
 
-    // Handle ping (keep-alive)
-    eventSource.addEventListener('ping', () => {
-      // Just a keep-alive, no action needed
-    });
-
-    return eventSource;
-  }, [cleanup, onProgress, onCompleted, onError]);
-
-  // Disconnect from SSE stream
+  // Disconnect
   const disconnect = useCallback(() => {
     cleanup();
   }, [cleanup]);
 
-  // Start sync request
+  // Start sync request - usa apiRequest per includere automaticamente il token CSRF
   const startSync = useCallback(async (): Promise<{ success: boolean; syncId?: string; error?: string }> => {
     try {
       // Set pending state
@@ -202,19 +149,8 @@ export function useSyncSSE(options: UseSyncSSEOptions = {}): UseSyncSSEReturn {
         status: 'pending',
       });
 
-      // Connect to SSE if not already connected
-      if (!eventSourceRef.current || eventSourceRef.current.readyState !== EventSource.OPEN) {
-        connect();
-      }
-
-      // Make sync request
-      const response = await fetch('/api/sync', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      // Usa apiRequest che include automaticamente il token CSRF
+      const response = await apiRequest('POST', '/api/sync');
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: response.statusText }));
@@ -239,6 +175,10 @@ export function useSyncSSE(options: UseSyncSSEOptions = {}): UseSyncSSEReturn {
         status: 'syncing',
       }));
 
+      // Avvia il polling per monitorare il progresso
+      isSyncingRef.current = true;
+      startPolling();
+
       return { success: true, syncId: data.syncId };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Errore di rete';
@@ -252,12 +192,13 @@ export function useSyncSSE(options: UseSyncSSEOptions = {}): UseSyncSSEReturn {
       onError?.(errorMessage);
       return { success: false, error: errorMessage };
     }
-  }, [connect, onError]);
+  }, [startPolling, onError]);
 
   // Reset progress state
   const reset = useCallback(() => {
+    cleanup();
     setProgress(initialProgress);
-  }, []);
+  }, [cleanup]);
 
   // Auto-connect on mount if specified
   useEffect(() => {

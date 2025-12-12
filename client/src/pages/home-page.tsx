@@ -57,6 +57,9 @@ export default function HomePage() {
     return () => clearInterval(interval);
   }, []);
 
+  // Stato per tracciare se la sincronizzazione è attiva (per refetch automatico)
+  const [isSyncActive, setIsSyncActive] = useState(false);
+
   /* -----------------------------------------------------------
    * QUERY – documenti attivi con gestione errori robusta
    * --------------------------------------------------------- */
@@ -72,8 +75,8 @@ export default function HomePage() {
     onError: (error) => {
       console.error(" Errore caricamento documenti:", error);
     },
-    // Aumenta il refetch interval se l'utente arriva dalla connessione Drive
-    refetchInterval: isFromGoogleDriveConnection ? 2000 : false, // Refetch ogni 2 secondi per essere più veloci
+    // Refetch automatico durante sincronizzazione o connessione Drive
+    refetchInterval: (isSyncActive || isFromGoogleDriveConnection) ? 1500 : false,
     refetchIntervalInBackground: false,
   });
 
@@ -102,16 +105,20 @@ export default function HomePage() {
   }, [isFromGoogleDriveConnection, documents]);
 
   /* -----------------------------------------------------------
-   * SYNC SSE - Sincronizzazione in tempo reale con Server-Sent Events
+   * SYNC - Sincronizzazione con polling automatico
    * --------------------------------------------------------- */
   const handleSyncProgress = useCallback((progress: SyncProgressType) => {
-    // Refetch documenti durante la sincronizzazione per mostrare aggiornamenti in tempo reale
-    if (progress.processed > 0 && progress.processed % 10 === 0) {
-      refetch();
-    }
+    // Attiva refetch automatico durante la sincronizzazione
+    setIsSyncActive(true);
+    
+    // Refetch esplicito anche ogni volta che c'è progresso
+    refetch();
   }, [refetch]);
 
   const handleSyncCompleted = useCallback((result: SyncProgressType) => {
+    // Disattiva refetch automatico
+    setIsSyncActive(false);
+    
     // Refetch finale dei documenti
     refetch();
     
@@ -124,6 +131,9 @@ export default function HomePage() {
   }, [refetch]);
 
   const handleSyncError = useCallback((error: string) => {
+    // Disattiva refetch automatico in caso di errore
+    setIsSyncActive(false);
+    
     // Mostra messaggio di errore specifico
     if (error.includes("403") || error.includes("Forbidden")) {
       toast.error("Accesso negato. Verifica di essere loggato come amministratore.");
@@ -138,13 +148,25 @@ export default function HomePage() {
     progress: syncProgress, 
     startSync, 
     reset: resetSync,
-    isConnected: isSseConnected 
   } = useSyncSSE({
     onProgress: handleSyncProgress,
     onCompleted: handleSyncCompleted,
     onError: handleSyncError,
-    autoConnect: false, // Connessione attivata solo quando si avvia la sync
+    autoConnect: false,
   });
+
+  // Attiva refetch automatico quando la sincronizzazione è in corso
+  useEffect(() => {
+    if (syncProgress.status === 'syncing' || syncProgress.status === 'pending') {
+      setIsSyncActive(true);
+    } else if (syncProgress.status === 'completed' || syncProgress.status === 'error' || syncProgress.status === 'idle') {
+      // Ritarda la disattivazione per catturare gli ultimi documenti
+      const timer = setTimeout(() => {
+        setIsSyncActive(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [syncProgress.status]);
 
  
   
@@ -252,9 +274,13 @@ export default function HomePage() {
   };
 
   const handleSync = useCallback(async () => {
+    // Attiva immediatamente il refetch automatico
+    setIsSyncActive(true);
+    
     const result = await startSync();
     if (!result.success) {
       console.error("Sync failed to start:", result.error);
+      setIsSyncActive(false);
     }
   }, [startSync]);
 

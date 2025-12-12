@@ -41,6 +41,7 @@ export default function ClientsPage() {
   const [selectedFolder, setSelectedFolder] = useState<{id: string, name: string} | null>(null);
   const [manualUrl, setManualUrl] = useState("");
   const [isValidatingUrl, setIsValidatingUrl] = useState(false);
+  const [isWaitingForAuth, setIsWaitingForAuth] = useState(false);
 
   const {
     data: clients,
@@ -49,6 +50,8 @@ export default function ClientsPage() {
     refetch: refetchClients,
   } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
+    // Refetch ogni 2 secondi se stiamo aspettando l'autorizzazione OAuth
+    refetchInterval: isWaitingForAuth ? 2000 : false,
   });
 
   // Trova il client dell'utente corrente
@@ -236,28 +239,51 @@ export default function ClientsPage() {
         return;
       }
 
+      // Attiva il polling automatico per aggiornare lo stato
+      setIsWaitingForAuth(true);
+
       // Polling per verificare quando il popup viene chiuso
-      const timer = setInterval(() => {
+      const timer = setInterval(async () => {
         try {
           if (popup.closed) {
             clearInterval(timer);
             
-            toast({
-              title: "Autorizzazione completata!",
-              description: "Google Drive connesso con successo. Ora puoi sincronizzare i documenti.",
-            });
-
-            // Ricarica i dati del client
-            queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+            // Refetch immediato dei dati del client
+            await refetchClients();
+            
+            // Attendi un momento per permettere al backend di processare
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Refetch di nuovo per assicurarsi di avere i dati aggiornati
+            const result = await refetchClients();
+            
+            // Verifica se ora siamo connessi
+            const updatedClient = result.data?.[0];
+            if (updatedClient?.google?.refreshToken) {
+              toast({
+                title: "Autorizzazione completata!",
+                description: "Google Drive connesso con successo. Ora puoi sincronizzare i documenti.",
+              });
+              
+              // Ferma il polling automatico
+              setIsWaitingForAuth(false);
+            } else {
+              // Continua il polling per qualche secondo
+              setTimeout(() => {
+                refetchClients();
+                setIsWaitingForAuth(false);
+              }, 3000);
+            }
           }
         } catch (error) {
           // Ignora errori di accesso cross-origin
         }
-      }, 1000);
+      }, 500); // Polling più veloce (500ms)
 
       // Timeout di sicurezza dopo 5 minuti
       setTimeout(() => {
         clearInterval(timer);
+        setIsWaitingForAuth(false);
         try {
           if (!popup.closed) {
             popup.close();
@@ -269,6 +295,7 @@ export default function ClientsPage() {
 
     } catch (error) {
       console.error("Errore autorizzazione Google Drive:", error);
+      setIsWaitingForAuth(false);
       toast({
         title: "Errore Autorizzazione",
         description: "Impossibile avviare l'autorizzazione Google Drive",
