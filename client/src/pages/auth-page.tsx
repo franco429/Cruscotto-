@@ -30,7 +30,6 @@ import {
 import AuthNavbar from "../components/auth-navbar";
 import Footer from "../components/footer";
 import LoadingSpinner from "../components/loading-spinner";
-import SimpleFileUpload from "../components/simple-file-upload";
 import MFALoginVerify from "../components/mfa-login-verify";
 import {
   Form,
@@ -65,7 +64,6 @@ const registerAdminSchema = z
       .string()
       .min(8, "La password deve contenere almeno 8 caratteri"),
     clientName: z.string().min(2, "Il nome dell'azienda è obbligatorio"),
-    localFiles: z.any().optional(),
     companyCode: z.string().min(1, "Il codice aziendale è obbligatorio"),
     acceptTerms: z.boolean().refine((val) => val, {
       message: "Devi accettare i termini e le condizioni",
@@ -137,20 +135,43 @@ export default function AuthPage() {
     defaultValues: { email: "", password: "", remember: false },
   });
 
-  const registerForm = useForm<
-    RegisterAdminFormValues & { localFiles?: FileList }
-  >({
+  const registerForm = useForm<RegisterAdminFormValues>({
     resolver: zodResolver(registerAdminSchema),
     defaultValues: {
       email: "",
       password: "",
       confirmPassword: "",
       clientName: "",
-      localFiles: undefined,
       companyCode: "",
       acceptTerms: false,
     },
   });
+
+  // Carica le credenziali salvate al caricamento della pagina
+  useEffect(() => {
+    const savedCredentials = localStorage.getItem("rememberedCredentials");
+    if (savedCredentials) {
+      try {
+        const { email, password } = JSON.parse(atob(savedCredentials));
+        loginForm.setValue("email", email);
+        loginForm.setValue("password", password);
+        loginForm.setValue("remember", true);
+      } catch (error) {
+        // Se c'è un errore nel parsing, rimuovi le credenziali salvate
+        localStorage.removeItem("rememberedCredentials");
+      }
+    }
+  }, [loginForm]);
+
+  // Monitora il cambiamento della checkbox "Ricordami" per cancellare le credenziali se deselezionata
+  useEffect(() => {
+    const subscription = loginForm.watch((value, { name }) => {
+      if (name === "remember" && value.remember === false) {
+        localStorage.removeItem("rememberedCredentials");
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [loginForm]);
 
   const onLoginSubmit = (values: LoginFormValues) => {
     if (isSubmittingRef.current) {
@@ -159,6 +180,19 @@ export default function AuthPage() {
     
     isSubmittingRef.current = true;
     
+    // Gestione delle credenziali "Ricordami"
+    if (values.remember) {
+      // Salva le credenziali nel localStorage (codificate in base64)
+      const credentials = JSON.stringify({
+        email: values.email,
+        password: values.password,
+      });
+      localStorage.setItem("rememberedCredentials", btoa(credentials));
+    } else {
+      // Rimuovi le credenziali salvate se "Ricordami" non è selezionato
+      localStorage.removeItem("rememberedCredentials");
+    }
+    
     loginMutation.mutate(values, {
       onSettled: () => {
         //  Reset del flag quando la richiesta è completata (successo o errore)
@@ -166,24 +200,30 @@ export default function AuthPage() {
       }
     });
   };
-  const onRegisterSubmit = (
-    values: RegisterAdminFormValues & { localFiles?: FileList }
-  ) => {
-    // Se ci sono file locali, prepara FormData
-    if (values.localFiles && values.localFiles.length > 0) {
-      const formData = new FormData();
-      Object.entries(values).forEach(([key, val]) => {
-        if (key === "localFiles" && val instanceof FileList) {
-          Array.from(val).forEach((file) => {
-            formData.append("localFiles", file);
-          });
-        } else {
-          formData.append(key, val as any);
-        }
-      });
-      registerMutation.mutate(formData as any);
-    } else {
-      registerMutation.mutate(values as any);
+  
+  const onRegisterSubmit = (values: RegisterAdminFormValues) => {
+    registerMutation.mutate(values as any);
+  };
+
+  // Gestione del tasto Invio per il form di login
+  const handleLoginKeyDown = async (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const isValid = await loginForm.trigger(); // Valida tutti i campi
+      if (isValid) {
+        loginForm.handleSubmit(onLoginSubmit)();
+      }
+    }
+  };
+
+  // Gestione del tasto Invio per il form di registrazione
+  const handleRegisterKeyDown = async (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const isValid = await registerForm.trigger(); // Valida tutti i campi
+      if (isValid) {
+        registerForm.handleSubmit(onRegisterSubmit)();
+      }
     }
   };
 
@@ -252,6 +292,7 @@ export default function AuthPage() {
                                   placeholder="tua@email.com"
                                   className="pl-10"
                                   {...field}
+                                  onKeyDown={handleLoginKeyDown}
                                 />
                               </div>
                             </FormControl>
@@ -275,6 +316,7 @@ export default function AuthPage() {
                                   placeholder="••••••••"
                                   className="pl-10 pr-10"
                                   {...field}
+                                  onKeyDown={handleLoginKeyDown}
                                 />
                                 <button
                                   type="button"
@@ -306,6 +348,7 @@ export default function AuthPage() {
                                 <Checkbox
                                   checked={field.value}
                                   onCheckedChange={field.onChange}
+                                  onKeyDown={handleLoginKeyDown}
                                 />
                               </FormControl>
                               <FormLabel className="text-sm font-normal cursor-pointer">
@@ -357,6 +400,7 @@ export default function AuthPage() {
                                   placeholder="admin@tua-azienda.com"
                                   className="pl-10"
                                   {...field}
+                                  onKeyDown={handleRegisterKeyDown}
                                 />
                               </div>
                             </FormControl>
@@ -382,6 +426,7 @@ export default function AuthPage() {
                                   placeholder="Minimo 8 caratteri con maiuscola, minuscola, numero e carattere speciale"
                                   className="pl-10 pr-10"
                                   {...field}
+                                  onKeyDown={handleRegisterKeyDown}
                                 />
                                 <button
                                   type="button"
@@ -425,6 +470,7 @@ export default function AuthPage() {
                                   placeholder="Ripeti la password"
                                   className="pl-10 pr-10"
                                   {...field}
+                                  onKeyDown={handleRegisterKeyDown}
                                 />
                                 <button
                                   type="button"
@@ -459,6 +505,7 @@ export default function AuthPage() {
                                   placeholder="Es: Rossi S.r.l."
                                   className="pl-10"
                                   {...field}
+                                  onKeyDown={handleRegisterKeyDown}
                                 />
                               </div>
                             </FormControl>
@@ -466,37 +513,7 @@ export default function AuthPage() {
                           </FormItem>
                         )}
                       />
-                      {/*  Caricamento cartella locale semplice */}
-                      <FormField
-                        control={registerForm.control}
-                        name="localFiles"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>
-                              Carica Documenti per Configurazione Iniziale (opzionale)
-                            </FormLabel>
-                            <FormControl>
-                              <SimpleFileUpload
-                                onFilesSelected={(files: any[]) => {
-                                  // Converti i file in FileList per compatibilità
-                                  const dataTransfer = new DataTransfer();
-                                  files.forEach((file: any) => dataTransfer.items.add(file));
-                                  field.onChange(dataTransfer.files);
-                                }}
-                                accept={[".xlsx", ".xls", ".docx", ".pdf", ".ods", ".csv"]}
-                                maxFiles={1000}
-                                disabled={registerMutation.isPending}
-                              />
-                            </FormControl>
-                            <FormDescription>
-                              📋 <strong>WORKFLOW:</strong> I documenti saranno caricati sul server. 
-                              Dopo la registrazione, dalla dashboard potrai <strong>"Aggiorna documenti locali"</strong> 
-                              e installare il <strong>Local Opener</strong> per aprire i file direttamente dal tuo Google Drive locale.
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+
                       <FormField
                         control={registerForm.control}
                         name="companyCode"
@@ -510,6 +527,7 @@ export default function AuthPage() {
                                   placeholder="Inserisci il codice fornito"
                                   className="pl-10"
                                   {...field}
+                                  onKeyDown={handleRegisterKeyDown}
                                 />
                               </div>
                             </FormControl>
@@ -529,6 +547,7 @@ export default function AuthPage() {
                               <Checkbox
                                 checked={field.value}
                                 onCheckedChange={field.onChange}
+                                onKeyDown={handleRegisterKeyDown}
                               />
                             </FormControl>
                             <div className="space-y-1 leading-none">
