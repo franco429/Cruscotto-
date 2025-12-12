@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useAuth } from "../hooks/use-auth";
-import { useMutation } from "@tanstack/react-query";
 import { useQueryWithErrorHandling } from "../hooks/use-query-with-error-handling";
+import { useSyncSSE, SyncProgress as SyncProgressType } from "../hooks/use-sync-sse";
 import { DocumentDocument as Document } from "../../../shared-types/schema";
 import HeaderBar from "../components/header-bar";
 import DocumentTable from "../components/document-table";
@@ -16,7 +16,6 @@ import { Loader2 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Link } from "wouter";
 import { toast } from "react-hot-toast";
-import { apiRequest } from "../lib/queryClient";
 
 export default function HomePage() {
   /* -----------------------------------------------------------
@@ -25,20 +24,6 @@ export default function HomePage() {
   const [documentToPreview, setDocumentToPreview] = useState<Document | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [syncProgress, setSyncProgress] = useState<{
-    isSyncing: boolean;
-    processed: number;
-    total: number;
-    currentBatch: number;
-    totalBatches: number;
-    error?: string;
-  }>({
-    isSyncing: false,
-    processed: 0,
-    total: 0,
-    currentBatch: 0,
-    totalBatches: 0
-  });
   const [isFromGoogleDriveConnection, setIsFromGoogleDriveConnection] = useState(false);
 
   const { user } = useAuth();
@@ -117,70 +102,48 @@ export default function HomePage() {
   }, [isFromGoogleDriveConnection, documents]);
 
   /* -----------------------------------------------------------
-   * MUTATION – sync con Google Drive ottimizzato
+   * SYNC SSE - Sincronizzazione in tempo reale con Server-Sent Events
    * --------------------------------------------------------- */
-  const syncMutation = useMutation({
-    mutationFn: async () => {
-      setSyncProgress(prev => ({ ...prev, isSyncing: true, error: undefined }));
-      
-      // Usa apiRequest per la chiamata di sync
-      const response = await apiRequest("POST", "/api/sync");
-      
-      if (!response.ok) {
-        // Ottieni il messaggio di errore dal backend
-        let errorMessage = "Sync failed";
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || `HTTP ${response.status}: ${response.statusText}`;
-        } catch (e) {
-          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-        }
-        
-        console.error(" Sync error details:", {
-          status: response.status,
-          statusText: response.statusText,
-          message: errorMessage
-        });
-        
-        throw new Error(errorMessage);
-      }
-      
-      const result = await response.json();
-      
-      // Simula il progresso della sincronizzazione
-      // In futuro si può implementare WebSocket per aggiornamenti real-time
-      simulateSyncProgress();
-      
-      return result;
-    },
-    onSuccess: () => {
-      // Refetch documents after successful sync
-      setTimeout(() => {
-        refetch();
-        setSyncProgress(prev => ({ ...prev, isSyncing: false }));
-        toast.success("Sincronizzazione completata con successo!");
-      }, 2000); // Simula il tempo di completamento
-    },
-    onError: (error) => {
-      const errorMessage = error instanceof Error ? error.message : "Errore durante la sincronizzazione";
-      
-      setSyncProgress(prev => ({ 
-        ...prev, 
-        isSyncing: false, 
-        error: errorMessage
-      }));
-      
-      // Mostra messaggio di errore specifico
-      if (errorMessage.includes("403") || errorMessage.includes("Forbidden")) {
-        toast.error("Accesso negato. Verifica di essere loggato come amministratore.");
-      } else if (errorMessage.includes("401") || errorMessage.includes("Non autenticato")) {
-        toast.error("Sessione scaduta. Effettua nuovamente l'accesso.");
-      } else {
-        toast.error(errorMessage);
-      }
-      
-      console.error(" Errore sync:", error);
-    },
+  const handleSyncProgress = useCallback((progress: SyncProgressType) => {
+    // Refetch documenti durante la sincronizzazione per mostrare aggiornamenti in tempo reale
+    if (progress.processed > 0 && progress.processed % 10 === 0) {
+      refetch();
+    }
+  }, [refetch]);
+
+  const handleSyncCompleted = useCallback((result: SyncProgressType) => {
+    // Refetch finale dei documenti
+    refetch();
+    
+    // Mostra messaggio di completamento
+    if (result.success) {
+      toast.success(`Sincronizzazione completata! ${result.processed} documenti sincronizzati.`);
+    } else if (result.failed && result.failed > 0) {
+      toast.success(`Sincronizzazione completata con ${result.failed} errori. ${result.processed} documenti sincronizzati.`);
+    }
+  }, [refetch]);
+
+  const handleSyncError = useCallback((error: string) => {
+    // Mostra messaggio di errore specifico
+    if (error.includes("403") || error.includes("Forbidden")) {
+      toast.error("Accesso negato. Verifica di essere loggato come amministratore.");
+    } else if (error.includes("401") || error.includes("Non autenticato")) {
+      toast.error("Sessione scaduta. Effettua nuovamente l'accesso.");
+    } else {
+      toast.error(error);
+    }
+  }, []);
+
+  const { 
+    progress: syncProgress, 
+    startSync, 
+    reset: resetSync,
+    isConnected: isSseConnected 
+  } = useSyncSSE({
+    onProgress: handleSyncProgress,
+    onCompleted: handleSyncCompleted,
+    onError: handleSyncError,
+    autoConnect: false, // Connessione attivata solo quando si avvia la sync
   });
 
  
@@ -231,44 +194,11 @@ export default function HomePage() {
     }));
   }, [obsoleteDocs]);
   
-  // Simula il progresso della sincronizzazione
-  const simulateSyncProgress = () => {
-    const totalFiles = documents?.length || 100;
-    const totalBatches = Math.ceil(totalFiles / 20); // 20 file per batch
-    
-    setSyncProgress(prev => ({
-      ...prev,
-      total: totalFiles,
-      totalBatches,
-      processed: 0,
-      currentBatch: 1
-    }));
-
-    let processed = 0;
-    let currentBatch = 1;
-    
-    const interval = setInterval(() => {
-      processed += Math.floor(Math.random() * 10) + 5; // 5-15 file per volta
-      
-      if (processed >= totalFiles) {
-        processed = totalFiles;
-        clearInterval(interval);
-      }
-      
-      currentBatch = Math.ceil(processed / 20);
-      
-      setSyncProgress(prev => ({
-        ...prev,
-        processed,
-        currentBatch
-      }));
-    }, 100); // Ridotto da 200ms a 100ms per progresso più veloce
-  };
-
-  const handleRetrySync = () => {
-    setSyncProgress(prev => ({ ...prev, error: undefined }));
-    syncMutation.mutate();
-  };
+  // Handler per retry della sincronizzazione
+  const handleRetrySync = useCallback(async () => {
+    resetSync();
+    await startSync();
+  }, [resetSync, startSync]);
 
   /* -----------------------------------------------------------
    * FILTER – lista principale
@@ -321,9 +251,12 @@ export default function HomePage() {
     setDocumentToPreview(doc);
   };
 
-  const handleSync = () => {
-    syncMutation.mutate();
-  };
+  const handleSync = useCallback(async () => {
+    const result = await startSync();
+    if (!result.success) {
+      console.error("Sync failed to start:", result.error);
+    }
+  }, [startSync]);
 
   /* -----------------------------------------------------------
    * RENDER
@@ -363,15 +296,15 @@ export default function HomePage() {
           onFilterChange={setStatusFilter}
           filterValue={statusFilter}
           onSync={handleSync}
-          isSyncing={syncMutation.isPending || syncProgress.isSyncing}
+          isSyncing={syncProgress.status === 'syncing' || syncProgress.status === 'pending'}
           isAdmin={user?.role === "admin"}
           driveFolderId={driveFolderId || ""}
           onSyncComplete={refetch}
         />
 
-        {/* Sync Progress Component */}
+        {/* Sync Progress Component - Real-time SSE updates */}
         <SyncProgress
-          isSyncing={syncProgress.isSyncing}
+          isSyncing={syncProgress.status === 'syncing' || syncProgress.status === 'pending'}
           processed={syncProgress.processed}
           total={syncProgress.total}
           currentBatch={syncProgress.currentBatch}

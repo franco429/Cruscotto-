@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useAuth } from "../hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useSyncSSE, SyncProgress as SyncProgressType } from "../hooks/use-sync-sse";
 import { ClientDocument as Client } from "../../../shared-types/client";
 import { useToast } from "../hooks/use-toast";
 import HeaderBar from "../components/header-bar";
 import Footer from "../components/footer";
+import SyncProgress from "../components/sync-progress";
 import {
   Card,
   CardContent,
@@ -81,33 +83,46 @@ export default function ClientsPage() {
     },
   });
 
-  // Mutation per la sincronizzazione manuale
-  const syncMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/sync", {
-        userId: user?.legacyId
-      });
-      return await res.json();
-    },
-    onSuccess: () => {
+  // SSE per la sincronizzazione in tempo reale
+  const handleSyncCompleted = useCallback((result: SyncProgressType) => {
+    setIsSyncing(false);
+    
+    if (result.success) {
       toast({
         title: "Sincronizzazione completata",
-        description: "I documenti sono stati sincronizzati con successo",
+        description: `${result.processed} documenti sincronizzati con successo`,
       });
+      
+      // Redirect alla home dopo il completamento
       setTimeout(() => {
         setLocation("/home-page?fromSync=true");
-      }, 2000);
-    },
-    onError: (error: Error) => {
+      }, 1500);
+    } else if (result.failed && result.failed > 0) {
       toast({
-        title: "Errore sincronizzazione",
-        description: error.message,
+        title: "Sincronizzazione completata con errori",
+        description: `${result.processed} documenti sincronizzati, ${result.failed} errori`,
         variant: "destructive",
       });
-    },
-    onSettled: () => {
-      setIsSyncing(false);
     }
+  }, [toast, setLocation]);
+
+  const handleSyncError = useCallback((error: string) => {
+    setIsSyncing(false);
+    toast({
+      title: "Errore sincronizzazione",
+      description: error,
+      variant: "destructive",
+    });
+  }, [toast]);
+
+  const { 
+    progress: syncProgress, 
+    startSync,
+    reset: resetSync,
+  } = useSyncSSE({
+    onCompleted: handleSyncCompleted,
+    onError: handleSyncError,
+    autoConnect: false,
   });
 
   // Funzione per estrarre il Folder ID da un URL Google Drive
@@ -262,7 +277,7 @@ export default function ClientsPage() {
     }
   };
 
-  const startAutomaticSync = async () => {
+  const startAutomaticSync = useCallback(async () => {
     // Controlla se abbiamo tutti i requisiti per la sincronizzazione
     if (!currentClient?.driveFolderId) {
       toast({
@@ -279,26 +294,44 @@ export default function ClientsPage() {
       return;
     }
 
-    // Se abbiamo tutto, avvia la sincronizzazione
+    // Se abbiamo tutto, avvia la sincronizzazione con SSE
     setIsSyncing(true);
     
     toast({
       title: "Avvio sincronizzazione",
-      description: "Sincronizzazione dei documenti in corso...",
+      description: "Sincronizzazione dei documenti in corso... Vedrai il progresso in tempo reale.",
     });
 
     // Attendi un momento per permettere al backend di processare la configurazione
-    setTimeout(() => {
-      syncMutation.mutate();
+    setTimeout(async () => {
+      const result = await startSync();
+      if (!result.success) {
+        setIsSyncing(false);
+        toast({
+          title: "Errore avvio sincronizzazione",
+          description: result.error || "Impossibile avviare la sincronizzazione",
+          variant: "destructive",
+        });
+      }
     }, 1500);
-  };
+  }, [currentClient, toast, startSync]);
 
-  const handleManualSync = () => {
+  const handleManualSync = useCallback(async () => {
     if (isSyncing) return;
     
     setIsSyncing(true);
-    syncMutation.mutate();
-  };
+    resetSync();
+    
+    const result = await startSync();
+    if (!result.success) {
+      setIsSyncing(false);
+      toast({
+        title: "Errore sincronizzazione",
+        description: result.error || "Impossibile avviare la sincronizzazione",
+        variant: "destructive",
+      });
+    }
+  }, [isSyncing, startSync, resetSync, toast]);
 
   const getConnectionStatus = () => {
     if (!currentClient) return { status: 'no-client', text: 'Nessun client configurato', variant: 'destructive' as const };
@@ -565,6 +598,21 @@ export default function ClientsPage() {
                       </>
                     )}
                   </Button>
+
+                  {/* Real-time Sync Progress */}
+                  {(syncProgress.status === 'syncing' || syncProgress.status === 'pending') && (
+                    <div className="mt-4">
+                      <SyncProgress
+                        isSyncing={true}
+                        processed={syncProgress.processed}
+                        total={syncProgress.total}
+                        currentBatch={syncProgress.currentBatch}
+                        totalBatches={syncProgress.totalBatches}
+                        error={syncProgress.error}
+                        onRetry={handleManualSync}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Navigate to Documents */}

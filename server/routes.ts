@@ -48,6 +48,7 @@ import {
 import { InsertUser } from "./shared-types/schema";
 import { z } from "zod";
 import { logError } from "./logger";
+import { appEvents } from "./app-events";
 import { validateContactRequest } from "./security";
 import logger from "./logger";
 import multer from "multer";
@@ -1236,7 +1237,106 @@ export async function registerRoutes(app: Express): Promise<Express> {
     }
   });
 
-  // Google Drive sync API (admin only)
+  // =====================================================
+  // SYNC SSE (Server-Sent Events) - Real-time sync updates
+  // =====================================================
+  
+  // Mappa per tenere traccia delle sincronizzazioni attive per client
+  const activeSyncs = new Map<number, {
+    status: 'pending' | 'syncing' | 'completed' | 'error';
+    processed: number;
+    total: number;
+    currentBatch: number;
+    totalBatches: number;
+    startTime: number;
+    error?: string;
+  }>();
+
+  // Endpoint SSE per streaming stato sincronizzazione in tempo reale
+  app.get("/api/sync/stream", isAdmin, async (req, res) => {
+    const clientId = req.user?.clientId;
+    const userId = req.user?.legacyId;
+
+    if (!clientId || !userId) {
+      return res.status(400).json({ message: "Nessun cliente associato." });
+    }
+
+    // Configura SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // Disabilita buffering per Nginx/Render
+    res.flushHeaders();
+
+    // Funzione helper per inviare eventi SSE
+    const sendEvent = (event: string, data: any) => {
+      res.write(`event: ${event}\n`);
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+
+    // Invia stato iniziale
+    const currentSync = activeSyncs.get(clientId);
+    if (currentSync) {
+      sendEvent('progress', currentSync);
+    } else {
+      sendEvent('status', { status: 'idle' });
+    }
+
+    // Keep-alive ping ogni 15 secondi
+    const pingInterval = setInterval(() => {
+      sendEvent('ping', { time: Date.now() });
+    }, 15000);
+
+    // Listener per aggiornamenti di progresso
+    const progressListener = (data: any) => {
+      if (data.clientId === clientId) {
+        sendEvent('progress', {
+          status: data.status,
+          processed: data.processed,
+          total: data.total,
+          currentBatch: data.currentBatch,
+          totalBatches: data.totalBatches,
+          duration: Date.now() - (activeSyncs.get(clientId)?.startTime || Date.now()),
+        });
+      }
+    };
+
+    const completedListener = (data: any) => {
+      if (data.clientId === clientId) {
+        sendEvent('completed', {
+          status: 'completed',
+          processed: data.processed,
+          failed: data.failed,
+          duration: data.duration,
+          success: data.success,
+        });
+      }
+    };
+
+    const errorListener = (data: any) => {
+      if (data.clientId === clientId) {
+        sendEvent('error', {
+          status: 'error',
+          message: data.error,
+        });
+      }
+    };
+
+    // Registra listeners
+    appEvents.on('syncProgress', progressListener);
+    appEvents.on('syncCompleted', completedListener);
+    appEvents.on('syncError', errorListener);
+
+    // Cleanup quando la connessione si chiude
+    req.on('close', () => {
+      clearInterval(pingInterval);
+      appEvents.off('syncProgress', progressListener);
+      appEvents.off('syncCompleted', completedListener);
+      appEvents.off('syncError', errorListener);
+    });
+  });
+
+  // Google Drive sync API (admin only) - VERSIONE OTTIMIZZATA CON SSE
   app.post("/api/sync", isAdmin, async (req, res) => {
     try {
       const clientId = req.user?.clientId;
@@ -1252,6 +1352,15 @@ export async function registerRoutes(app: Express): Promise<Express> {
         return res
           .status(400)
           .json({ message: "Nessun cliente associato a questo utente." });
+      }
+
+      // Verifica se c'è già una sync in corso per questo client
+      const existingSync = activeSyncs.get(clientId);
+      if (existingSync && existingSync.status === 'syncing') {
+        return res.status(409).json({ 
+          message: "Sincronizzazione già in corso",
+          currentProgress: existingSync 
+        });
       }
 
       const client = await mongoStorage.getClient(clientId);
@@ -1281,25 +1390,88 @@ export async function registerRoutes(app: Express): Promise<Express> {
         });
       }
 
-      logger.info("Starting manual sync", {
+      logger.info("Starting manual sync with SSE support", {
         clientId,
         userId,
         driveFolderId: client.driveFolderId,
       });
 
-      // Avvia la sincronizzazione ottimizzata
-      const syncPromise = syncWithGoogleDrive(client.driveFolderId, userId);
-
-      // Rispondi immediatamente che la sync è iniziata
-      res.json({
-        message: "Processo di sincronizzazione avviato",
-        syncId: Date.now().toString(), // ID univoco per tracciare la sync
+      // Inizializza stato sincronizzazione
+      const syncId = Date.now().toString();
+      activeSyncs.set(clientId, {
+        status: 'syncing',
+        processed: 0,
+        total: 0,
+        currentBatch: 0,
+        totalBatches: 0,
+        startTime: Date.now(),
       });
 
-      // Esegui la sync in background
+      // Emetti evento di inizio
+      appEvents.emit('syncProgress', {
+        clientId,
+        status: 'syncing',
+        processed: 0,
+        total: 0,
+        currentBatch: 0,
+        totalBatches: 0,
+      });
+
+      // Avvia la sincronizzazione con callback di progresso
+      const syncPromise = syncWithGoogleDrive(
+        client.driveFolderId, 
+        userId,
+        (processed, total, currentBatch, totalBatches) => {
+          // Aggiorna stato e emetti evento
+          const syncState = activeSyncs.get(clientId);
+          if (syncState) {
+            syncState.processed = processed;
+            syncState.total = total;
+            syncState.currentBatch = currentBatch;
+            syncState.totalBatches = totalBatches;
+          }
+          
+          appEvents.emit('syncProgress', {
+            clientId,
+            status: 'syncing',
+            processed,
+            total,
+            currentBatch,
+            totalBatches,
+          });
+        }
+      );
+
+      // Rispondi immediatamente con syncId per tracking via SSE
+      res.json({
+        message: "Sincronizzazione avviata. Connettiti a /api/sync/stream per aggiornamenti real-time.",
+        syncId,
+        streamUrl: "/api/sync/stream",
+      });
+
+      // Gestisci completamento in background
       syncPromise
         .then((result) => {
-          logger.info("Manual sync completed", {
+          // Aggiorna stato
+          activeSyncs.set(clientId, {
+            status: 'completed',
+            processed: result.processed,
+            total: result.processed + result.failed,
+            currentBatch: 0,
+            totalBatches: 0,
+            startTime: activeSyncs.get(clientId)?.startTime || Date.now(),
+          });
+
+          // Emetti evento di completamento
+          appEvents.emit('syncCompleted', {
+            clientId,
+            success: result.success,
+            processed: result.processed,
+            failed: result.failed,
+            duration: result.duration,
+          });
+
+          logger.info("Manual sync completed with SSE notification", {
             userId,
             clientId,
             success: result.success,
@@ -1308,8 +1480,30 @@ export async function registerRoutes(app: Express): Promise<Express> {
             duration: result.duration,
             errorCount: result.errors.length,
           });
+
+          // Rimuovi dalla mappa dopo 60 secondi
+          setTimeout(() => {
+            activeSyncs.delete(clientId);
+          }, 60000);
         })
         .catch((error) => {
+          // Aggiorna stato errore
+          activeSyncs.set(clientId, {
+            status: 'error',
+            processed: 0,
+            total: 0,
+            currentBatch: 0,
+            totalBatches: 0,
+            startTime: activeSyncs.get(clientId)?.startTime || Date.now(),
+            error: error instanceof Error ? error.message : String(error),
+          });
+
+          // Emetti evento di errore
+          appEvents.emit('syncError', {
+            clientId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+
           logger.error("Manual sync failed", {
             userId,
             clientId,

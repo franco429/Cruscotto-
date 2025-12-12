@@ -22,16 +22,19 @@ import { appEvents } from "./app-events";
 
 const syncIntervals: Record<number, NodeJS.Timeout> = {};
 
-// Configurazione ottimizzata per Render con timeout ridotti
+// Configurazione ottimizzata per Render con velocità migliorata
 const SYNC_CONFIG = {
   maxRetries: 2, // Ridotto da 3 a 2 per evitare timeout Render
   retryDelay: 500, // Ridotto da 1s a 500ms
   maxRetryDelay: 15000, // Ridotto da 30s a 15s per ambiente Render
   timeout: 20000, // Ridotto da 30s a 20s per operazioni Google Drive
-  batchSize: 10, // Ridotto da 20 a 10 per evitare memory issues su Render
-  maxConcurrent: 2, // Ridotto da 5 a 2 per stabilità su Render
+  batchSize: 25, // OTTIMIZZATO: da 10 a 25 per batch più grandi (sicuro per non-Excel)
+  maxConcurrentNonExcel: 8, // NUOVO: alta concorrenza per file non-Excel (nessun download)
+  maxConcurrentExcel: 1, // Excel rimane sequenziale per sicurezza /tmp
   skipExcelAnalysis: false, // Flag per saltare analisi Excel se necessario
   renderOptimized: true, // Flag per ottimizzazioni specifiche Render
+  batchPauseMs: 50, // RIDOTTO: da 200ms a 50ms tra batch
+  chunkPauseMs: 25, // RIDOTTO: da 100ms a 25ms tra chunk
 } as const;
 
 // Tipi per la gestione errori
@@ -884,10 +887,10 @@ async function processBatchOptimized(
     documents: [] as any[],
   };
 
-  // Processa file in parallelo con limitazione
+  // Processa file in parallelo con limitazione (usa concorrenza non-Excel come default)
   const chunks = [];
-  for (let i = 0; i < batch.length; i += SYNC_CONFIG.maxConcurrent) {
-    chunks.push(batch.slice(i, i + SYNC_CONFIG.maxConcurrent));
+  for (let i = 0; i < batch.length; i += SYNC_CONFIG.maxConcurrentNonExcel) {
+    chunks.push(batch.slice(i, i + SYNC_CONFIG.maxConcurrentNonExcel));
   }
 
   for (const [chunkIndex, chunk] of chunks.entries()) {
@@ -929,9 +932,9 @@ async function processBatchOptimized(
       onProgress(totalProcessed, batch.length);
     }
 
-    // Pausa minima tra i chunk per evitare rate limiting
+    // Pausa minima tra i chunk per evitare rate limiting (ottimizzata)
     if (chunkIndex < chunks.length - 1) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, SYNC_CONFIG.chunkPauseMs));
     }
   }
 
@@ -1123,9 +1126,9 @@ export async function syncWithGoogleDrive(
       result.failed += batchResults.failed;
       result.errors.push(...batchResults.errors);
 
-      // Pausa ridotta tra i batch
+      // Pausa ottimizzata tra i batch (ridotta per velocità)
       if (batchIndex < batches.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 200));
+        await new Promise((resolve) => setTimeout(resolve, SYNC_CONFIG.batchPauseMs));
       }
     }
 
@@ -1239,8 +1242,8 @@ export async function syncWithGoogleDrive(
   return result;
 }
 
-// Funzione batch con analisi contenuti - PROCESSAMENTO IN SERIE
-// Fix per prevenire overflow /tmp su Render: processa un file Excel alla volta
+// Funzione batch OTTIMIZZATA - Processa non-Excel in parallelo, Excel sequenziale
+// Sicuro per Render: Excel rimane sequenziale per evitare overflow /tmp
 async function processBatchWithAnalysis(
   drive: any,
   files: any[],
@@ -1254,68 +1257,126 @@ async function processBatchWithAnalysis(
     errors: [],
   };
 
-  // Processa i file UNO ALLA VOLTA per evitare accumulo di file temporanei in /tmp
+  // OTTIMIZZAZIONE 1: Separa file Excel e non-Excel
+  const excelFiles: any[] = [];
+  const nonExcelFiles: any[] = [];
+  
   for (const file of files) {
+    if (isExcelFile(file.mimeType) || file.mimeType === "application/vnd.google-apps.spreadsheet") {
+      excelFiles.push(file);
+    } else {
+      nonExcelFiles.push(file);
+    }
+  }
+
+  logger.debug(`Batch optimization: ${nonExcelFiles.length} non-Excel (parallel), ${excelFiles.length} Excel (sequential)`, {
+    userId, clientId
+  });
+
+  // OTTIMIZZAZIONE 2: Processa file non-Excel in PARALLELO (nessun download necessario)
+  if (nonExcelFiles.length > 0) {
+    const nonExcelPromises = nonExcelFiles.map(async (file) => {
+      try {
+        const docInfo = await processDocumentFile(file.name!, file.webViewLink!, undefined);
+        
+        if (!docInfo) {
+          logger.debug(`Skipped non-Excel file (invalid format): ${file.name}`);
+          return { success: false, skipped: true };
+        }
+
+        const documentData = {
+          ...docInfo,
+          alertStatus: "none" as const,
+          expiryDate: null,
+          clientId,
+          ownerId: userId,
+          googleFileId: file.id,
+          mimeType: file.mimeType,
+          lastSynced: new Date(),
+        };
+
+        const existingDoc = await mongoStorage.getDocumentByGoogleFileId(file.id);
+
+        if (existingDoc) {
+          await mongoStorage.updateDocument(existingDoc.legacyId, documentData);
+        } else {
+          await mongoStorage.createDocument(documentData);
+        }
+
+        return { success: true };
+      } catch (error) {
+        logger.error(`Failed to process non-Excel file: ${file.name}`, {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        return { success: false, error };
+      }
+    });
+
+    // Esegui in parallelo con limite di concorrenza
+    const chunks = [];
+    for (let i = 0; i < nonExcelPromises.length; i += SYNC_CONFIG.maxConcurrentNonExcel) {
+      chunks.push(nonExcelPromises.slice(i, i + SYNC_CONFIG.maxConcurrentNonExcel));
+    }
+
+    for (const chunk of chunks) {
+      const chunkResults = await Promise.allSettled(chunk);
+      
+      for (const chunkResult of chunkResults) {
+        if (chunkResult.status === "fulfilled" && chunkResult.value.success) {
+          result.processed++;
+        } else if (chunkResult.status === "fulfilled" && !chunkResult.value.skipped) {
+          result.failed++;
+        }
+        // skipped files non contano come processed o failed
+      }
+
+      // Report progresso
+      if (onProgress) {
+        onProgress(result.processed, files.length);
+      }
+
+      // Pausa minima tra chunk (ridotta per velocità)
+      if (chunks.indexOf(chunk) < chunks.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, SYNC_CONFIG.chunkPauseMs));
+      }
+    }
+  }
+
+  // OTTIMIZZAZIONE 3: Processa file Excel SEQUENZIALMENTE (sicuro per /tmp)
+  for (const file of excelFiles) {
     try {
-      // Analisi del contenuto del file
       let analysis: ExcelAnalysis = { alertStatus: "none", expiryDate: null };
 
-      // Prova ad analizzare il contenuto Excel, ma non bloccare se fallisce
       try {
         if (file.mimeType === "application/vnd.google-apps.spreadsheet") {
-          // Google Sheets - API diretta (no download necessario)
-          logger.debug(`Analyzing Google Sheet: ${file.name}`, {
-            fileId: file.id,
-          });
+          // Google Sheets - API diretta (no download)
           analysis = await analyzeGoogleSheet(drive, file.id);
         } else if (isExcelFile(file.mimeType)) {
-          // Excel - download, analisi e cleanup IMMEDIATO (uno alla volta)
-          logger.debug(`Analyzing Excel file: ${file.name}`, { fileId: file.id });
+          // Excel locale - download, analisi, cleanup IMMEDIATO
           const tempPath = await downloadToTemp(drive, file);
           try {
             analysis = await analyzeExcelContent(tempPath);
           } finally {
-            // Cleanup file temporaneo IMMEDIATO - CRITICO per prevenire overflow /tmp
             if (fs.existsSync(tempPath)) {
               try {
                 fs.unlinkSync(tempPath);
-                logger.debug("Temp file cleaned up", { tempPath });
               } catch (cleanupErr) {
-                logger.warn("Failed to cleanup temp file", { 
-                  tempPath, 
-                  error: cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr) 
-                });
+                logger.warn("Failed to cleanup temp file", { tempPath });
               }
             }
           }
-        } else {
-          logger.debug(
-            `Skipping analysis for unsupported file type: ${file.mimeType}`,
-            { fileName: file.name }
-          );
         }
       } catch (analysisError) {
-        // Se l'analisi fallisce (es. permessi mancanti), continua comunque
-        logger.warn(`⚠️ Could not analyze Excel file (will save without expiry data): ${file.name}`, {
+        logger.warn(`Could not analyze Excel: ${file.name}`, {
           error: analysisError instanceof Error ? analysisError.message : String(analysisError),
-          fileId: file.id,
         });
-        // Mantieni analysis = { alertStatus: "none", expiryDate: null }
       }
 
-      // Crea/aggiorna documento nel DB con logica completa
-      const docInfo = await processDocumentFile(
-        file.name!,
-        file.webViewLink!,
-        undefined
-      );
+      const docInfo = await processDocumentFile(file.name!, file.webViewLink!, undefined);
 
       if (!docInfo) {
-        logger.warn(`❌ SKIPPED file (invalid name format): ${file.name}`, {
-          fileName: file.name,
-          mimeType: file.mimeType,
-        });
-        continue; // Passa al prossimo file
+        logger.debug(`Skipped Excel file (invalid format): ${file.name}`);
+        continue;
       }
 
       const documentData = {
@@ -1329,56 +1390,14 @@ async function processBatchWithAnalysis(
         lastSynced: new Date(),
       };
 
-      // Debug per file Excel
-      const isExcel = docInfo.fileType === 'xlsx' || docInfo.fileType === 'xls' || docInfo.fileType === 'xlsm';
-      if (isExcel) {
-        logger.info(`📊 Processing Excel file for DB:`, {
-          fileName: file.name,
-          fileType: docInfo.fileType,
-          googleFileId: file.id,
-          title: docInfo.title,
-          path: docInfo.path,
-          revision: docInfo.revision,
-          clientId,
-        });
-      }
-
       const existingDoc = await mongoStorage.getDocumentByGoogleFileId(file.id);
 
       if (existingDoc) {
         await mongoStorage.updateDocument(existingDoc.legacyId, documentData);
-        if (isExcel) {
-          logger.info(`✅ EXCEL Updated in DB: ${file.name}`, {
-            docId: existingDoc.legacyId,
-            fileType: documentData.fileType,
-            title: documentData.title,
-          });
-        }
+        logger.debug(`Updated Excel: ${file.name}`);
       } else {
-        try {
-          const savedDoc = await mongoStorage.createDocument(documentData);
-          if (isExcel) {
-            logger.info(`✅ EXCEL Created NEW in DB: ${file.name}`, {
-              docId: savedDoc.legacyId,
-              fileType: documentData.fileType,
-              title: documentData.title,
-              path: documentData.path,
-              revision: documentData.revision,
-              clientId: documentData.clientId,
-              googleFileId: savedDoc.googleFileId,
-            });
-          }
-        } catch (dbError) {
-          logger.error(`❌ FAILED to save EXCEL to DB: ${file.name}`, {
-            fileType: documentData.fileType,
-            title: documentData.title,
-            googleFileId: file.id,
-            error: dbError instanceof Error ? dbError.message : String(dbError),
-            errorCode: (dbError as any)?.code,
-            errorName: (dbError as any)?.name,
-          });
-          throw dbError;
-        }
+        await mongoStorage.createDocument(documentData);
+        logger.debug(`Created Excel: ${file.name}`);
       }
 
       result.processed++;
@@ -1389,19 +1408,15 @@ async function processBatchWithAnalysis(
     } catch (error) {
       result.failed++;
       const syncError = createSyncError(
-        `Failed to process file: ${file.name}`,
-        "FILE_PROCESSING_FAILED",
+        `Failed to process Excel: ${file.name}`,
+        "EXCEL_PROCESSING_FAILED",
         true,
         { fileId: file.id, fileName: file.name }
       );
       result.errors.push(syncError);
 
-      logger.error("❌ FAILED to process file in batch", {
-        fileName: file.name,
-        fileId: file.id,
-        mimeType: file.mimeType,
+      logger.error(`Failed to process Excel: ${file.name}`, {
         error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
       });
     }
   }
