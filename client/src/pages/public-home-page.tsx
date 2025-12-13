@@ -3,6 +3,7 @@ import Footer from "../components/footer";
 import { Button } from "../components/ui/button";
 import { Link } from "wouter";
 import { useSEO } from "../hooks/use-seo";
+import ChristmasSnow from "../components/christmas-snow";
 import {
   Shield,
   FileText,
@@ -34,6 +35,9 @@ export default function PublicHomePage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-950">
+      {/* Animazione neve natalizia */}
+      <ChristmasSnow />
+      
       {/* Header */}
       <header className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700 sticky top-0 z-50">
         <div className="w-full px-4 sm:px-6 lg:px-8">

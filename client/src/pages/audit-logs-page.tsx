@@ -6,6 +6,7 @@ import {
   DocumentDocument as Document,
 } from "../../../shared-types/schema";
 import HeaderBar from "../components/header-bar";
+import ChristmasSnow from "../components/christmas-snow";
 import {
   Card,
   CardContent,
@@ -250,6 +251,9 @@ export default function AuditLogsPage() {
   if (user?.role !== "admin" && user?.role !== "superadmin") {
     return (
       <div className="flex flex-col h-screen overflow-hidden">
+        {/* Animazione neve natalizia */}
+        <ChristmasSnow />
+        
         <HeaderBar user={user} />
 
         <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900 p-3 sm:p-4 md:p-6">
@@ -277,6 +281,9 @@ export default function AuditLogsPage() {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
+      {/* Animazione neve natalizia */}
+      <ChristmasSnow />
+      
       <HeaderBar user={user} />
 
       <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900 p-3 sm:p-4 md:p-6">

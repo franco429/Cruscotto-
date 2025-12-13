@@ -30,6 +30,7 @@ import { useConfirmationToast } from "../hooks/use-confirmation-toast";
 import { apiRequest } from "../lib/queryClient";
 import HeaderBar from "@/components/header-bar";
 import Footer from "@/components/footer";
+import ChristmasSnow from "@/components/christmas-snow";
 
 interface BackupMetadata {
   createdBy: {
@@ -267,6 +268,9 @@ export default function BackupPage() {
   if (!isAdmin) {
     return (
       <div className="container mx-auto p-6">
+        {/* Animazione neve natalizia */}
+        <ChristmasSnow />
+        
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
@@ -280,6 +284,9 @@ export default function BackupPage() {
 
   return (
     <div className="flex flex-col min-h-screen">
+      {/* Animazione neve natalizia */}
+      <ChristmasSnow />
+      
       <HeaderBar user={user} />
 
       <div className="container mx-auto p-2 sm:p-6 space-y-6 w-full max-w-4xl">

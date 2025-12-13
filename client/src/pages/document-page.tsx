@@ -7,6 +7,7 @@ import { useAuth } from "../hooks/use-auth";
 import { useToast } from "../hooks/use-toast";
 import HeaderBar from "../components/header-bar";
 import { NetworkError } from "../components/network-error";
+import ChristmasSnow from "../components/christmas-snow";
 import {
   Card,
   CardContent,
@@ -178,6 +179,9 @@ export default function DocumentPage() {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
+      {/* Animazione neve natalizia */}
+      <ChristmasSnow />
+      
       <HeaderBar user={user} />
 
       <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900 p-4 md:p-6">

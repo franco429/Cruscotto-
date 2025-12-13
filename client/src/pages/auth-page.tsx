@@ -31,6 +31,7 @@ import AuthNavbar from "../components/auth-navbar";
 import Footer from "../components/footer";
 import LoadingSpinner from "../components/loading-spinner";
 import MFALoginVerify from "../components/mfa-login-verify";
+import ChristmasSnow from "../components/christmas-snow";
 import {
   Form,
   FormControl,
@@ -231,6 +232,9 @@ export default function AuthPage() {
   if (showMFAVerify) {
     return (
       <div className="min-h-screen flex flex-col">
+        {/* Animazione neve natalizia */}
+        <ChristmasSnow />
+        
         <AuthNavbar />
         <div className="flex-1 flex items-center justify-center p-6 bg-slate-50 dark:bg-slate-900">
           <MFALoginVerify
@@ -254,6 +258,9 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      {/* Animazione neve natalizia */}
+      <ChristmasSnow />
+      
       {showLoadingSpinner && <LoadingSpinner message={loadingMessage} />}
       <AuthNavbar />
       <div className="flex-1 flex flex-col lg:flex-row">

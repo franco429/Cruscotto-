@@ -4,6 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { UserDocument as User } from "../../../shared-types/schema";
 import { useToast } from "../hooks/use-toast";
 import HeaderBar from "../components/header-bar";
+import ChristmasSnow from "../components/christmas-snow";
 import {
   Card,
   CardContent,
@@ -266,6 +267,9 @@ export default function UsersPage() {
   if (user?.role !== "admin") {
     return (
       <div className="flex flex-col h-screen overflow-hidden">
+        {/* Animazione neve natalizia */}
+        <ChristmasSnow />
+        
         <HeaderBar user={user} />
 
         <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900 p-4 md:p-6">
@@ -293,6 +297,9 @@ export default function UsersPage() {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
+      {/* Animazione neve natalizia */}
+      <ChristmasSnow />
+      
       <HeaderBar user={user} />
 
       <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900 p-4 md:p-6">

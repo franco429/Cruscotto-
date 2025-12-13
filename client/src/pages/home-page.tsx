@@ -12,6 +12,7 @@ import Footer from "../components/footer";
 import { NetworkError } from "../components/network-error";
 import SyncProgress from "../components/sync-progress";
 import BackupStatus from "../components/backup-status";
+import ChristmasSnow from "../components/christmas-snow";
 import { Loader2 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Link } from "wouter";
@@ -289,6 +290,9 @@ export default function HomePage() {
    * --------------------------------------------------------- */
   return (
     <div className="flex flex-col min-h-screen">
+      {/* Animazione neve natalizia */}
+      <ChristmasSnow />
+      
       <HeaderBar onSearch={setSearchTerm} user={user} />
 
       <main className="flex-1 bg-slate-50 dark:bg-slate-900 p-3 xs:p-4 sm:p-5 md:p-6">

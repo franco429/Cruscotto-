@@ -7,6 +7,7 @@ import { useToast } from "../hooks/use-toast";
 import HeaderBar from "../components/header-bar";
 import Footer from "../components/footer";
 import SyncProgress from "../components/sync-progress";
+import ChristmasSnow from "../components/christmas-snow";
 import {
   Card,
   CardContent,
@@ -375,6 +376,9 @@ export default function ClientsPage() {
 
   return (
     <div className="flex flex-col min-h-screen">
+      {/* Animazione neve natalizia */}
+      <ChristmasSnow />
+      
       <HeaderBar user={user} />
 
       <main className="flex-1 container mx-auto py-4 sm:py-6 md:py-8 px-3 sm:px-4 max-w-4xl">

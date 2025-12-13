@@ -4,6 +4,7 @@ import { useAuth } from "../hooks/use-auth";
 import { apiRequest } from "../lib/queryClient";
 import HeaderBar from "../components/header-bar";
 import Footer from "../components/footer";
+import ChristmasSnow from "../components/christmas-snow";
 import {
   Accordion,
   AccordionContent,
@@ -67,6 +68,9 @@ export default function SupportPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
+      {/* Animazione neve natalizia */}
+      <ChristmasSnow />
+      
       <HeaderBar user={user} />
 
       <main className="flex-1 container max-w-6xl mx-auto px-4 py-8">

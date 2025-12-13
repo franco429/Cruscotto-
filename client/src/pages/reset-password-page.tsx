@@ -15,6 +15,7 @@ import Footer from '../components/footer';
 import { useAuth } from '../hooks/use-auth';
 import ResetPasswordModal from '../components/reset-password-modal';
 import { apiRequest } from "../lib/queryClient";
+import ChristmasSnow from '../components/christmas-snow';
 
 // Schema per il form di richiesta email
 const requestEmailSchema = z.object({
@@ -104,6 +105,9 @@ export default function ResetPasswordPage() {
 
   return (
     <>
+      {/* Animazione neve natalizia */}
+      <ChristmasSnow />
+      
       <div className="flex min-h-screen flex-col bg-gray-50">
         <AuthNavbar />
         

@@ -5,6 +5,7 @@ import { DocumentDocument as Document } from "../../../shared-types/schema";
 import { useToast } from "../hooks/use-toast";
 import HeaderBar from "../components/header-bar";
 import Footer from "../components/footer";
+import ChristmasSnow from "../components/christmas-snow";
 import {
   Card,
   CardContent,
@@ -140,6 +141,9 @@ export default function ObsoletePage() {
   if (user?.role !== "admin") {
     return (
       <div className="flex flex-col min-h-screen">
+        {/* Animazione neve natalizia */}
+        <ChristmasSnow />
+        
         <HeaderBar user={user} />
 
         <main className="flex-1 bg-slate-50 dark:bg-slate-900 p-4 md:p-6">
@@ -168,6 +172,9 @@ export default function ObsoletePage() {
 
   return (
     <div className="flex flex-col min-h-screen">
+      {/* Animazione neve natalizia */}
+      <ChristmasSnow />
+      
       <HeaderBar user={user} />
 
       <main className="flex-1 bg-slate-50 dark:bg-slate-900 p-4 md:p-6">

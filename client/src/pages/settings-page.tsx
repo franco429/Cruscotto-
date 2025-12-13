@@ -5,6 +5,7 @@ import { useToast } from "../hooks/use-toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import HeaderBar from "../components/header-bar";
 import Footer from "../components/footer";
+import ChristmasSnow from "../components/christmas-snow";
 import {
   Card,
   CardContent,
@@ -203,6 +204,9 @@ export default function SettingsPage() {
 
   return (
     <div className="flex flex-col min-h-screen">
+      {/* Animazione neve natalizia */}
+      <ChristmasSnow />
+      
       <HeaderBar user={user} />
 
       <main className="flex-1 bg-slate-50 dark:bg-slate-900 p-2 sm:p-3 md:p-4 lg:p-6">

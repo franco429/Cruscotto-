@@ -9,7 +9,6 @@ services:
       - key: NODE_ENV
         value: production
       - key: NODE_OPTIONS
-        value: "--max-old-space-size=2048 --max-semi-space-size=512"
       - key: PORT
         value: 10000
       

@@ -21,6 +21,7 @@ import { format } from "date-fns";
 import HeaderBar from "@/components/header-bar";
 import Footer from "@/components/footer";
 import { useAuth } from "../hooks/use-auth";
+import ChristmasSnow from "../components/christmas-snow";
 
 type CompanyCode = {
   legacyId: number; 
@@ -242,6 +243,9 @@ export default function CompanyCodesPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Animazione neve natalizia */}
+      <ChristmasSnow />
+      
       <HeaderBar user={user} />
       <main className="flex-grow">
         <div className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
