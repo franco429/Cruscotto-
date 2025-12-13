@@ -12,6 +12,7 @@ server/uploads
 server/server/uploads
 server/uploads/previews
 server/server/uploads/previews
+create-superadmin.ts
 
 # File di upload temporanei
 server/uploads/*
