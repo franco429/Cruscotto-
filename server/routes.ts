@@ -2937,20 +2937,18 @@ export async function registerRoutes(app: Express): Promise<Express> {
 // 🆕 FUNZIONE HELPER: Cleanup sicuro del file caricato
 async function cleanupUploadedFile(file: Express.Multer.File): Promise<void> {
   try {
-    // Verifica che il file esista prima di tentare l'eliminazione
-    if (fs.existsSync(file.path)) {
-      await fs.promises.unlink(file.path);
-      logger.debug("Uploaded file cleaned up successfully", {
-        fileName: file.originalname,
-        filePath: file.path,
-        fileSize: file.size
-      });
-    } else {
-      logger.debug("File already deleted or not found", {
-        fileName: file.originalname,
-        filePath: file.path
-      });
-    }
+    // In memoryStorage non esiste un percorso fisico: esci subito
+    if (!file.path) return;
+
+    // Verifica che il file esista prima di tentare l'eliminazione (per eventuali storage su disco)
+    if (!fs.existsSync(file.path)) return;
+
+    await fs.promises.unlink(file.path);
+    logger.debug("Uploaded file cleaned up successfully", {
+      fileName: file.originalname,
+      filePath: file.path,
+      fileSize: file.size
+    });
   } catch (error) {
     // Non bloccare l'elaborazione per errori di cleanup
     // Log come warning invece di error per non allarmare
@@ -3148,10 +3146,7 @@ async function processIndividualFile(
       processFileWithTimeout(file, clientId, userId),
       timeoutPromise
     ]);
-    
-    // 🆕 CLEANUP: Elimina il file dopo l'elaborazione (successo o fallimento)
-    await cleanupUploadedFile(file);
-    
+
     return result;
   } catch (error) {
     logger.error("File processing failed with error", {
@@ -3160,10 +3155,7 @@ async function processIndividualFile(
       uploadId,
       fileSizeKB: Math.round(fileSizeKB)
     });
-    
-    // 🆕 CLEANUP: Elimina il file anche in caso di errore
-    await cleanupUploadedFile(file);
-    
+
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error)
@@ -3179,13 +3171,18 @@ async function processFileWithTimeout(
   const startTime = Date.now();
   let retryCount = 0;
   const maxRetries = 2;
+
+  // Usare sempre il buffer in memoria (memoryStorage)
+  const fileBuffer = file.buffer;
+  if (!fileBuffer) {
+    throw new Error(`Buffer del file non disponibile, verifica multer.memoryStorage() per ${file.originalname}`);
+  }
   
   const attemptProcess = async (): Promise<{ success: boolean; document?: any; error?: string }> => {
     try {
       logger.debug("Processing file attempt", {
         fileName: file.originalname,
         fileSize: file.size,
-        filePath: file.path,
         userId,
         clientId,
         attempt: retryCount + 1,
@@ -3206,16 +3203,11 @@ async function processFileWithTimeout(
         });
       }
 
-      // Verifica che il file esista fisicamente prima di processarlo
-      if (!fs.existsSync(file.path)) {
-        throw new Error(`File fisico non trovato: ${file.path}`);
-      }
-
       // Usa la logica già esistente per processare i file (estrai metadati, scadenze, revisioni)
       const docData = await processDocumentFile(
         filePath, // Usa il path completo per mantenere la gerarchia
         "",
-        file.path
+        fileBuffer
       );
 
       if (!docData) {
@@ -3227,10 +3219,8 @@ async function processFileWithTimeout(
       docData.ownerId = userId;
       // Per file locali, googleFileId è null e usiamo il path per riferimento fisico
       docData.googleFileId = null;
-      // Salva il nome fisico del file nel path per file locali
-      if (!docData.driveUrl) {
-        docData.encryptedCachePath = file.filename; // Usa questo campo per il nome fisico
-      }
+      // Nessun path su disco: usa null per encryptedCachePath
+      docData.encryptedCachePath = null;
 
       logger.debug("Document data processed", {
         fileName: file.originalname,
@@ -3277,7 +3267,7 @@ async function processFileWithTimeout(
       let savedDoc: any;
       if (existing) {
         // Verifica se il file è stato modificato calcolando l'hash
-        const newFileHash = await calculateFileHash(file.path);
+        const newFileHash = await calculateFileHash(fileBuffer);
         const hasFileChanged = !existing.fileHash || existing.fileHash !== newFileHash;
         
         if (hasFileChanged) {
@@ -3347,7 +3337,7 @@ async function processFileWithTimeout(
         }
       } else {
         // Calcola hash per nuovo documento
-        const newFileHash = await calculateFileHash(file.path);
+        const newFileHash = await calculateFileHash(fileBuffer);
         docData.fileHash = newFileHash;
         
         // Retry document creation with exponential backoff

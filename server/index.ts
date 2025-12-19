@@ -8,6 +8,7 @@ import { fileURLToPath } from "url";
 import { dirname } from "path";
 import fs from "fs";
 import os from "os";
+import { startFilesystemCleanupScheduler } from "./filesystem-cleanup-service";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -571,6 +572,10 @@ app.use((req, res, next) => {
     const { startLogCleanupScheduler } = await import("./log-cleanup-service");
     startLogCleanupScheduler();
     logger.info("Pulizia automatica log avviata (ogni 24 ore)");
+
+  // Scheduler per cleanup backup e log file su disco (spazio Render)
+  startFilesystemCleanupScheduler();
+  logger.info("Cleanup filesystem (backups/logs) avviato (ogni 6 ore)");
 
     const port = process.env.PORT || 5000;
     app.listen(port, () => {
