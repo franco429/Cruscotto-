@@ -851,6 +851,7 @@ export class MongoStorage implements IStorage {
     // Esegui query in parallelo per performance
     const [documents, total, stats] = await Promise.all([
       DocumentModel.find(query)
+        .collation({ locale: "en", numericOrdering: true })
         .sort(sortOptions)
         .skip(skip)
         .limit(limit)
