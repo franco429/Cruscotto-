@@ -361,6 +361,32 @@ export default function ClientsPage() {
     }
   }, [isSyncing, startSync, resetSync, toast]);
 
+  useEffect(() => {
+    const handleMessage = async (event: MessageEvent) => {
+      // Ascolta il messaggio inviato dal backend (server/google-oauth.ts)
+      if (event.data && event.data.type === 'GOOGLE_DRIVE_CONNECTED') {
+        
+        // Ferma lo stato di attesa
+        setIsWaitingForAuth(false);
+        
+        // Aggiorna immediatamente i dati
+        await refetchClients();
+        
+        toast({
+          title: "Autorizzazione completata!",
+          description: "Google Drive connesso con successo.",
+          variant: "default",
+        });
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [refetchClients, toast]);
+
   const getConnectionStatus = () => {
     if (!currentClient) return { status: 'no-client', text: 'Nessun client configurato', variant: 'destructive' as const };
     if (!hasGoogleDriveFolder) return { status: 'no-folder', text: 'Cartella non configurata', variant: 'secondary' as const };
