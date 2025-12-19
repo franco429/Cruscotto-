@@ -205,6 +205,17 @@ const isAdmin = (req: Request, res: Response, next: NextFunction) => {
       ip: req.ip,
       userAgent: req.get("User-Agent"),
     });
+    
+    // Per richieste SSE, invia un evento di errore invece di JSON
+    if (req.url.includes('/stream') || req.headers.accept?.includes('text/event-stream')) {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.write(`event: error\n`);
+      res.write(`data: ${JSON.stringify({ message: "Non autenticato", code: "NOT_AUTHENTICATED" })}\n\n`);
+      return res.end();
+    }
+    
     return res.status(401).json({
       message: "Non autenticato",
       code: "NOT_AUTHENTICATED",
@@ -224,6 +235,17 @@ const isAdmin = (req: Request, res: Response, next: NextFunction) => {
       userRole: req.user?.role,
       userEmail: req.user?.email,
     });
+    
+    // Per richieste SSE, invia un evento di errore invece di JSON
+    if (req.url.includes('/stream') || req.headers.accept?.includes('text/event-stream')) {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.write(`event: error\n`);
+      res.write(`data: ${JSON.stringify({ message: "Accesso negato - richiesti permessi di amministratore", code: "INSUFFICIENT_PERMISSIONS", userRole: req.user?.role })}\n\n`);
+      return res.end();
+    }
+    
     return res.status(403).json({
       message: "Accesso negato - richiesti permessi di amministratore",
       code: "INSUFFICIENT_PERMISSIONS",
@@ -393,12 +415,52 @@ export async function registerRoutes(app: Express): Promise<Express> {
     }
   });
 
+  /**
+   * API documenti con paginazione server-side
+   * Ottimizzata per gestire 50K+ documenti senza problemi di performance
+   * 
+   * Query params:
+   * - page: numero pagina (default: 1)
+   * - limit: documenti per pagina (default: 50, max: 200)
+   * - status: 'all' | 'expired' | 'warning' | 'none' (default: 'all')
+   * - search: stringa di ricerca (path, title, revision)
+   * - sortBy: 'updatedAt' | 'path' | 'title' | 'alertStatus' (default: 'path')
+   * - sortOrder: 'asc' | 'desc' (default: 'asc')
+   * - paginated: 'true' per risposta paginata, altro per array semplice (backward compatible)
+   */
   app.get("/api/documents", isAuthenticated, async (req, res) => {
     try {
       const clientId = req.user?.clientId;
       if (!clientId) return res.json([]);
-      const documents = await mongoStorage.getDocumentsByClientId(clientId);
-      res.json(documents);
+
+      // Controllo se è richiesta paginazione
+      const usePagination = req.query.paginated === 'true';
+
+      if (usePagination) {
+        // NUOVO: Risposta paginata ottimizzata per 50K+ documenti
+        const page = Math.max(1, parseInt(req.query.page as string) || 1);
+        const limit = Math.min(200, Math.max(1, parseInt(req.query.limit as string) || 50));
+        const status = (req.query.status as 'all' | 'expired' | 'warning' | 'none') || 'all';
+        const search = (req.query.search as string) || '';
+        const sortBy = (req.query.sortBy as 'updatedAt' | 'path' | 'title' | 'alertStatus') || 'path';
+        const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'asc';
+
+        const result = await mongoStorage.getDocumentsPaginated(clientId, {
+          page,
+          limit,
+          status,
+          search,
+          sortBy,
+          sortOrder,
+        });
+
+        res.json(result);
+      } else {
+        // BACKWARD COMPATIBLE: Ritorna array semplice per compatibilità
+        // Questo permette al frontend esistente di continuare a funzionare
+        const documents = await mongoStorage.getDocumentsByClientId(clientId);
+        res.json(documents);
+      }
     } catch (error) {
       console.error("Error fetching documents:", error);
       res.status(500).json({ message: "Errore nel recupero dei documenti" });
@@ -1253,39 +1315,67 @@ export async function registerRoutes(app: Express): Promise<Express> {
   }>();
 
   // Endpoint SSE per streaming stato sincronizzazione in tempo reale
-  app.get("/api/sync/stream", isAdmin, async (req, res) => {
+  // NOTA: NON usare async qui - causa chiusura prematura della connessione
+  app.get("/api/sync/stream", isAdmin, (req, res) => {
     const clientId = req.user?.clientId;
     const userId = req.user?.legacyId;
 
+    logger.info("[SSE] Client connecting to sync stream", { clientId, userId });
+
     if (!clientId || !userId) {
-      return res.status(400).json({ message: "Nessun cliente associato." });
+      // Per SSE, invia evento di errore invece di JSON
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.write(`event: error\n`);
+      res.write(`data: ${JSON.stringify({ message: "Nessun cliente associato." })}\n\n`);
+      return res.end();
     }
 
+    // CRITICO: Disabilita timeout per connessioni SSE long-lived
+    req.socket?.setTimeout(0);
+    res.socket?.setTimeout(0);
+    
     // Configura SSE headers
     res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no'); // Disabilita buffering per Nginx/Render
+    res.setHeader('Access-Control-Allow-Origin', '*'); // Per CORS se necessario
+    
+    // Flush headers immediatamente
     res.flushHeaders();
 
     // Funzione helper per inviare eventi SSE
     const sendEvent = (event: string, data: any) => {
-      res.write(`event: ${event}\n`);
-      res.write(`data: ${JSON.stringify(data)}\n\n`);
+      try {
+        if (!res.writableEnded) {
+          res.write(`event: ${event}\n`);
+          res.write(`data: ${JSON.stringify(data)}\n\n`);
+        }
+      } catch (error) {
+        logger.warn("[SSE] Failed to send event", { event, error: String(error) });
+      }
     };
 
-    // Invia stato iniziale
+    // Invia stato iniziale IMMEDIATAMENTE per mantenere la connessione aperta
     const currentSync = activeSyncs.get(clientId);
     if (currentSync) {
+      logger.info("[SSE] Sending current sync progress", { clientId, currentSync });
       sendEvent('progress', currentSync);
     } else {
+      logger.info("[SSE] No active sync, sending idle status", { clientId });
       sendEvent('status', { status: 'idle' });
     }
 
-    // Keep-alive ping ogni 15 secondi
+    // Keep-alive ping ogni 5 secondi (ridotto da 15 per evitare timeout)
     const pingInterval = setInterval(() => {
-      sendEvent('ping', { time: Date.now() });
-    }, 15000);
+      if (!res.writableEnded) {
+        sendEvent('ping', { time: Date.now() });
+      } else {
+        clearInterval(pingInterval);
+      }
+    }, 5000);
 
     // Listener per aggiornamenti di progresso
     const progressListener = (data: any) => {
@@ -1310,6 +1400,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
           duration: data.duration,
           success: data.success,
         });
+        // Non chiudere la connessione - lascia che il client la chiuda
       }
     };
 
@@ -1329,11 +1420,15 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
     // Cleanup quando la connessione si chiude
     req.on('close', () => {
+      logger.info("[SSE] Client disconnected from sync stream", { clientId });
       clearInterval(pingInterval);
       appEvents.off('syncProgress', progressListener);
       appEvents.off('syncCompleted', completedListener);
       appEvents.off('syncError', errorListener);
     });
+
+    // IMPORTANTE: Non terminare la funzione - la connessione deve rimanere aperta
+    // Express manterrà la connessione aperta finché non chiamiamo res.end()
   });
 
   // Google Drive sync API (admin only) - VERSIONE OTTIMIZZATA CON SSE
@@ -1451,7 +1546,10 @@ export async function registerRoutes(app: Express): Promise<Express> {
 
       // Gestisci completamento in background
       syncPromise
-        .then((result) => {
+        .then(async (result) => {
+          // IMPORTANTE: Aspetta 500ms per assicurarsi che MongoDB abbia completato tutte le scritture
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
           // Aggiorna stato
           activeSyncs.set(clientId, {
             status: 'completed',
@@ -2850,6 +2948,34 @@ export async function registerRoutes(app: Express): Promise<Express> {
     }
   });
 
+// 🆕 FUNZIONE HELPER: Cleanup sicuro del file caricato
+async function cleanupUploadedFile(file: Express.Multer.File): Promise<void> {
+  try {
+    // Verifica che il file esista prima di tentare l'eliminazione
+    if (fs.existsSync(file.path)) {
+      await fs.promises.unlink(file.path);
+      logger.debug("Uploaded file cleaned up successfully", {
+        fileName: file.originalname,
+        filePath: file.path,
+        fileSize: file.size
+      });
+    } else {
+      logger.debug("File already deleted or not found", {
+        fileName: file.originalname,
+        filePath: file.path
+      });
+    }
+  } catch (error) {
+    // Non bloccare l'elaborazione per errori di cleanup
+    // Log come warning invece di error per non allarmare
+    logger.warn("Failed to cleanup uploaded file", {
+      fileName: file.originalname,
+      filePath: file.path,
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+}
+
 // Funzione per elaborazione asincrona dei file con gestione memoria ottimizzata
 async function processFilesInBackground(
   files: Express.Multer.File[], 
@@ -2971,6 +3097,26 @@ async function processFilesInBackground(
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined
     });
+  } finally {
+    // 🆕 CLEANUP FINALE: Elimina tutti i file rimanenti (fallback di sicurezza)
+    logger.info("Starting final cleanup of uploaded files", {
+      uploadId,
+      fileCount: files.length
+    });
+    
+    const cleanupResults = await Promise.allSettled(
+      files.map(file => cleanupUploadedFile(file))
+    );
+    
+    const cleanedCount = cleanupResults.filter(r => r.status === 'fulfilled').length;
+    const failedCleanup = cleanupResults.filter(r => r.status === 'rejected').length;
+    
+    logger.info("Final cleanup completed", {
+      uploadId,
+      total: files.length,
+      cleaned: cleanedCount,
+      failed: failedCleanup
+    });
   }
 
   // Salva stato finale
@@ -3012,10 +3158,15 @@ async function processIndividualFile(
   });
   
   try {
-    return await Promise.race([
+    const result = await Promise.race([
       processFileWithTimeout(file, clientId, userId),
       timeoutPromise
     ]);
+    
+    // 🆕 CLEANUP: Elimina il file dopo l'elaborazione (successo o fallimento)
+    await cleanupUploadedFile(file);
+    
+    return result;
   } catch (error) {
     logger.error("File processing failed with error", {
       fileName: file.originalname,
@@ -3023,6 +3174,9 @@ async function processIndividualFile(
       uploadId,
       fileSizeKB: Math.round(fileSizeKB)
     });
+    
+    // 🆕 CLEANUP: Elimina il file anche in caso di errore
+    await cleanupUploadedFile(file);
     
     return {
       success: false,

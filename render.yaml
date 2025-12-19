@@ -52,6 +52,16 @@ services:
       - key: API_GOOGLE_URL
         sync: false
       
+      # Google Cloud Storage (Temporary Files)
+      # IMPORTANTE: Usato per eliminare /tmp e prevenire fallimenti istanze Render
+      - key: GCS_PROJECT_ID
+        sync: false
+      - key: GCS_BUCKET_NAME
+        value: sgi-cruscotto-temp
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        sync: false
+      # NOTA: In alternativa a GOOGLE_APPLICATION_CREDENTIALS, puoi usare GCS_KEY_FILE
+      # che punta al path del file JSON delle credenziali caricato nel progetto
       
       # File Storage
       - key: LOCAL_UPLOAD_PATH

@@ -35,7 +35,7 @@ export default function ChristmasSnow() {
 
     // Log informativo in sviluppo
     if (import.meta.env.DEV) {
-      console.log('🎄 Animazioni natalizie attive! (8 dic - 6 gen)');
+      
     }
 
     // Crea 60 fiocchi di neve con proprietà randomizzate

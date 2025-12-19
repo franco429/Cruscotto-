@@ -13,7 +13,17 @@ server/server/uploads
 server/uploads/previews
 server/server/uploads/previews
 create-superadmin.ts
-
+*.json
+gcs-credentials.json
+docs-tot
+test-hybrid-system.js
+_tests_
+scripts
+test-gcs.ts
+TEST-GCS-README.md
+debug-env.ts
+test-gcs-simple.ts
+test-gcs-render.ts
 # File di upload temporanei
 server/uploads/*
 server/server/uploads/*

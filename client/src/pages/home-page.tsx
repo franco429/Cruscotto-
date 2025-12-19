@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { useAuth } from "../hooks/use-auth";
 import { useQueryWithErrorHandling } from "../hooks/use-query-with-error-handling";
 import { useSyncSSE, SyncProgress as SyncProgressType } from "../hooks/use-sync-sse";
+import { useDocumentsPaginated } from "../hooks/use-documents-paginated";
 import { DocumentDocument as Document } from "../../../shared-types/schema";
 import HeaderBar from "../components/header-bar";
 import DocumentTable from "../components/document-table";
@@ -13,12 +14,21 @@ import { NetworkError } from "../components/network-error";
 import SyncProgress from "../components/sync-progress";
 import BackupStatus from "../components/backup-status";
 import ChristmasSnow from "../components/christmas-snow";
+import ServerPagination from "../components/server-pagination";
 import { Loader2 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Link } from "wouter";
 import { toast } from "react-hot-toast";
+import { useQueryClient } from "@tanstack/react-query";
+
+// Flag per abilitare paginazione server-side (ottimizzata per 50K+ documenti)
+// Quando true: usa paginazione server-side (raccomandato per > 1000 documenti)
+// Quando false: usa il sistema precedente (backward compatible)
+const USE_SERVER_PAGINATION = true;
 
 export default function HomePage() {
+  const queryClient = useQueryClient();
+  
   /* -----------------------------------------------------------
    * STATE
    * --------------------------------------------------------- */
@@ -62,13 +72,38 @@ export default function HomePage() {
   const [isSyncActive, setIsSyncActive] = useState(false);
 
   /* -----------------------------------------------------------
-   * QUERY – documenti attivi con gestione errori robusta
+   * QUERY – documenti con PAGINAZIONE SERVER-SIDE (50K+ ready)
+   * Usa il nuovo hook ottimizzato per grandi volumi di dati
    * --------------------------------------------------------- */
   const {
-    data: documents,
-    isLoading,
-    error,
-    refetch,
+    documents: paginatedDocuments,
+    pagination,
+    stats: serverStats,
+    isLoading: isPaginatedLoading,
+    isFetching: isPaginatedFetching,
+    isError: isPaginatedError,
+    currentFilters,
+    goToPage,
+    setStatusFilter: setServerStatusFilter,
+    setSearchFilter: setServerSearchFilter,
+    setPageLimit,
+    refetch: refetchPaginated,
+  } = useDocumentsPaginated({
+    initialPage: 1,
+    initialLimit: 25,
+    initialStatus: 'all',
+    enabled: USE_SERVER_PAGINATION,
+  });
+
+  /* -----------------------------------------------------------
+   * QUERY – documenti con sistema LEGACY (backward compatible)
+   * Carica tutti i documenti in una volta - usare solo per < 1000 docs
+   * --------------------------------------------------------- */
+  const {
+    data: legacyDocuments,
+    isLoading: isLegacyLoading,
+    error: legacyError,
+    refetch: refetchLegacy,
     isNetworkError,
     retry,
   } = useQueryWithErrorHandling<Document[]>({
@@ -76,10 +111,17 @@ export default function HomePage() {
     onError: (error) => {
       console.error(" Errore caricamento documenti:", error);
     },
-    // Refetch automatico durante sincronizzazione o connessione Drive
-    refetchInterval: (isSyncActive || isFromGoogleDriveConnection) ? 1500 : false,
+    // Nessun refetch automatico - solo manuale dopo sync completata
+    refetchInterval: false,
     refetchIntervalInBackground: false,
+    enabled: !USE_SERVER_PAGINATION, // Disabilita se usiamo paginazione server
   });
+
+  // Unifica i dati in base al sistema usato
+  const documents = USE_SERVER_PAGINATION ? paginatedDocuments : legacyDocuments;
+  const isLoading = USE_SERVER_PAGINATION ? isPaginatedLoading : isLegacyLoading;
+  const error = USE_SERVER_PAGINATION ? (isPaginatedError ? new Error("Errore caricamento") : null) : legacyError;
+  const refetch = USE_SERVER_PAGINATION ? refetchPaginated : refetchLegacy;
 
   /* -----------------------------------------------------------
    * QUERY – documenti obsoleti (solo per stats) con gestione errori
@@ -109,19 +151,34 @@ export default function HomePage() {
    * SYNC - Sincronizzazione con polling automatico
    * --------------------------------------------------------- */
   const handleSyncProgress = useCallback((progress: SyncProgressType) => {
-    // Attiva refetch automatico durante la sincronizzazione
+    // Attiva flag sincronizzazione (per mostrare la barra di progresso)
     setIsSyncActive(true);
     
-    // Refetch esplicito anche ogni volta che c'è progresso
-    refetch();
-  }, [refetch]);
+    // NON fare refetch durante il progresso - troppi reload
+    // I documenti verranno ricaricati solo al completamento
+  }, []);
 
   const handleSyncCompleted = useCallback((result: SyncProgressType) => {
+    console.log('🔄 [Sync Completed] Sync completata, attendo 2s per stabilizzazione database...');
+    
     // Disattiva refetch automatico
     setIsSyncActive(false);
     
-    // Refetch finale dei documenti
-    refetch();
+    // IMPORTANTE: Aspetta 2 secondi per dare tempo a MongoDB di completare
+    // tutte le operazioni di scrittura prima di ricaricare i documenti
+    setTimeout(() => {
+      console.log('🔄 [Sync Completed] Invalidando cache documenti...');
+      
+      // Invalida tutte le query dei documenti per forzare il reload
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] }).then(() => {
+        console.log('✅ [Sync Completed] Cache invalidata, documenti ricaricati!');
+      }).catch((error) => {
+        console.error('❌ [Sync Completed] Errore durante invalidazione cache:', error);
+      });
+      
+      // Invalida anche le stats dei documenti obsoleti
+      queryClient.invalidateQueries({ queryKey: ["/api/documents/obsolete"] });
+    }, 2000);
     
     // Mostra messaggio di completamento
     if (result.success) {
@@ -129,7 +186,7 @@ export default function HomePage() {
     } else if (result.failed && result.failed > 0) {
       toast.success(`Sincronizzazione completata con ${result.failed} errori. ${result.processed} documenti sincronizzati.`);
     }
-  }, [refetch]);
+  }, [queryClient]);
 
   const handleSyncError = useCallback((error: string) => {
     // Disattiva refetch automatico in caso di errore
@@ -156,16 +213,12 @@ export default function HomePage() {
     autoConnect: false,
   });
 
-  // Attiva refetch automatico quando la sincronizzazione è in corso
+  // Sincronizza lo stato di sincronizzazione con il progresso
   useEffect(() => {
     if (syncProgress.status === 'syncing' || syncProgress.status === 'pending') {
       setIsSyncActive(true);
-    } else if (syncProgress.status === 'completed' || syncProgress.status === 'error' || syncProgress.status === 'idle') {
-      // Ritarda la disattivazione per catturare gli ultimi documenti
-      const timer = setTimeout(() => {
-        setIsSyncActive(false);
-      }, 5000);
-      return () => clearTimeout(timer);
+    } else {
+      setIsSyncActive(false);
     }
   }, [syncProgress.status]);
 
@@ -224,48 +277,96 @@ export default function HomePage() {
   }, [resetSync, startSync]);
 
   /* -----------------------------------------------------------
-   * FILTER – lista principale
+   * FILTER – Gestione filtri (server-side o client-side)
    * --------------------------------------------------------- */
-  const filteredDocuments = useMemo(() => {
-    // Mostra solo documenti attivi (non obsoleti), tranne se filtro 'obsolete'
-    if (statusFilter === "obsolete") {
-      return obsoleteDocumentsWithDynamicStatus.filter((doc) => {
-        const matchesSearch = doc.title?.toLowerCase().includes(searchTerm.toLowerCase());
-        return matchesSearch;
-      });
-    } else {
-      return documentsWithDynamicStatus.filter((doc) => {
-        const matchesSearch = doc.title?.toLowerCase().includes(searchTerm.toLowerCase());
-        let matchesStatus = true;
-        if (statusFilter === "all") {
-          matchesStatus = true;
-        } else if (statusFilter === "active") {
-          matchesStatus = !doc.isObsolete && (
-            doc.alertStatus === "none" ||
-            doc.alertStatus === "valid" ||
-            doc.alertStatus === "active"
-          );
-        } else {
-          matchesStatus = !doc.isObsolete && doc.alertStatus?.toLowerCase() === statusFilter.toLowerCase();
-        }
-        return matchesSearch && matchesStatus;
-      });
+  
+  // Effetto per sincronizzare filtri con il server (quando USE_SERVER_PAGINATION)
+  useEffect(() => {
+    if (USE_SERVER_PAGINATION) {
+      // Converti statusFilter al formato server
+      const serverStatus = statusFilter === 'all' || statusFilter === 'active' || statusFilter === 'obsolete' 
+        ? 'all' 
+        : statusFilter as 'expired' | 'warning' | 'none';
+      setServerStatusFilter(serverStatus);
     }
-  }, [statusFilter, searchTerm, documentsWithDynamicStatus, obsoleteDocumentsWithDynamicStatus]);
+  }, [statusFilter, setServerStatusFilter]);
+
+  useEffect(() => {
+    if (USE_SERVER_PAGINATION) {
+      // Debounce della ricerca per non sovraccaricare il server
+      const timer = setTimeout(() => {
+        setServerSearchFilter(searchTerm);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [searchTerm, setServerSearchFilter]);
+
+  // Filtro documenti - server-side o client-side in base a USE_SERVER_PAGINATION
+  const filteredDocuments = useMemo(() => {
+    if (USE_SERVER_PAGINATION) {
+      // Con paginazione server-side, i filtri sono già applicati dal server
+      // Qui applichiamo solo filtri locali extra se necessario (es: obsolete)
+      if (statusFilter === "obsolete") {
+        return obsoleteDocumentsWithDynamicStatus.filter((doc) => {
+          const matchesSearch = doc.title?.toLowerCase().includes(searchTerm.toLowerCase());
+          return matchesSearch;
+        });
+      }
+      // I documenti sono già filtrati dal server
+      return documents || [];
+    } else {
+      // Sistema legacy: filtro client-side
+      if (statusFilter === "obsolete") {
+        return obsoleteDocumentsWithDynamicStatus.filter((doc) => {
+          const matchesSearch = doc.title?.toLowerCase().includes(searchTerm.toLowerCase());
+          return matchesSearch;
+        });
+      } else {
+        return documentsWithDynamicStatus.filter((doc) => {
+          const matchesSearch = doc.title?.toLowerCase().includes(searchTerm.toLowerCase());
+          let matchesStatus = true;
+          if (statusFilter === "all") {
+            matchesStatus = true;
+          } else if (statusFilter === "active") {
+            matchesStatus = !doc.isObsolete && (
+              doc.alertStatus === "none" ||
+              doc.alertStatus === "valid" ||
+              doc.alertStatus === "active"
+            );
+          } else {
+            matchesStatus = !doc.isObsolete && doc.alertStatus?.toLowerCase() === statusFilter.toLowerCase();
+          }
+          return matchesSearch && matchesStatus;
+        });
+      }
+    }
+  }, [statusFilter, searchTerm, documents, documentsWithDynamicStatus, obsoleteDocumentsWithDynamicStatus]);
 
   /* -----------------------------------------------------------
-   * STATS – dashboard
+   * STATS – dashboard (server-side per 50K+ documenti)
    * --------------------------------------------------------- */
   const stats = useMemo(() => {
-    const activeDocs = documentsWithDynamicStatus?.filter((d) => !d.isObsolete);
-    const obsoleteDocsCount = obsoleteDocumentsWithDynamicStatus?.length || 0;
-    return {
-      total: activeDocs?.length || 0,
-      expiringSoon: activeDocs?.filter((d) => d.alertStatus === "warning").length || 0,
-      expired: activeDocs?.filter((d) => d.alertStatus === "expired").length || 0,
-      obsolete: obsoleteDocsCount,
-    };
-  }, [documentsWithDynamicStatus, obsoleteDocumentsWithDynamicStatus]);
+    if (USE_SERVER_PAGINATION) {
+      // Stats dal server - sempre accurate anche con 50K+ documenti
+      const obsoleteDocsCount = obsoleteDocumentsWithDynamicStatus?.length || 0;
+      return {
+        total: serverStats.total,
+        expiringSoon: serverStats.warning,
+        expired: serverStats.expired,
+        obsolete: obsoleteDocsCount,
+      };
+    } else {
+      // Stats calcolate client-side (sistema legacy)
+      const activeDocs = documentsWithDynamicStatus?.filter((d) => !d.isObsolete);
+      const obsoleteDocsCount = obsoleteDocumentsWithDynamicStatus?.length || 0;
+      return {
+        total: activeDocs?.length || 0,
+        expiringSoon: activeDocs?.filter((d) => d.alertStatus === "warning").length || 0,
+        expired: activeDocs?.filter((d) => d.alertStatus === "expired").length || 0,
+        obsolete: obsoleteDocsCount,
+      };
+    }
+  }, [serverStats, documentsWithDynamicStatus, obsoleteDocumentsWithDynamicStatus]);
 
   /* -----------------------------------------------------------
    * HANDLERS
@@ -361,12 +462,33 @@ export default function HomePage() {
             message="Impossibile caricare i documenti. Verifica la connessione e riprova."
           />
         ) : (
-          <DocumentTable
-            documents={filteredDocuments}
-            onPreview={handlePreview}
-            isAdmin={user?.role === "admin"}
-            onDelete={() => refetch()}
-          />
+          <>
+            <DocumentTable
+              documents={filteredDocuments}
+              onPreview={handlePreview}
+              isAdmin={user?.role === "admin"}
+              onDelete={() => refetch()}
+              pageSize={USE_SERVER_PAGINATION ? 1000 : 10} // Con paginazione server, mostra tutti i doc della pagina
+            />
+            
+            {/* Paginazione Server-Side (solo quando attiva) */}
+            {USE_SERVER_PAGINATION && statusFilter !== "obsolete" && (
+              <ServerPagination
+                currentPage={pagination.page}
+                totalPages={pagination.totalPages}
+                total={pagination.total}
+                limit={pagination.limit}
+                hasNextPage={pagination.hasNextPage}
+                hasPrevPage={pagination.hasPrevPage}
+                onPageChange={goToPage}
+                onLimitChange={setPageLimit}
+                isLoading={isPaginatedFetching}
+                showTotal={true}
+                showPageSize={true}
+                className="mt-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 px-4"
+              />
+            )}
+          </>
         )}
       </main>
 

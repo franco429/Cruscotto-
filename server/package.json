@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@google-cloud/local-auth": "^3.0.1",
+    "@google-cloud/storage": "^7.18.0",
     "@types/qrcode": "^1.5.6",
     "aws-sdk": "^2.1692.0",
     "bcrypt": "^6.0.0",

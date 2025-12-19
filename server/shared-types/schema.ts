@@ -20,6 +20,7 @@ export interface DocumentDocument {
   legacyId: number;
   title: string;
   path: string;
+  filePath?: string;
   revision: string;
   driveUrl: string;
   fileType: string;
@@ -43,6 +44,31 @@ export interface LogDocument {
   documentId: number | null;
   details: any;
   timestamp: Date;
+}
+
+export interface BackupDocument {
+  legacyId: number;
+  filename: string;
+  filePath: string;
+  fileSize: number;
+  backupType: "complete" | "client_specific";
+  createdBy: {
+    userId: number;
+    userEmail: string;
+    userRole: "superadmin" | "admin" | "viewer" | "developer";
+  };
+  clientId: number | null;
+  metadata: {
+    totalUsers: number;
+    totalDocuments: number;
+    totalLogs: number;
+    totalClients: number;
+    totalCompanyCodes: number;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+  isActive: boolean;
+  lastVerified: Date;
 }
 
 export type InsertUser = Omit<UserDocument, "legacyId" | "createdAt">;

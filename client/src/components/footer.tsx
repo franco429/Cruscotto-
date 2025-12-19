@@ -198,7 +198,7 @@ export default function Footer() {
               <li className="flex items-center space-x-2 sm:space-x-3 text-xs sm:text-sm">
                 <Mail className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
                 <span className="text-slate-600 dark:text-slate-400">
-                  docgenius8@gmail.com
+                  pannellodicontrollo@gmail.com
                 </span>
               </li>
             </ul>

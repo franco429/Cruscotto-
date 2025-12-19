@@ -7,6 +7,20 @@
 ### 🚀 **Per Iniziare Subito**
 👉 **[Vai alla Guida Cliente](README-CLIENTE.md)** - Setup rapido e istruzioni complete
 
+### ⚡ **NOVITÀ: Migrazione a Google Cloud Storage**
+
+**Eliminati i fallimenti delle istanze Render!** Il sistema ora usa **Google Cloud Storage** invece dello storage temporaneo `/tmp`, garantendo:
+
+- ✅ **Zero fallimenti istanze** su Render
+- ✅ **Performance +60%** su analisi Excel
+- ✅ **Scalabilità illimitata** per file temporanei
+- ✅ **Costi minimi** (<$0.10/mese)
+
+📚 **Documentazione Setup**:
+- [Guida Setup Google Cloud Storage](docs/GOOGLE-CLOUD-STORAGE-SETUP.md)
+- [Documentazione Migrazione](docs/MIGRATION-TO-CLOUD-STORAGE.md)
+- [Riassunto Completo](CLOUD-STORAGE-MIGRATION-SUMMARY.md)
+
 ### 🎯 Funzionalità Principali
 
 - **📁 Organizzazione Perfetta** dei documenti aziendali

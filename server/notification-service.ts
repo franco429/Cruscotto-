@@ -1,9 +1,10 @@
 import nodemailer from "nodemailer";
 import { DocumentDocument as Document } from "./shared-types/schema";
 import { mongoStorage } from "./mongo-storage";
-import { addDays, format, isAfter, isBefore, parseISO } from "date-fns";
+import { addDays, format, isAfter, isBefore, parseISO, subHours } from "date-fns";
 import logger from "./logger";
 import { appEvents } from "./app-events";
+import { NotificationTrackerModel } from "./models/mongoose-models";
 
 // Configurazione del transporter nodemailer
 // Utilizziamo le stesse credenziali SMTP configurate nelle variabili d'ambiente
@@ -106,6 +107,87 @@ export async function checkDocumentExpirations(
 }
 
 /**
+ * Controlla se è già stata inviata una notifica dello stesso tipo nelle ultime 24 ore
+ * @param type Tipo di notifica
+ * @param clientId ID del client
+ * @returns true se è necessario inviare la notifica, false altrimenti
+ */
+async function shouldSendNotification(
+  type: "expired" | "warning",
+  clientId: string
+): Promise<boolean> {
+  try {
+    // Calcola la data limite (24 ore fa)
+    const twentyFourHoursAgo = subHours(new Date(), 24);
+
+    // Cerca l'ultima notifica dello stesso tipo per questo client
+    const lastNotification = await NotificationTrackerModel.findOne({
+      notificationType: type,
+      clientId: clientId,
+      sentAt: { $gte: twentyFourHoursAgo },
+    }).sort({ sentAt: -1 });
+
+    if (lastNotification) {
+      logger.info("Notifica già inviata nelle ultime 24 ore, skip invio", {
+        type,
+        clientId,
+        lastSentAt: lastNotification.sentAt,
+        documentCount: lastNotification.documentCount,
+      });
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    logger.error("Errore durante il controllo delle notifiche precedenti", {
+      error: error instanceof Error ? error.message : String(error),
+      type,
+      clientId,
+    });
+    // In caso di errore, permettiamo l'invio per non bloccare le notifiche
+    return true;
+  }
+}
+
+/**
+ * Registra l'invio di una notifica nel database
+ * @param type Tipo di notifica
+ * @param clientId ID del client
+ * @param documents Lista dei documenti notificati
+ * @param recipientEmails Lista degli email dei destinatari
+ */
+async function trackNotificationSent(
+  type: "expired" | "warning",
+  clientId: string,
+  documents: Document[],
+  recipientEmails: string[]
+): Promise<void> {
+  try {
+    await NotificationTrackerModel.create({
+      notificationType: type,
+      clientId: clientId,
+      documentIds: documents.map((doc) => doc.legacyId),
+      sentAt: new Date(),
+      recipientEmails: recipientEmails,
+      documentCount: documents.length,
+    });
+
+    logger.info("Notifica registrata nel tracker", {
+      type,
+      clientId,
+      documentCount: documents.length,
+      recipientCount: recipientEmails.length,
+    });
+  } catch (error) {
+    logger.error("Errore durante la registrazione della notifica", {
+      error: error instanceof Error ? error.message : String(error),
+      type,
+      clientId,
+    });
+  }
+}
+
+/**
  * Invia notifiche email per documenti in scadenza o scaduti
  * @param documents Lista dei documenti
  * @param type Tipo di notifica ('expired' o 'warning')
@@ -141,7 +223,7 @@ async function sendExpirationNotifications(
       // Determina il clientId associato al documento (se esiste)
       // In un sistema reale, potremmo avere un campo clientId sul documento
       // Per ora, possiamo usare un valore predefinito
-      const clientId = doc.clientId || "default";
+      const clientId = doc.clientId?.toString() || "default";
 
       if (!documentsByClient[clientId]) {
         documentsByClient[clientId] = [];
@@ -157,6 +239,17 @@ async function sendExpirationNotifications(
 
     // Invia email per ogni gruppo di client
     for (const [clientId, clientDocs] of Object.entries(documentsByClient)) {
+      // Controlla se è necessario inviare la notifica per questo client
+      const shouldSend = await shouldSendNotification(type, clientId);
+      if (!shouldSend) {
+        logger.info("Skip invio notifica per client (già inviata nelle ultime 24h)", {
+          clientId,
+          type,
+          documentCount: clientDocs.length,
+        });
+        continue;
+      }
+
       // Trova gli admin associati a questo client (o tutti gli admin se non c'è associazione)
       const targetAdmins = allUsers.filter(
         (user) =>
@@ -248,6 +341,7 @@ async function sendExpirationNotifications(
       `;
 
       // Invia email a tutti gli admin target
+      const recipientEmails: string[] = [];
       for (const admin of targetAdmins) {
         try {
           const result = await transporter.sendMail({
@@ -259,6 +353,7 @@ async function sendExpirationNotifications(
             html: emailHTML,
           });
 
+          recipientEmails.push(admin.email);
           logger.info("Email inviata con successo", {
             adminEmail: admin.email,
             messageId: result.messageId,
@@ -274,6 +369,11 @@ async function sendExpirationNotifications(
             subject,
           });
         }
+      }
+
+      // Registra l'invio della notifica solo se almeno un'email è stata inviata con successo
+      if (recipientEmails.length > 0) {
+        await trackNotificationSent(type, clientId, clientDocs, recipientEmails);
       }
     }
 

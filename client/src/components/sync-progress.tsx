@@ -22,10 +22,24 @@ export default function SyncProgress({
   error,
   onRetry,
 }: SyncProgressProps) {
-  if (!isSyncing && !error) return null;
+  const [showCompleted, setShowCompleted] = React.useState(false);
+
+  // Mostra il messaggio di completamento per 5 secondi (tempo per caricare i documenti)
+  React.useEffect(() => {
+    if (!isSyncing && !error && processed > 0 && total > 0) {
+      setShowCompleted(true);
+      const timer = setTimeout(() => {
+        setShowCompleted(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [isSyncing, error, processed, total]);
+
+  // Non mostrare se non è in sync, non c'è errore, e non stiamo mostrando il completamento
+  if (!isSyncing && !error && !showCompleted) return null;
 
   const progressPercentage = total > 0 ? (processed / total) * 100 : 0;
-  const isComplete = processed >= total && total > 0;
+  const isComplete = (!isSyncing && processed >= total && total > 0) || showCompleted;
 
   return (
     <Card className="mb-6 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
@@ -79,7 +93,7 @@ export default function SyncProgress({
             {isComplete && (
               <div className="p-3 bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-md">
                 <p className="text-sm text-green-700 dark:text-green-300">
-                   Sincronizzazione completata con successo! I documenti sono ora disponibili.
+                  ✅ Sincronizzazione completata! {processed} documenti sincronizzati. Caricamento in corso...
                 </p>
               </div>
             )}
@@ -87,7 +101,7 @@ export default function SyncProgress({
             {!isComplete && (
               <div className="p-3 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-md">
                 <p className="text-xs text-blue-600 dark:text-blue-400">
-                  La finestra si chiuderà automaticamente e verrai reindirizzato alla home page
+                  ⚡ Sincronizzazione ultra-veloce in corso • {Math.round((processed / total) * 100)}% completato
                 </p>
               </div>
             )}

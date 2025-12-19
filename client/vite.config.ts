@@ -16,6 +16,27 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
+      // Configurazione speciale per SSE (Server-Sent Events)
+      "/api/sync/stream": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+        secure: false,
+        // CRITICO per SSE: disabilita buffering e timeout
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq) => {
+            // Imposta headers per SSE
+            proxyReq.setHeader('Accept', 'text/event-stream');
+            proxyReq.setHeader('Cache-Control', 'no-cache');
+            proxyReq.setHeader('Connection', 'keep-alive');
+          });
+          proxy.on('proxyRes', (proxyRes) => {
+            // Disabilita buffering per stream in tempo reale
+            proxyRes.headers['X-Accel-Buffering'] = 'no';
+            proxyRes.headers['Cache-Control'] = 'no-cache, no-transform';
+          });
+        },
+      },
+      // API standard
       "/api": {
         target: "http://localhost:5000",
         changeOrigin: true,

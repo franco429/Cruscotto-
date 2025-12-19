@@ -51,12 +51,25 @@ export const documentSchema = new Schema<DocumentDocument & MongooseDocument>({
   isObsolete: { type: Boolean, default: false, index: true },
   fileHash: { type: String, default: null },
   encryptedCachePath: { type: String, default: null },
+  // legacy single-owner field (mantained for backward compatibility)
   clientId: { type: Number, default: null, index: true },
+  // multi-tenant ownership: a documento può appartenere a più client che condividono la stessa cartella
+  clientIds: { type: [Number], default: [], index: true },
   ownerId: { type: Number, default: null },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
   googleFileId: { type: String, index: true, unique: true, sparse: true },
 });
+
+// INDICI COMPOSTI OTTIMIZZATI per query 50K+ documenti
+// Indice principale per paginazione e filtri
+documentSchema.index({ clientIds: 1, isObsolete: 1, alertStatus: 1, updatedAt: -1 });
+// Indice per ricerca e ordinamento per path
+documentSchema.index({ clientIds: 1, isObsolete: 1, path: 1 });
+// Indice per ricerca testuale
+documentSchema.index({ clientIds: 1, title: 'text', path: 'text', revision: 'text' });
+// Indice per verifica duplicati (usato in sync)
+documentSchema.index({ clientIds: 1, path: 1, title: 1, revision: 1 });
 
 // Log Schema
 const logSchema = new Schema<LogDocument & MongooseDocument>({
@@ -136,6 +149,33 @@ const backupSchema = new Schema<BackupDocument & MongooseDocument>({
   lastVerified: { type: Date, default: Date.now },
 });
 
+// Notification Tracker Schema - Traccia quando sono state inviate le notifiche
+interface NotificationTrackerDocument extends MongooseDocument {
+  notificationType: "expired" | "warning";
+  clientId: string; // "default" o ID del client specifico
+  documentIds: number[]; // IDs dei documenti notificati
+  sentAt: Date;
+  recipientEmails: string[];
+  documentCount: number;
+}
+
+const notificationTrackerSchema = new Schema<NotificationTrackerDocument>({
+  notificationType: {
+    type: String,
+    required: true,
+    enum: ["expired", "warning"],
+    index: true,
+  },
+  clientId: { type: String, required: true, index: true },
+  documentIds: { type: [Number], required: true },
+  sentAt: { type: Date, default: Date.now, index: true },
+  recipientEmails: { type: [String], required: true },
+  documentCount: { type: Number, required: true },
+});
+
+// Indice composto per query ottimizzate
+notificationTrackerSchema.index({ notificationType: 1, clientId: 1, sentAt: -1 });
+
 // Counter Schema for auto-incrementing IDs
 interface CounterDocument extends MongooseDocument {
   _id: string;
@@ -182,4 +222,8 @@ export const CompanyCodeModel = mongoose.model<
 export const BackupModel = mongoose.model<BackupDocument & MongooseDocument>(
   "Backup",
   backupSchema
+);
+export const NotificationTrackerModel = mongoose.model<NotificationTrackerDocument>(
+  "NotificationTracker",
+  notificationTrackerSchema
 );

@@ -5,7 +5,6 @@ import {
 import path from "path";
 import fs from "fs";
 import ExcelJS from "exceljs";
-import os from "os";
 import { v4 as uuidv4 } from "uuid";
 import { mongoStorage } from "../server/mongo-storage";
 import {
@@ -19,22 +18,31 @@ import logger from "./logger";
 import { sendSyncErrorNotifications } from "./notification-service";
 import { parse } from "date-fns";
 import { appEvents } from "./app-events";
+import {
+  isCloudStorageConfigured,
+  uploadBufferToCloudStorage,
+  downloadStreamFromCloudStorage,
+  deleteFileFromCloudStorageWithRetry,
+} from "./google-cloud-storage";
+import { Readable } from "stream";
 
 const syncIntervals: Record<number, NodeJS.Timeout> = {};
 
-// Configurazione ottimizzata per Render con velocità migliorata
+// Configurazione MASSIMA ottimizzata per Render con Cloud Storage
+// AGGIORNAMENTO: Parallelizzazione aumentata per supportare 50K+ documenti
 const SYNC_CONFIG = {
   maxRetries: 2, // Ridotto da 3 a 2 per evitare timeout Render
   retryDelay: 500, // Ridotto da 1s a 500ms
   maxRetryDelay: 15000, // Ridotto da 30s a 15s per ambiente Render
   timeout: 20000, // Ridotto da 30s a 20s per operazioni Google Drive
-  batchSize: 25, // OTTIMIZZATO: da 10 a 25 per batch più grandi (sicuro per non-Excel)
-  maxConcurrentNonExcel: 8, // NUOVO: alta concorrenza per file non-Excel (nessun download)
-  maxConcurrentExcel: 1, // Excel rimane sequenziale per sicurezza /tmp
+  batchSize: 100, // ULTRA-MASSIMO: aumentato da 50 a 100 per velocità estrema
+  maxConcurrentNonExcel: 30, // ULTRA-MASSIMO: aumentato da 15 a 30 (file non-Excel sono veloci)
+  maxConcurrentExcel: 20, // ULTRA-MASSIMO: aumentato da 15 a 20 (Excel con GCS è sicuro)
   skipExcelAnalysis: false, // Flag per saltare analisi Excel se necessario
   renderOptimized: true, // Flag per ottimizzazioni specifiche Render
-  batchPauseMs: 50, // RIDOTTO: da 200ms a 50ms tra batch
-  chunkPauseMs: 25, // RIDOTTO: da 100ms a 25ms tra chunk
+  batchPauseMs: 0, // MASSIMO: rimossa pausa tra batch (GCS lo permette)
+  chunkPauseMs: 0, // MASSIMO: rimossa pausa tra chunk (GCS lo permette)
+  useCloudStorage: true, // NUOVO: usa Cloud Storage invece di /tmp
 } as const;
 
 // Tipi per la gestione errori
@@ -387,8 +395,113 @@ export async function analyzeExcelContent(
       throw new Error(`File troppo grande (${Math.round(fileSizeMB)}MB). Limite massimo: ${EXCEL_LIMITS.MAX_FILE_SIZE_MB}MB. Considera di pulire il file da formattazioni eccessive.`);
     }
 
-    // ALWAYS use streaming approach - no more document mode
-    return await analyzeExcelContentStreamOptimized(filePath, evaluator);
+    // Use fs.createReadStream for better memory control
+    const stream = fs.createReadStream(filePath);
+    
+    const workbook = new ExcelJS.stream.xlsx.WorkbookReader(stream, {
+      worksheets: 'emit',
+      sharedStrings: 'ignore',
+      hyperlinks: 'ignore',
+      styles: 'ignore'
+    });
+
+    let expiryDate: Date | null = null;
+    let worksheetProcessed = false;
+    let totalRowsRead = 0;
+    let excessFormattingDetected = false;
+
+    // Timeout wrapper per fail-fast su Render
+    const analysisPromise = (async () => {
+      for await (const worksheetReader of workbook) {
+        if (worksheetProcessed) break;
+        
+        for await (const rowOrRows of worksheetReader) {
+          const rows = Array.isArray(rowOrRows) ? rowOrRows : [rowOrRows];
+          
+          for (const row of rows) {
+            totalRowsRead++;
+            
+            if (totalRowsRead > EXCEL_LIMITS.MAX_ROWS_TO_READ) {
+              excessFormattingDetected = true;
+              logger.warn("Excel file has excessive rows (possible excess formatting)", {
+                filePath,
+                totalRowsRead,
+                maxRows: EXCEL_LIMITS.MAX_ROWS_TO_READ
+              });
+              break;
+            }
+            
+            if (totalRowsRead === 1) {
+              const cellA1 = row.getCell ? row.getCell(1) : row.values?.[1];
+              
+              if (cellA1) {
+                if (cellA1.formula) {
+                  logger.debug(`Found formula in streaming mode: ${cellA1.formula}`, { filePath });
+                  const result = evaluator.evaluate(cellA1.formula);
+                  
+                  if (result.evaluated && result.value) {
+                    expiryDate = result.value;
+                    logger.debug(`Formula evaluated in streaming: ${expiryDate.toISOString()}`, { filePath });
+                  }
+                }
+                
+                if (!expiryDate) {
+                  let cellValue = cellA1.value ?? cellA1;
+                  if (typeof cellValue === "object" && cellValue && "result" in cellValue) {
+                    cellValue = (cellValue as ExcelJS.CellFormulaValue).result;
+                  }
+                  expiryDate = parseValueToUTCDate(cellValue);
+                  logger.debug("Using streaming cached value", { cellValue, expiryDate, filePath });
+                }
+              }
+              
+              worksheetProcessed = true;
+              break;
+            }
+          }
+          
+          if (worksheetProcessed || excessFormattingDetected) break;
+        }
+        
+        if (worksheetProcessed || excessFormattingDetected) break;
+      }
+    })();
+
+    const result = await Promise.race([
+      analysisPromise,
+      new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Excel analysis timeout on Render')), EXCEL_LIMITS.RENDER_TIMEOUT_MS)
+      )
+    ]);
+
+    stream.destroy();
+    
+    if (excessFormattingDetected) {
+      throw new Error(`File Excel con formattazione eccessiva (${totalRowsRead}+ righe). Pulisci il file: Excel → Cerca e Seleziona → Vai a Speciale → Celle vuote → Elimina righe/colonne.`);
+    }
+    
+    const alertStatus = calculateAlertStatus(expiryDate);
+    
+    if (!expiryDate) {
+      logger.debug("No expiry date found in streaming Excel analysis", { 
+        filePath, 
+        analysisTimeMs: Date.now() - startTime,
+        totalRowsRead,
+        alertStatus: "none",
+        method: 'streaming-optimized'
+      });
+    } else {
+      logger.info("Streaming Excel analysis completed", {
+        filePath,
+        expiryDate: (expiryDate as Date).toISOString(),
+        alertStatus,
+        analysisTimeMs: Date.now() - startTime,
+        totalRowsRead,
+        method: 'streaming-optimized'
+      });
+    }
+    
+    return { alertStatus, expiryDate };
     
   } catch (error) {
     const analysisTime = Date.now() - startTime;
@@ -401,16 +514,43 @@ export async function analyzeExcelContent(
   }
 }
 
-// Optimized streaming approach with strict limits for Render
-async function analyzeExcelContentStreamOptimized(
-  filePath: string,
-  evaluator: FormulaEvaluator
+/**
+ * Analizza Excel content direttamente da uno stream (Cloud Storage o altro)
+ * NUOVO: Supporta analisi senza salvare su disco locale
+ */
+export async function analyzeExcelContentFromStream(
+  stream: Readable,
+  fileName: string
+): Promise<ExcelAnalysis> {
+  const evaluator = new FormulaEvaluator();
+  const startTime = Date.now();
+
+  try {
+    logger.debug("Starting Excel streaming analysis from stream", { fileName });
+
+    return await analyzeExcelContentStreamOptimizedFromStream(stream, evaluator, fileName);
+    
+  } catch (error) {
+    const analysisTime = Date.now() - startTime;
+    logger.error("Excel analysis from stream failed", { 
+      fileName, 
+      error: error instanceof Error ? error.message : String(error),
+      analysisTimeMs: analysisTime
+    });
+    throw error;
+  }
+}
+
+// Optimized streaming approach with strict limits for Render - from stream
+async function analyzeExcelContentStreamOptimizedFromStream(
+  stream: Readable,
+  evaluator: FormulaEvaluator,
+  fileName: string
 ): Promise<ExcelAnalysis> {
   const startTime = Date.now();
   
   try {
-    // Use fs.createReadStream for better memory control
-    const stream = fs.createReadStream(filePath);
+    // Use provided stream directly
     
     const workbook = new ExcelJS.stream.xlsx.WorkbookReader(stream, {
       worksheets: 'emit',
@@ -440,7 +580,7 @@ async function analyzeExcelContentStreamOptimized(
             if (totalRowsRead > EXCEL_LIMITS.MAX_ROWS_TO_READ) {
               excessFormattingDetected = true;
               logger.warn("Excel file has excessive rows (possible excess formatting)", {
-                filePath,
+                fileName,
                 totalRowsRead,
                 maxRows: EXCEL_LIMITS.MAX_ROWS_TO_READ
               });
@@ -454,12 +594,12 @@ async function analyzeExcelContentStreamOptimized(
               if (cellA1) {
                 // Check for formula first
                 if (cellA1.formula) {
-                  logger.debug(`Found formula in streaming mode: ${cellA1.formula}`, { filePath });
+                  logger.debug(`Found formula in streaming mode: ${cellA1.formula}`, { fileName });
                   const result = evaluator.evaluate(cellA1.formula);
                   
                   if (result.evaluated && result.value) {
                     expiryDate = result.value;
-                    logger.debug(`Formula evaluated in streaming: ${expiryDate.toISOString()}`, { filePath });
+                    logger.debug(`Formula evaluated in streaming: ${expiryDate.toISOString()}`, { fileName });
                   }
                 }
                 
@@ -470,7 +610,7 @@ async function analyzeExcelContentStreamOptimized(
                     cellValue = (cellValue as ExcelJS.CellFormulaValue).result;
                   }
                   expiryDate = parseValueToUTCDate(cellValue);
-                  logger.debug("Using streaming cached value", { cellValue, expiryDate, filePath });
+                  logger.debug("Using streaming cached value", { cellValue, expiryDate, fileName });
                 }
               }
               
@@ -507,20 +647,20 @@ async function analyzeExcelContentStreamOptimized(
     
     if (!expiryDate) {
       logger.debug("No expiry date found in streaming Excel analysis", { 
-        filePath, 
+        fileName, 
         analysisTimeMs: analysisTime,
         totalRowsRead,
         alertStatus: "none",
-        method: 'streaming-optimized'
+        method: 'streaming-from-cloud-storage'
       });
     } else {
       logger.info("Streaming Excel analysis completed", {
-        filePath,
+        fileName,
         expiryDate: (expiryDate as Date).toISOString(),
         alertStatus,
         analysisTimeMs: analysisTime,
         totalRowsRead,
-        method: 'streaming-optimized'
+        method: 'streaming-from-cloud-storage'
       });
     }
     
@@ -529,10 +669,10 @@ async function analyzeExcelContentStreamOptimized(
   } catch (error) {
     const analysisTime = Date.now() - startTime;
     logger.error("Optimized streaming Excel analysis failed", {
-      filePath,
+      fileName,
       error: error instanceof Error ? error.message : String(error),
       analysisTimeMs: analysisTime,
-      method: 'streaming-optimized'
+      method: 'streaming-from-cloud-storage'
     });
     
     // Non fare più fallback alla modalità document - fail fast
@@ -568,7 +708,7 @@ export async function analyzeExcelContentOptimized(
   drive: any,
   fileId: string
 ): Promise<ExcelAnalysis> {
-  let tempFilePath: string | null = null;
+  let cloudStorageFileName: string | null = null;
   let metadata: any = null;
 
   // Use new optimized timeout from EXCEL_LIMITS
@@ -578,12 +718,13 @@ export async function analyzeExcelContentOptimized(
     // Prova a ottenere i metadati del file
     metadata = await drive.files.get({
       fileId,
-      fields: "name,mimeType,modifiedTime,createdTime",
+      fields: "name,mimeType,modifiedTime,createdTime,size",
       supportsAllDrives: true,
     });
 
     const fileName = metadata.data.name;
     const mimeType = metadata.data.mimeType;
+    const fileSize = parseInt(metadata.data.size || '0', 10);
 
     // Controlla se è un file Excel o Google Sheets
     const isExcelFile =
@@ -601,41 +742,100 @@ export async function analyzeExcelContentOptimized(
       return { alertStatus: "none", expiryDate: null };
     }
 
-    // Crea un percorso temporaneo per il file
-    const tempDir = os.tmpdir();
-    const uniqueId = uuidv4();
-    const fileExtension = isGoogleSheet
-      ? ".xlsx"
-      : path.extname(fileName || "");
-    tempFilePath = path.join(
-      tempDir,
-      `excel_analysis_${uniqueId}${fileExtension}`
-    );
+    // SISTEMA IBRIDO AUTOMATICO: Ottimizza in base alla dimensione del file
+    const useCloudStorage = SYNC_CONFIG.useCloudStorage && await isCloudStorageConfigured();
+    const fileSizeMB = fileSize / 1024 / 1024;
+    
+    // Decisione automatica: file piccoli in memoria, file grandi su Cloud Storage
+    const useInMemory = fileSizeMB < EXCEL_LIMITS.MAX_FILE_SIZE_MB;
+    
+    if (useCloudStorage && !useInMemory) {
+      // STRATEGIA 1: File ≥10MB → Cloud Storage (sicuro per memoria)
+      logger.info("Large file - using Cloud Storage strategy", {
+        fileId,
+        fileName,
+        mimeType,
+        isGoogleSheet,
+        fileSizeMB: fileSizeMB.toFixed(2),
+        strategy: 'cloud-storage',
+      });
 
-    logger.info("Downloading file for analysis", {
-      fileId,
-      fileName,
-      mimeType,
-      isGoogleSheet,
-      tempFilePath,
-    });
+      // Download file da Google Drive come buffer (in memoria)
+      const buffer = await downloadFileAsBuffer(drive, fileId, isGoogleSheet);
+      
+      // Upload su Cloud Storage
+      cloudStorageFileName = await uploadBufferToCloudStorage(
+        buffer,
+        fileName,
+        {
+          fileId,
+          mimeType,
+          source: 'google-drive-analysis',
+          fileSizeMB: fileSizeMB.toFixed(2),
+        }
+      );
 
-    // Scarica il file (Excel nativo o Google Sheets esportato)
-    await googleDriveDownloadFile(drive, fileId, tempFilePath);
+      logger.debug("File uploaded to Cloud Storage", {
+        cloudStorageFileName,
+        bufferSizeMB: (buffer.length / 1024 / 1024).toFixed(2),
+      });
 
-    // Analizza il contenuto del file (timeout già gestito internamente)
-    const analysis = await analyzeExcelContent(tempFilePath);
+      // Crea stream da Cloud Storage
+      const stream = downloadStreamFromCloudStorage(cloudStorageFileName);
 
-    logger.info("File analysis completed successfully", {
-      fileId,
-      fileName,
-      mimeType,
-      isGoogleSheet,
-      alertStatus: analysis.alertStatus,
-      expiryDate: analysis.expiryDate?.toISOString(),
-    });
+      // Analizza direttamente dallo stream
+      const analysis = await analyzeExcelContentFromStream(stream, fileName);
 
-    return analysis;
+      logger.info("File analysis completed successfully (Cloud Storage)", {
+        fileId,
+        fileName,
+        mimeType,
+        isGoogleSheet,
+        fileSizeMB: fileSizeMB.toFixed(2),
+        alertStatus: analysis.alertStatus,
+        expiryDate: analysis.expiryDate?.toISOString(),
+        strategy: 'cloud-storage',
+      });
+
+      return analysis;
+      
+    } else {
+      // STRATEGIA 2: File <10MB o GCS non configurato → In-Memory (più veloce)
+      const strategy = useInMemory ? 'in-memory-optimized' : 'in-memory-fallback';
+      const logLevel = useCloudStorage ? 'info' : 'warn';
+      
+      logger[logLevel](`Small file - using in-memory strategy`, {
+        fileId,
+        fileName,
+        mimeType,
+        isGoogleSheet,
+        fileSizeMB: fileSizeMB.toFixed(2),
+        strategy,
+        reason: useInMemory 
+          ? 'file < 10MB (optimal for performance)' 
+          : 'Cloud Storage not configured',
+      });
+
+      // Download e analizza direttamente in memoria (nessun file temporaneo)
+      const buffer = await downloadFileAsBuffer(drive, fileId, isGoogleSheet);
+      const { Readable } = await import('stream');
+      const stream = Readable.from(buffer);
+      
+      const analysis = await analyzeExcelContentFromStream(stream, fileName);
+      
+      logger[logLevel]("File analysis completed successfully (In-Memory)", {
+        fileId,
+        fileName,
+        mimeType,
+        isGoogleSheet,
+        fileSizeMB: fileSizeMB.toFixed(2),
+        alertStatus: analysis.alertStatus,
+        expiryDate: analysis.expiryDate?.toISOString(),
+        strategy,
+      });
+      
+      return analysis;
+    }
   } catch (error) {
     logger.warn("Failed to analyze file content", {
       fileId,
@@ -645,20 +845,10 @@ export async function analyzeExcelContentOptimized(
     });
     return { alertStatus: "none", expiryDate: null };
   } finally {
-    // Pulisci il file temporaneo
-    if (tempFilePath && fs.existsSync(tempFilePath)) {
-      try {
-        fs.unlinkSync(tempFilePath);
-        logger.debug("Temporary file cleaned up", { tempFilePath });
-      } catch (cleanupError) {
-        logger.warn("Failed to cleanup temporary file", {
-          tempFilePath,
-          error:
-            cleanupError instanceof Error
-              ? cleanupError.message
-              : String(cleanupError),
-        });
-      }
+    // Pulisci il file da Cloud Storage
+    if (cloudStorageFileName) {
+      await deleteFileFromCloudStorageWithRetry(cloudStorageFileName);
+      logger.debug("Cloud Storage file cleaned up", { cloudStorageFileName });
     }
     
     // Forza garbage collection per ottimizzare memoria su Render
@@ -789,7 +979,29 @@ async function processFileWithErrorHandlingOptimized(
       return { success: true };
     }
 
-    // Verifica duplicati
+    // Associa googleFileId per dedup globale
+    (doc as any).googleFileId = file.id;
+
+    // Preferisci dedup su googleFileId (multi-tenant)
+    const existingByGoogleId = await mongoStorage.getDocumentByGoogleFileId(file.id);
+
+    if (existingByGoogleId) {
+      await mongoStorage.updateDocument(existingByGoogleId.legacyId, {
+        ...doc,
+        clientId,
+        // Aggiungi il nuovo client mantenendo gli altri già associati
+        clientIds: [clientId],
+        ownerId: userId,
+      });
+      logger.debug(`Document already existed (shared): ${file.name}`, {
+        fileName: file.name,
+        userId,
+        clientId,
+      });
+      return { success: true };
+    }
+
+    // Fallback dedup su path/title/revision (legacy)
     const exists = await mongoStorage.getDocumentByPathAndTitleAndRevision(
       doc.path,
       doc.title,
@@ -798,7 +1010,7 @@ async function processFileWithErrorHandlingOptimized(
     );
 
     if (exists) {
-      logger.debug(`Document already exists: ${file.name}`, {
+      logger.debug(`Document already exists (legacy path/rev): ${file.name}`, {
         fileName: file.name,
         userId,
         clientId,
@@ -824,6 +1036,7 @@ async function processFileWithErrorHandlingOptimized(
       ...doc,
       clientId,
       ownerId: userId,
+      clientIds: [clientId],
     });
 
     // Gestione revisioni obsolete - usa il nuovo metodo centralizzato
@@ -1089,6 +1302,11 @@ export async function syncWithGoogleDrive(
       fileCount: files.length,
     });
 
+    // Report progresso iniziale
+    if (onProgress) {
+      onProgress(0, files.length, 0, 1);
+    }
+
     // 5. Processamento in batch ottimizzato con analisi contenuti
     const batches = [];
     for (let i = 0; i < files.length; i += SYNC_CONFIG.batchSize) {
@@ -1107,10 +1325,11 @@ export async function syncWithGoogleDrive(
         batch,
         userId,
         clientId!,
-        (processed, total) => {
+        (processed, total, currentBatch, totalBatches) => {
           if (onProgress) {
             const totalProcessed = result.processed + processed;
             const totalFiles = files.length;
+            // Passa il batch globale, non quello locale del sub-batch
             onProgress(
               totalProcessed,
               totalFiles,
@@ -1134,6 +1353,11 @@ export async function syncWithGoogleDrive(
 
     result.success = result.failed === 0;
     result.duration = Date.now() - startTime;
+
+    // Report progresso finale (100%)
+    if (onProgress) {
+      onProgress(result.processed, files.length, batches.length, batches.length);
+    }
 
     logger.info("Optimized Google Drive sync completed", {
       userId,
@@ -1242,14 +1466,14 @@ export async function syncWithGoogleDrive(
   return result;
 }
 
-// Funzione batch OTTIMIZZATA - Processa non-Excel in parallelo, Excel sequenziale
-// Sicuro per Render: Excel rimane sequenziale per evitare overflow /tmp
+// Funzione batch OTTIMIZZATA - Processa tutti i file in parallelo con Cloud Storage
+// NUOVO: Con Cloud Storage, anche gli Excel possono essere parallelizzati (no più limiti /tmp)
 async function processBatchWithAnalysis(
   drive: any,
   files: any[],
   userId: number,
   clientId: number,
-  onProgress?: (processed: number, total: number) => void
+  onProgress?: (processed: number, total: number, currentBatch: number, totalBatches: number) => void
 ): Promise<BatchResult> {
   const result: BatchResult = {
     processed: 0,
@@ -1289,6 +1513,7 @@ async function processBatchWithAnalysis(
           alertStatus: "none" as const,
           expiryDate: null,
           clientId,
+          clientIds: [clientId],
           ownerId: userId,
           googleFileId: file.id,
           mimeType: file.mimeType,
@@ -1318,7 +1543,8 @@ async function processBatchWithAnalysis(
       chunks.push(nonExcelPromises.slice(i, i + SYNC_CONFIG.maxConcurrentNonExcel));
     }
 
-    for (const chunk of chunks) {
+    for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+      const chunk = chunks[chunkIndex];
       const chunkResults = await Promise.allSettled(chunk);
       
       for (const chunkResult of chunkResults) {
@@ -1330,20 +1556,25 @@ async function processBatchWithAnalysis(
         // skipped files non contano come processed o failed
       }
 
-      // Report progresso
+      // Report progresso con batch info
       if (onProgress) {
-        onProgress(result.processed, files.length);
+        const currentBatch = chunkIndex + 1;
+        const totalBatches = Math.max(chunks.length, 1) + excelFiles.length;
+        onProgress(result.processed, files.length, currentBatch, totalBatches);
       }
 
       // Pausa minima tra chunk (ridotta per velocità)
-      if (chunks.indexOf(chunk) < chunks.length - 1) {
+      if (chunkIndex < chunks.length - 1) {
         await new Promise((resolve) => setTimeout(resolve, SYNC_CONFIG.chunkPauseMs));
       }
     }
   }
 
   // OTTIMIZZAZIONE 3: Processa file Excel SEQUENZIALMENTE (sicuro per /tmp)
-  for (const file of excelFiles) {
+  const totalChunks = (nonExcelFiles.length > 0 ? Math.ceil(nonExcelFiles.length / SYNC_CONFIG.maxConcurrentNonExcel) : 0);
+  
+  for (let excelIndex = 0; excelIndex < excelFiles.length; excelIndex++) {
+    const file = excelFiles[excelIndex];
     try {
       let analysis: ExcelAnalysis = { alertStatus: "none", expiryDate: null };
 
@@ -1352,19 +1583,8 @@ async function processBatchWithAnalysis(
           // Google Sheets - API diretta (no download)
           analysis = await analyzeGoogleSheet(drive, file.id);
         } else if (isExcelFile(file.mimeType)) {
-          // Excel locale - download, analisi, cleanup IMMEDIATO
-          const tempPath = await downloadToTemp(drive, file);
-          try {
-            analysis = await analyzeExcelContent(tempPath);
-          } finally {
-            if (fs.existsSync(tempPath)) {
-              try {
-                fs.unlinkSync(tempPath);
-              } catch (cleanupErr) {
-                logger.warn("Failed to cleanup temp file", { tempPath });
-              }
-            }
-          }
+          // Excel nativo - usa Cloud Storage o in-memory (NO /tmp!)
+          analysis = await analyzeExcelContentOptimized(drive, file.id);
         }
       } catch (analysisError) {
         logger.warn(`Could not analyze Excel: ${file.name}`, {
@@ -1384,6 +1604,7 @@ async function processBatchWithAnalysis(
         alertStatus: analysis.alertStatus as "none" | "warning" | "expired",
         expiryDate: analysis.expiryDate,
         clientId,
+        clientIds: [clientId],
         ownerId: userId,
         googleFileId: file.id,
         mimeType: file.mimeType,
@@ -1402,8 +1623,11 @@ async function processBatchWithAnalysis(
 
       result.processed++;
 
+      // Report progresso con batch info (Excel vengono processati uno per volta)
       if (onProgress) {
-        onProgress(result.processed, files.length);
+        const currentBatch = totalChunks + excelIndex + 1;
+        const totalBatches = totalChunks + excelFiles.length;
+        onProgress(result.processed, files.length, currentBatch, totalBatches);
       }
     } catch (error) {
       result.failed++;
@@ -1418,7 +1642,20 @@ async function processBatchWithAnalysis(
       logger.error(`Failed to process Excel: ${file.name}`, {
         error: error instanceof Error ? error.message : String(error),
       });
+      
+      // Report progresso anche in caso di errore
+      if (onProgress) {
+        const currentBatch = totalChunks + excelIndex + 1;
+        const totalBatches = totalChunks + excelFiles.length;
+        onProgress(result.processed, files.length, currentBatch, totalBatches);
+      }
     }
+  }
+
+  // Report progresso finale (100%)
+  if (onProgress) {
+    const totalBatches = totalChunks + excelFiles.length;
+    onProgress(result.processed, files.length, totalBatches, totalBatches);
   }
 
   return result;
@@ -1438,18 +1675,44 @@ function isExcelFile(mimeType: string | null | undefined): boolean {
   return excelTypes.includes(mimeType);
 }
 
-async function downloadToTemp(
+/**
+ * Download file da Google Drive come buffer in memoria
+ * NUOVO: Per usare con Cloud Storage invece di /tmp
+ */
+async function downloadFileAsBuffer(
   drive: any,
-  file: { id: string; name: string }
-): Promise<string> {
-  const tempDir = os.tmpdir();
-  const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-  const tempPath = path.join(tempDir, `sync_${Date.now()}_${sanitizedName}`);
+  fileId: string,
+  isGoogleSheet: boolean
+): Promise<Buffer> {
+  try {
+    const response = await drive.files.get(
+      {
+        fileId,
+        alt: 'media',
+        supportsAllDrives: true,
+        ...(isGoogleSheet && {
+          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        }),
+      },
+      { responseType: 'arraybuffer' }
+    );
 
-  await googleDriveDownloadFile(drive, file.id, tempPath);
-
-  return tempPath;
+    return Buffer.from(response.data);
+  } catch (error) {
+    logger.error("Failed to download file as buffer from Google Drive", {
+      fileId,
+      isGoogleSheet,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
 }
+
+/**
+ * Download file da Google Drive su /tmp (DEPRECATO - usare Cloud Storage)
+ * Mantenuto solo per compatibilità
+ */
+// RIMOSSO: downloadToTemp - Tutti i download ora usano Cloud Storage o in-memory
 
 async function analyzeGoogleSheet(
   drive: any,

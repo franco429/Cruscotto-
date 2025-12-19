@@ -61,54 +61,110 @@ console.log("   DB_URI:", process.env.DB_URI ? "✅ configurata" : "❌ MANCANTE
 console.log("   PORT:", process.env.PORT || "5000 (default)");
 console.log("   SMTP_HOST:", process.env.SMTP_HOST ? "✅ configurata" : "⚠️ non configurata");
 
-// Monitoraggio /tmp ogni 5 minuti per prevenire overflow
-const tmpMonitor = setInterval(() => {
+// RIMOSSO: Monitor /tmp non più necessario con Cloud Storage
+// Tutti i file temporanei ora vanno su Google Cloud Storage con lifecycle automatico
+
+// 🆕 Job periodico: Cleanup file orfani in server/uploads ogni 30 minuti
+const uploadsCleanupJob = setInterval(async () => {
   try {
-    const tmpDir = os.tmpdir();
-    const tmpFiles = fs.readdirSync(tmpDir).filter(f => 
-      f.startsWith('excel_analysis_') || f.startsWith('sync_')
-    );
+    const uploadsDir = path.join(process.cwd(), "server", "uploads");
     
-    let totalSize = 0;
-    for (const file of tmpFiles) {
+    // Verifica che la directory esista
+    if (!fs.existsSync(uploadsDir)) {
+      return;
+    }
+    
+    const files = await fs.promises.readdir(uploadsDir);
+    
+    if (files.length === 0) {
+      return; // Nessun file da pulire
+    }
+    
+    logger.info("Starting periodic cleanup of uploads directory", {
+      totalFiles: files.length
+    });
+    
+    let deletedCount = 0;
+    let failedCount = 0;
+    const now = Date.now();
+    const MAX_AGE_MS = 2 * 60 * 60 * 1000; // 2 ore
+    
+    for (const file of files) {
       try {
-        const stat = fs.statSync(path.join(tmpDir, file));
-        totalSize += stat.size;
-      } catch {}
-    }
-    
-    const totalSizeMB = Math.round(totalSize / 1024 / 1024 * 100) / 100;
-    
-    // Log solo se ci sono file temporanei (per ridurre rumore nei log)
-    if (tmpFiles.length > 0) {
-      logger.info("TMP monitor check", {
-        tmpFileCount: tmpFiles.length,
-        tmpTotalSizeMB: totalSizeMB
-      });
-    }
-    
-    // Warning se /tmp si sta riempiendo (>500MB)
-    if (totalSizeMB > 500) {
-      logger.warn("High /tmp usage detected - cleaning orphan files", {
-        tmpFileCount: tmpFiles.length,
-        tmpTotalSizeMB: totalSizeMB
-      });
-      
-      // Cleanup automatico file orfani vecchi di più di 10 minuti
-      const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
-      for (const file of tmpFiles) {
-        try {
-          const filePath = path.join(tmpDir, file);
-          const stat = fs.statSync(filePath);
-          if (stat.mtimeMs < tenMinutesAgo) {
-            fs.unlinkSync(filePath);
-            logger.info("Cleaned orphan temp file", { file });
-          }
-        } catch {}
+        const filePath = path.join(uploadsDir, file);
+        const stats = await fs.promises.stat(filePath);
+        
+        // Elimina file più vecchi di 2 ore (probabilmente orfani)
+        if (now - stats.mtimeMs > MAX_AGE_MS) {
+          await fs.promises.unlink(filePath);
+          deletedCount++;
+          logger.debug("Deleted old orphaned file", {
+            fileName: file,
+            ageHours: Math.round((now - stats.mtimeMs) / (60 * 60 * 1000))
+          });
+        }
+      } catch (error) {
+        failedCount++;
+        logger.warn("Failed to delete file during cleanup", {
+          fileName: file,
+          error: error instanceof Error ? error.message : String(error)
+        });
       }
     }
-  } catch {}
-}, 5 * 60 * 1000); // Ogni 5 minuti
+    
+    if (deletedCount > 0 || failedCount > 0) {
+      logger.info("Uploads directory cleanup completed", {
+        totalFiles: files.length,
+        deleted: deletedCount,
+        failed: failedCount,
+        remaining: files.length - deletedCount
+      });
+    }
+  } catch (error) {
+    // Non bloccare l'applicazione per errori di cleanup
+    logger.warn("Uploads cleanup job failed", {
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+}, 30 * 60 * 1000); // 30 minuti
+
+// Monitoraggio Cloud Storage ogni 30 minuti (opzionale - solo per statistiche)
+const cloudStorageMonitor = setInterval(async () => {
+  try {
+    const { isCloudStorageConfigured, getStorageStats, cleanupOldTempFiles } = await import('./google-cloud-storage.js');
+    
+    if (await isCloudStorageConfigured()) {
+      const stats = await getStorageStats();
+      
+      // Log solo se ci sono file
+      if (stats.totalFiles > 0) {
+        logger.info("Cloud Storage monitor check", {
+          totalFiles: stats.totalFiles,
+          totalSizeMB: stats.totalSizeMB,
+          oldestFile: stats.oldestFile,
+        });
+      }
+      
+      // Cleanup file più vecchi di 1 ora (3600 secondi)
+      if (stats.totalFiles > 10) {
+        logger.info("Running Cloud Storage cleanup", { totalFiles: stats.totalFiles });
+        const cleanupResult = await cleanupOldTempFiles(3600);
+        
+        if (cleanupResult.deleted > 0) {
+          logger.info("Cloud Storage cleanup completed", {
+            deleted: cleanupResult.deleted,
+            failed: cleanupResult.failed,
+          });
+        }
+      }
+    }
+  } catch (error) {
+    // Ignora errori di monitoraggio per non bloccare l'applicazione
+    logger.debug("Cloud Storage monitor check skipped", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}, 30 * 60 * 1000); // Ogni 30 minuti
 
 // Monitoraggio memoria per prevenire out of memory
 const memoryMonitor = setInterval(() => {
@@ -138,14 +194,16 @@ const memoryMonitor = setInterval(() => {
 // Cleanup al termine del processo
 process.on('SIGTERM', () => {
   clearInterval(memoryMonitor);
-  clearInterval(tmpMonitor);
-  logger.info("Memory and TMP monitors stopped");
+  clearInterval(cloudStorageMonitor);
+  clearInterval(uploadsCleanupJob);
+  logger.info("All monitoring jobs stopped (memory, Cloud Storage, uploads cleanup)");
 });
 
 process.on('SIGINT', () => {
   clearInterval(memoryMonitor);
-  clearInterval(tmpMonitor);
-  logger.info("Memory and TMP monitors stopped");
+  clearInterval(cloudStorageMonitor);
+  clearInterval(uploadsCleanupJob);
+  logger.info("All monitoring jobs stopped (memory, Cloud Storage, uploads cleanup)");
 });
 
 const app = express();
@@ -290,27 +348,8 @@ app.use((req, res, next) => {
 
 (async () => {
   try {
-    // Cleanup file temporanei orfani all'avvio (prevenzione overflow /tmp)
-    try {
-      const tmpDir = os.tmpdir();
-      const orphanFiles = fs.readdirSync(tmpDir).filter(f => 
-        f.startsWith('excel_analysis_') || f.startsWith('sync_')
-      );
-      
-      if (orphanFiles.length > 0) {
-        logger.info(`Cleaning ${orphanFiles.length} orphan temp files from previous run`);
-        for (const file of orphanFiles) {
-          try {
-            fs.unlinkSync(path.join(tmpDir, file));
-          } catch {}
-        }
-        logger.info("Orphan temp files cleanup completed");
-      }
-    } catch (cleanupError) {
-      logger.warn("Failed to cleanup orphan temp files", {
-        error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError)
-      });
-    }
+    // RIMOSSO: Cleanup file temporanei orfani da /tmp non più necessario
+    // Tutti i file temporanei ora vanno su Google Cloud Storage con lifecycle automatico
 
     logger.info("Connessione a MongoDB...");
     await mongoStorage.connect();

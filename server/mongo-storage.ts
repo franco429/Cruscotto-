@@ -44,6 +44,35 @@ export class MongoStorage implements IStorage {
   public sessionStore: session.Store;
   private backupService: BackupService;
 
+  /**
+   * Helper: costruisce il filtro per client multi-tenant (clientIds o legacy clientId)
+   */
+  private clientFilter(clientId: number) {
+    return {
+      $or: [{ clientIds: clientId }, { clientId }],
+    };
+  }
+
+  /**
+   * Helper: normalizza clientIds a partire da dati esistenti e nuovi
+   */
+  private mergeClientIds(existing: Document | undefined, update?: { clientId?: number | null; clientIds?: number[] }) {
+    const currentIds = new Set<number>();
+    if (existing?.clientIds?.length) {
+      existing.clientIds.forEach((id) => currentIds.add(id));
+    }
+    if (existing?.clientId) {
+      currentIds.add(existing.clientId);
+    }
+    if (update?.clientId) {
+      currentIds.add(update.clientId);
+    }
+    if (update?.clientIds?.length) {
+      update.clientIds.forEach((id) => currentIds.add(id));
+    }
+    return Array.from(currentIds);
+  }
+
   constructor() {
     // NOTA: NON chiamiamo this.connect() qui!
     // La connessione deve essere fatta esplicitamente in index.ts con await mongoStorage.connect()
@@ -574,7 +603,7 @@ export class MongoStorage implements IStorage {
   async getAllDocuments(clientId?: number): Promise<Document[]> {
     const query: any = { isObsolete: false };
     if (clientId) {
-      query.clientId = clientId;
+      query.$or = [{ clientIds: clientId }, { clientId }];
     }
     // Ottieni tutti i documenti non obsoleti
     const documents = (await DocumentModel.find(query)
@@ -648,7 +677,7 @@ export class MongoStorage implements IStorage {
   async markObsoleteRevisionsForClient(clientId: number): Promise<void> {
     const query: any = { isObsolete: false };
     if (clientId) {
-      query.clientId = clientId;
+      query.$or = [{ clientIds: clientId }, { clientId }];
     }
     
     // Ottieni tutti i documenti non obsoleti
@@ -728,8 +757,144 @@ export class MongoStorage implements IStorage {
     return this.getAllDocuments(clientId);
   }
 
+  /**
+   * NUOVO: Paginazione server-side ottimizzata per 50K+ documenti
+   * Supporta filtri, ricerca e ordinamento
+   */
+  async getDocumentsPaginated(
+    clientId: number,
+    options: {
+      page?: number;
+      limit?: number;
+      status?: 'all' | 'expired' | 'warning' | 'none';
+      search?: string;
+      sortBy?: 'updatedAt' | 'path' | 'title' | 'alertStatus';
+      sortOrder?: 'asc' | 'desc';
+    } = {}
+  ): Promise<{
+    documents: Document[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNextPage: boolean;
+      hasPrevPage: boolean;
+    };
+    stats: {
+      total: number;
+      expired: number;
+      warning: number;
+      valid: number;
+    };
+  }> {
+    const {
+      page = 1,
+      limit = 50,
+      status = 'all',
+      search = '',
+      sortBy = 'path',
+      sortOrder = 'asc',
+    } = options;
+
+    // Costruisci query base
+    const query: any = { 
+      isObsolete: false,
+      $or: [{ clientIds: clientId }, { clientId }],
+    };
+
+    // Filtro per status
+    if (status !== 'all') {
+      query.alertStatus = status;
+    }
+
+    // Filtro per ricerca (path, title, revision)
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), 'i');
+      query.$and = [
+        ...(query.$and || []),
+        {
+          $or: [
+            { path: searchRegex },
+            { title: searchRegex },
+            { revision: searchRegex },
+          ],
+        },
+      ];
+    }
+
+    // Costruisci sort
+    const sortOptions: any = {};
+    if (sortBy === 'path') {
+      // Ordinamento speciale per path (es: 1.0, 1.1, 2.0)
+      sortOptions.path = sortOrder === 'asc' ? 1 : -1;
+    } else {
+      sortOptions[sortBy] = sortOrder === 'asc' ? 1 : -1;
+    }
+
+    // Aggiungi ordinamento secondario per consistenza
+    if (sortBy !== 'updatedAt') {
+      sortOptions.updatedAt = -1;
+    }
+
+    // Esegui query con paginazione
+    const skip = (page - 1) * limit;
+
+    // Esegui query in parallelo per performance
+    const [documents, total, stats] = await Promise.all([
+      DocumentModel.find(query)
+        .sort(sortOptions)
+        .skip(skip)
+        .limit(limit)
+        .lean()
+        .exec() as Promise<Document[]>,
+      
+      DocumentModel.countDocuments(query),
+      
+      // Statistiche aggregate per tutti i documenti del client
+      DocumentModel.aggregate([
+        { $match: { isObsolete: false, $or: [{ clientIds: clientId }, { clientId }] } },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            expired: {
+              $sum: { $cond: [{ $eq: ['$alertStatus', 'expired'] }, 1, 0] }
+            },
+            warning: {
+              $sum: { $cond: [{ $eq: ['$alertStatus', 'warning'] }, 1, 0] }
+            },
+            valid: {
+              $sum: { $cond: [{ $ne: ['$alertStatus', 'expired'] }, { $cond: [{ $ne: ['$alertStatus', 'warning'] }, 1, 0] }, 0] }
+            },
+          },
+        },
+      ]).then(result => result[0] || { total: 0, expired: 0, warning: 0, valid: 0 }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      documents,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+      stats: {
+        total: stats.total || 0,
+        expired: stats.expired || 0,
+        warning: stats.warning || 0,
+        valid: stats.valid || 0,
+      },
+    };
+  }
+
   async getObsoleteDocumentsByClientId(clientId: number): Promise<Document[]> {
-    return DocumentModel.find({ clientId, isObsolete: true })
+    return DocumentModel.find({ isObsolete: true, $or: [{ clientIds: clientId }, { clientId }] })
       .lean()
       .exec() as Promise<Document[]>;
   }
@@ -739,7 +904,7 @@ export class MongoStorage implements IStorage {
     const result = { restored: 0, errors: [] as string[] };
     
     try {
-      const obsoleteDocs = await DocumentModel.find({ clientId, isObsolete: true }).lean().exec();
+      const obsoleteDocs = await DocumentModel.find({ isObsolete: true, $or: [{ clientIds: clientId }, { clientId }] }).lean().exec();
       
       for (const doc of obsoleteDocs) {
         try {
@@ -778,8 +943,17 @@ export class MongoStorage implements IStorage {
       });
     }
     
+    // Normalizza i clientIds (multi-tenant sharing)
+    const normalizedClientIds =
+      insertDocument.clientIds && insertDocument.clientIds.length
+        ? Array.from(new Set(insertDocument.clientIds))
+        : insertDocument.clientId
+          ? [insertDocument.clientId]
+          : [];
+
     const document = new DocumentModel({
       ...insertDocument,
+      clientIds: normalizedClientIds,
       legacyId,
       alertStatus: insertDocument.alertStatus || "none",
       googleFileId: insertDocument.googleFileId || undefined,
@@ -809,9 +983,25 @@ export class MongoStorage implements IStorage {
     id: number,
     documentUpdate: Partial<InsertDocument>
   ): Promise<Document | undefined> {
+    const existing = await DocumentModel.findOne({ legacyId: id }).lean().exec();
+    if (!existing) return undefined;
+
+    const mergedClientIds = this.mergeClientIds(existing, documentUpdate);
+
+    const updatePayload: any = {
+      ...documentUpdate,
+      clientIds: mergedClientIds,
+      updatedAt: new Date(),
+    };
+
+    // Mantieni il campo legacy clientId per compatibilità (usa il primo disponibile)
+    if (!updatePayload.clientId && mergedClientIds.length > 0) {
+      updatePayload.clientId = mergedClientIds[0];
+    }
+
     const doc = await DocumentModel.findOneAndUpdate(
       { legacyId: id },
-      { ...documentUpdate, updatedAt: new Date() },
+      updatePayload,
       { new: true }
     )
       .lean()
@@ -944,7 +1134,7 @@ export class MongoStorage implements IStorage {
   }
 
   async getLogsByClientId(clientId: number): Promise<Log[]> {
-    const documents = await DocumentModel.find({ clientId })
+    const documents = await DocumentModel.find({ $or: [{ clientIds: clientId }, { clientId }] })
       .select("legacyId")
       .lean()
       .exec();
@@ -1057,7 +1247,11 @@ export class MongoStorage implements IStorage {
     title: string,
     clientId: number
   ): Promise<Document[]> {
-    return DocumentModel.find({ path, title, clientId })
+    return DocumentModel.find({
+      path,
+      title,
+      $or: [{ clientIds: clientId }, { clientId }],
+    })
       .lean()
       .exec() as Promise<Document[]>;
   }
