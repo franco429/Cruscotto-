@@ -43,6 +43,50 @@ if (encryptionKey.length < 32) {
 const normalizedKey = createHash('sha256').update(encryptionKey).digest();
 
 /**
+ * Encrypt a buffer
+ * @param buffer Data to encrypt
+ * @returns Encrypted data as Buffer
+ */
+export function encryptBuffer(buffer: Buffer): Buffer {
+  // Generate IV
+  const iv = randomBytes(IV_SIZE);
+  
+  // Create cipher
+  const cipher = createCipheriv(ALGORITHM, normalizedKey, iv);
+  
+  // Encrypt
+  const encryptedData = Buffer.concat([
+    iv, // Store IV at the beginning of file
+    cipher.update(buffer),
+    cipher.final()
+  ]);
+  
+  return encryptedData;
+}
+
+/**
+ * Decrypt a buffer
+ * @param encryptedBuffer Data to decrypt
+ * @returns Decrypted data as Buffer
+ */
+export function decryptBuffer(encryptedBuffer: Buffer): Buffer {
+  // Extract IV from beginning of file
+  const iv = encryptedBuffer.slice(0, IV_SIZE);
+  const encryptedContent = encryptedBuffer.slice(IV_SIZE);
+  
+  // Create decipher
+  const decipher = createDecipheriv(ALGORITHM, normalizedKey, iv);
+  
+  // Decrypt
+  const decryptedData = Buffer.concat([
+    decipher.update(encryptedContent),
+    decipher.final()
+  ]);
+  
+  return decryptedData;
+}
+
+/**
  * Encrypt a file and save to destination path
  * @param sourceFilePath Original file path
  * @param destFilePath Where to save encrypted file

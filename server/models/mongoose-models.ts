@@ -91,6 +91,10 @@ const clientSchema = new Schema<ClientDocument & MongooseDocument>({
     refreshToken: { type: String, required: false },
     expiryDate: { type: Number, required: false },
   },
+  localOpenerConfig: {
+    drivePaths: { type: [String], required: false, default: [] },
+    roots: { type: [String], required: false, default: [] }
+  },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });

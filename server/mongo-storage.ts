@@ -27,7 +27,15 @@ import {
   encryptFile,
   decryptFile,
   verifyFileIntegrity,
+  encryptBuffer,
+  decryptBuffer,
 } from "./crypto";
+import * as crypto from 'crypto';
+import {
+  uploadBufferToCloudStorage,
+  downloadBufferFromCloudStorage,
+  isCloudStorageConfigured
+} from "./google-cloud-storage";
 import path from "path";
 import fs from "fs";
 import session from "express-session";
@@ -1267,14 +1275,33 @@ export class MongoStorage implements IStorage {
     filePath: string
   ): Promise<Document | undefined> {
     try {
-      const cacheDir = path.join(process.cwd(), "encrypted_cache");
-      await fs.promises.mkdir(cacheDir, { recursive: true });
-      const encryptedPath = path.join(
-        cacheDir,
-        `doc_${id}_${path.basename(filePath)}.enc`
-      );
-      const fileHash = await hashFile(filePath);
-      await encryptFile(filePath, encryptedPath);
+      const useCloudStorage = await isCloudStorageConfigured();
+      const fileBuffer = await fs.promises.readFile(filePath);
+      const fileHash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+      
+      let encryptedPath: string;
+
+      if (useCloudStorage) {
+        const encryptedBuffer = encryptBuffer(fileBuffer);
+        const fileName = `secure_doc_${id}_${path.basename(filePath)}.enc`;
+        
+        // Upload to GCS
+        const gcsFileName = await uploadBufferToCloudStorage(encryptedBuffer, fileName, {
+            type: 'encrypted_document',
+            documentId: String(id)
+        });
+        
+        encryptedPath = `gcs://${gcsFileName}`;
+      } else {
+        const cacheDir = path.join(process.cwd(), "encrypted_cache");
+        await fs.promises.mkdir(cacheDir, { recursive: true });
+        encryptedPath = path.join(
+          cacheDir,
+          `doc_${id}_${path.basename(filePath)}.enc`
+        );
+        await encryptFile(filePath, encryptedPath);
+      }
+
       return await this.updateDocument(id, {
         fileHash,
         encryptedCachePath: encryptedPath,
@@ -1290,11 +1317,24 @@ export class MongoStorage implements IStorage {
       if (
         !document ||
         !document.fileHash ||
-        !document.encryptedCachePath ||
-        !fs.existsSync(document.encryptedCachePath)
+        !document.encryptedCachePath
       ) {
         return false;
       }
+
+      if (document.encryptedCachePath.startsWith('gcs://')) {
+        const gcsFileName = document.encryptedCachePath.replace('gcs://', '');
+        const encryptedBuffer = await downloadBufferFromCloudStorage(gcsFileName);
+        const decryptedBuffer = decryptBuffer(encryptedBuffer);
+        
+        const actualHash = crypto.createHash('sha256').update(decryptedBuffer).digest('hex');
+        return actualHash === document.fileHash;
+      }
+
+      if (!fs.existsSync(document.encryptedCachePath)) {
+        return false;
+      }
+      
       const tempDir = path.join(process.cwd(), "temp");
       await fs.promises.mkdir(tempDir, { recursive: true });
       const tempFilePath = path.join(tempDir, `verify_${id}_${Date.now()}`);

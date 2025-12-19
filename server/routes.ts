@@ -52,26 +52,8 @@ import { appEvents } from "./app-events";
 import { validateContactRequest } from "./security";
 import logger from "./logger";
 import multer from "multer";
-// Assicurati che le directory esistano
-const uploadsDir = path.join(process.cwd(), "server", "uploads");
-
-// Crea le directory se non esistono
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
-// Configurazione sicura di multer con limiti e validazioni
-const multerStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadsDir);
-  },
-  filename: (req, file, cb) => {
-    // Genera un nome file sicuro con timestamp e hash
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
-  }
-});
+// Configurazione sicura di multer con limiti e validazioni (In-Memory per Render)
+const multerStorage = multer.memoryStorage();
 
 const fileFilter = (req: Express.Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   // Verifica il tipo MIME del file
@@ -303,11 +285,15 @@ import {
   updateAutoSync 
 } from './auto-sync-service';
 
-// Funzione per calcolare hash SHA-256 di un file
-async function calculateFileHash(filePath: string): Promise<string> {
+// Funzione per calcolare hash SHA-256 di un file o buffer
+async function calculateFileHash(filePathOrBuffer: string | Buffer): Promise<string> {
+  if (Buffer.isBuffer(filePathOrBuffer)) {
+    return crypto.createHash('sha256').update(filePathOrBuffer).digest('hex');
+  }
+
   return new Promise((resolve, reject) => {
     const hash = crypto.createHash('sha256');
-    const stream = fs.createReadStream(filePath);
+    const stream = fs.createReadStream(filePathOrBuffer);
     
     stream.on('error', reject);
     stream.on('data', chunk => hash.update(chunk));
@@ -366,11 +352,11 @@ export async function registerRoutes(app: Express): Promise<Express> {
           const docInfo = await processDocumentFile(
             file.originalname,
             "", // Nessun driveUrl per file locale
-            file.path // Percorso temporaneo del file caricato
+            file.buffer // Buffer in memoria
           );
           if (docInfo) {
             // Calcola hash del file per supportare aggiornamenti futuri
-            const fileHash = await calculateFileHash(file.path);
+            const fileHash = await calculateFileHash(file.buffer);
             
             await mongoStorage.createDocument({
               ...docInfo,

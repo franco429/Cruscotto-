@@ -870,7 +870,7 @@ export async function checkExcelAlertStatus(filePath: string): Promise<string> {
 export async function processDocumentFile(
   fileName: string,
   driveUrl: string,
-  localFilePath?: string
+  localFilePathOrBuffer?: string | Buffer
 ): Promise<InsertDocument | null> {
   try {
     const isoPath = parseISOPath(fileName);
@@ -886,12 +886,21 @@ export async function processDocumentFile(
     let expiryDate: Date | null = null;
 
     if (
-      localFilePath &&
+      localFilePathOrBuffer &&
       (fileType === "xlsx" || fileType === "xls" || fileType === "xlsm" || fileType === "gsheet")
     ) {
-      const excelAnalysis = await analyzeExcelContent(localFilePath);
-      alertStatus = excelAnalysis.alertStatus;
-      expiryDate = excelAnalysis.expiryDate;
+      if (Buffer.isBuffer(localFilePathOrBuffer)) {
+        // Analisi da Buffer (in memoria)
+        const stream = Readable.from(localFilePathOrBuffer);
+        const excelAnalysis = await analyzeExcelContentFromStream(stream, fileName);
+        alertStatus = excelAnalysis.alertStatus;
+        expiryDate = excelAnalysis.expiryDate;
+      } else if (typeof localFilePathOrBuffer === 'string') {
+        // Analisi da File (su disco - legacy)
+        const excelAnalysis = await analyzeExcelContent(localFilePathOrBuffer);
+        alertStatus = excelAnalysis.alertStatus;
+        expiryDate = excelAnalysis.expiryDate;
+      }
     }
 
     // L'oggetto `document` ora include i campi corretti.

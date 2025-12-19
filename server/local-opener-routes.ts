@@ -3,6 +3,7 @@ import { Express, Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
 import logger from './logger';
+import { mongoStorage } from './mongo-storage';
 
 interface LocalOpenerTelemetryData {
   session: {
@@ -68,10 +69,10 @@ export function registerLocalOpenerRoutes(app: Express) {
         retryDelay,
         clientIP: req.ip
       });
-
+      
       let drivePaths: string[] = [];
       let lastError: string = '';
-
+      
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
           logger.info(`Google Drive detection attempt ${attempt}/${maxRetries}`);
@@ -200,14 +201,15 @@ export function registerLocalOpenerRoutes(app: Express) {
   // Endpoint semplificato per statistiche documenti (opzionale per admin/debug)
   app.get('/api/documents/local-count', async (req: Request, res: Response) => {
     try {
-      const { mongoStorage } = await import('./storage');
+      // Re-importing mongoStorage here is weird but we'll stick to top level
+      // Note: mongoStorage is already imported at top level
       
       if (!req.user?.clientId) {
         return res.status(401).json({ error: 'Non autorizzato' });
       }
       
       // Conta documenti che NON hanno driveUrl (sono documenti locali/upload)
-      const localDocuments = await mongoStorage.getDocuments(req.user.clientId);
+      const localDocuments = await mongoStorage.getDocumentsByClientId(req.user.clientId);
       const localCount = localDocuments.filter(doc => !doc.driveUrl).length;
       
       // Endpoint ora utilizzato solo per statistiche/debug
@@ -301,8 +303,8 @@ export function registerLocalOpenerRoutes(app: Express) {
         });
       }
 
-      // Salva metriche aggregate (opzionale - database/file)
-      await saveTelemetryMetrics(sanitizedData);
+      // Salva metriche aggregate nel DB (LogModel) invece che su disco
+      await saveTelemetryMetrics(sanitizedData, req.ip);
 
       res.json({ 
         received: true,
@@ -413,7 +415,13 @@ export function registerLocalOpenerRoutes(app: Express) {
 
       logger.warn('Local Opener issue reported', issueReport);
 
-      // TODO: Invia email al supporto tecnico o salva in sistema ticketing
+      // Salva segnalazione come Log nel DB invece che solo su logger
+      await mongoStorage.createLog({
+        userId: 0, // 0 for system/anonymous
+        action: 'local-opener-issue',
+        documentId: null,
+        details: issueReport
+      });
       
       res.json({ 
         reportId: issueReport.id,
@@ -663,65 +671,60 @@ async function detectGoogleDrivePaths(): Promise<string[]> {
   return sortedPaths;
 }
 
-// Funzione helper per salvare configurazioni cliente
+// Funzione helper per salvare configurazioni cliente (MIGRATA A MONGODB)
 async function saveClientConfig(config: ClientConfig): Promise<void> {
   try {
-    const configDir = path.join(__dirname, '..', 'config', 'local-opener');
-    if (!fs.existsSync(configDir)) {
-      fs.mkdirSync(configDir, { recursive: true });
-    }
+    const legacyId = parseInt(config.clientId, 10);
+    if (isNaN(legacyId)) throw new Error('Client ID non valido');
 
-    const configPath = path.join(configDir, `${config.clientId}.json`);
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    await mongoStorage.updateClient(legacyId, {
+      localOpenerConfig: {
+        drivePaths: config.drivePaths,
+        roots: config.roots
+      }
+    });
     
-    logger.info('Client configuration saved', { clientId: config.clientId, configPath });
+    logger.info('Client configuration saved to DB', { clientId: config.clientId });
   } catch (error) {
     logger.error('Error saving client configuration', { error: error instanceof Error ? error.message : String(error) });
     throw error;
   }
 }
 
-// Funzione helper per caricare configurazioni cliente
+// Funzione helper per caricare configurazioni cliente (MIGRATA A MONGODB)
 async function loadClientConfig(clientId: string): Promise<ClientConfig | null> {
   try {
-    const configPath = path.join(__dirname, '..', 'config', 'local-opener', `${clientId}.json`);
-    if (fs.existsSync(configPath)) {
-      const content = fs.readFileSync(configPath, 'utf-8');
-      return JSON.parse(content) as ClientConfig;
-    }
-    return null;
+    const legacyId = parseInt(clientId, 10);
+    if (isNaN(legacyId)) return null;
+
+    const client = await mongoStorage.getClient(legacyId);
+    if (!client) return null;
+
+    if (!client.localOpenerConfig) return null;
+
+    return {
+      clientId: clientId,
+      drivePaths: client.localOpenerConfig.drivePaths,
+      roots: client.localOpenerConfig.roots
+    };
   } catch (error) {
     logger.error('Error loading client configuration', { error: error instanceof Error ? error.message : String(error), clientId });
     return null;
   }
 }
 
-// Funzione helper per salvare metriche telemetria
-async function saveTelemetryMetrics(data: any): Promise<void> {
+// Funzione helper per salvare metriche telemetria (MIGRATA A MONGODB)
+async function saveTelemetryMetrics(data: any, clientIp: string): Promise<void> {
   try {
-    // Implementa logica per salvare in database o file
-    // Esempio: salvataggio in file JSON per sviluppo
-    const metricsDir = path.join(__dirname, '..', 'logs', 'local-opener-metrics');
-    if (!fs.existsSync(metricsDir)) {
-      fs.mkdirSync(metricsDir, { recursive: true });
-    }
-
-    const filename = `metrics-${new Date().toISOString().split('T')[0]}.json`;
-    const filepath = path.join(metricsDir, filename);
-    
-    let existingData = [];
-    if (fs.existsSync(filepath)) {
-      const content = fs.readFileSync(filepath, 'utf-8');
-      existingData = JSON.parse(content);
-    }
-
-    existingData.push({
-      timestamp: new Date().toISOString(),
-      ...data
+    await mongoStorage.createLog({
+      userId: 0, // System
+      action: 'local-opener-telemetry',
+      documentId: null,
+      details: {
+        ...data,
+        clientIp
+      }
     });
-
-    fs.writeFileSync(filepath, JSON.stringify(existingData, null, 2));
-    
   } catch (error) {
     logger.error('Error saving telemetry metrics', { error: error instanceof Error ? error.message : String(error) });
   }
@@ -729,37 +732,14 @@ async function saveTelemetryMetrics(data: any): Promise<void> {
 
 // Funzione helper per ottenere statistiche aggregate
 async function getLocalOpenerStats(): Promise<any> {
-  try {
-    // TODO: Implementa logica per aggregare statistiche dal database
-    // Per ora ritorna dati di esempio
-    return {
-      totalInstallations: 150,
-      activeUsers: 89,
-      successRate: 94.5,
-      commonIssues: [
-        { type: 'google_drive_not_found', count: 12 },
-        { type: 'firewall_blocked', count: 8 },
-        { type: 'file_not_found', count: 15 }
-      ],
-      versionDistribution: {
-        '1.0.0': 45,
-        '1.1.0': 67,
-        '1.2.0': 38
-      },
-      platformDistribution: {
-        'win32': 142,
-        'darwin': 8
-      }
-    };
-  } catch (error) {
-    logger.error('Error getting local-opener stats', { error: error instanceof Error ? error.message : String(error) });
-    return {
-      totalInstallations: 0,
-      activeUsers: 0,
-      successRate: 0,
-      commonIssues: [],
-      versionDistribution: {},
-      platformDistribution: {}
-    };
-  }
+  // Questa funzione potrebbe richiedere query di aggregazione complesse su LogModel
+  // Per ora manteniamo l'implementazione dummy o una semplice query
+  return {
+    totalInstallations: 0, // Placeholder
+    activeUsers: 0,
+    successRate: 0,
+    commonIssues: [],
+    versionDistribution: {},
+    platformDistribution: {}
+  };
 }

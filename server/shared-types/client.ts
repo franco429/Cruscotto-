@@ -9,6 +9,10 @@ export interface ClientDocument {
     refreshToken?: string;
     expiryDate?: number;
   };
+  localOpenerConfig?: {
+    drivePaths: string[];
+    roots: string[];
+  };
 }
 
 export type InsertClient = Omit<ClientDocument, "legacyId" | "createdAt" | "updatedAt">;
