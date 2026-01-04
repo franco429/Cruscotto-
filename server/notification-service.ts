@@ -1,7 +1,7 @@
 import nodemailer from "nodemailer";
 import { DocumentDocument as Document } from "./shared-types/schema";
 import { mongoStorage } from "./mongo-storage";
-import { addDays, format, isAfter, isBefore, parseISO, subHours } from "date-fns";
+import { addDays, format, isAfter, isBefore, parseISO, subHours, startOfDay, endOfDay } from "date-fns";
 import logger from "./logger";
 import { appEvents } from "./app-events";
 import { NotificationTrackerModel } from "./models/mongoose-models";
@@ -107,7 +107,7 @@ export async function checkDocumentExpirations(
 }
 
 /**
- * Controlla se è già stata inviata una notifica dello stesso tipo nelle ultime 24 ore
+ * Controlla se è già stata inviata una notifica dello stesso tipo NELLA GIORNATA DI OGGI
  * @param type Tipo di notifica
  * @param clientId ID del client
  * @returns true se è necessario inviare la notifica, false altrimenti
@@ -117,22 +117,21 @@ async function shouldSendNotification(
   clientId: string
 ): Promise<boolean> {
   try {
-    // Calcola la data limite (24 ore fa)
-    const twentyFourHoursAgo = subHours(new Date(), 24);
+    // Calcola l'inizio della giornata odierna (es. oggi alle 00:00:00)
+    const startOfToday = startOfDay(new Date());
 
-    // Cerca l'ultima notifica dello stesso tipo per questo client
-    const lastNotification = await NotificationTrackerModel.findOne({
+    // Cerca una notifica inviata da oggi in poi
+    const todaysNotification = await NotificationTrackerModel.findOne({
       notificationType: type,
       clientId: clientId,
-      sentAt: { $gte: twentyFourHoursAgo },
-    }).sort({ sentAt: -1 });
+      sentAt: { $gte: startOfToday },
+    });
 
-    if (lastNotification) {
-      logger.info("Notifica già inviata nelle ultime 24 ore, skip invio", {
+    if (todaysNotification) {
+      logger.info("Notifica già inviata oggi, skip invio", {
         type,
         clientId,
-        lastSentAt: lastNotification.sentAt,
-        documentCount: lastNotification.documentCount,
+        sentAt: todaysNotification.sentAt,
       });
       return false;
     }
@@ -144,7 +143,7 @@ async function shouldSendNotification(
       type,
       clientId,
     });
-    // In caso di errore, permettiamo l'invio per non bloccare le notifiche
+    // In caso di errore, permettiamo l'invio per sicurezza
     return true;
   }
 }
@@ -389,49 +388,48 @@ async function sendExpirationNotifications(
 
 /**
  * Avvia il controllo periodico delle scadenze documentali
- * @param checkIntervalHours Intervallo in ore tra i controlli
+ * @param checkIntervalHours Intervallo in ore tra i controlli (Consigliato: 1 ora)
  * @param warningDays Giorni di preavviso per le scadenze
  */
 export function startExpirationChecks(
-  checkIntervalHours: number = 24,
+  checkIntervalHours: number = 1, // MODIFICATO: Default a 1 ora per maggiore affidabilità
   warningDays: number = DEFAULT_WARNING_DAYS
 ): void {
+  // Convertiamo in millisecondi
+  const intervalMs = checkIntervalHours * 60 * 60 * 1000;
+
   logger.info(
-    "Sistema di controllo scadenze in attesa del segnale di sync completata...",
+    "Sistema di controllo scadenze avviato.",
     {
       checkIntervalHours,
       warningDays,
-      intervalMs: checkIntervalHours * 60 * 60 * 1000,
+      intervalMs
     }
   );
 
   // Assicurati che non ci siano altri intervalli attivi
   stopExpirationChecks();
 
-  //  Ascolta l'evento UNA SOLA VOLTA per il controllo iniziale.
+  // Ascolta l'evento UNA SOLA VOLTA per il controllo iniziale post-sync
   appEvents.once("initialSyncComplete", (syncData) => {
-    logger.info(
-      "Segnale 'initialSyncComplete' ricevuto. Esecuzione controllo iniziale scadenze.",
-      {
-        syncData,
-      }
-    );
+    logger.info("Segnale 'initialSyncComplete' ricevuto. Esecuzione controllo immediato.");
     checkDocumentExpirations(warningDays);
   });
 
-  // Imposta l'intervallo per i controlli FUTURI. Questo parte subito.
-  const intervalMs = checkIntervalHours * 60 * 60 * 1000;
+  // Imposta l'intervallo. 
+  // Eseguiamo il controllo ogni ora. La funzione checkDocumentExpirations -> shouldSendNotification
+  // si assicurerà di inviare la mail solo una volta al giorno per cliente.
   expirationCheckInterval = setInterval(() => {
-    logger.info("Esecuzione controllo periodico scadenze");
+    logger.info("Esecuzione controllo periodico scadenze (Heartbeat orario)");
     checkDocumentExpirations(warningDays);
   }, intervalMs);
-
-  logger.info(
-    "Controllo scadenze periodico avviato. Il primo controllo avverrà dopo la sync.",
-    {
-      nextCheck: new Date(Date.now() + intervalMs).toISOString(),
-    }
-  );
+  
+  // Eseguiamo anche un controllo immediato all'avvio del server per non attendere 1 ora
+  // (Utile se il server si riavvia spesso)
+  setTimeout(() => {
+      logger.info("Esecuzione controllo scadenze all'avvio del servizio");
+      checkDocumentExpirations(warningDays);
+  }, 10000); // Aspetta 10 secondi dall'avvio per dare tempo al DB di connettersi
 }
 
 /**
