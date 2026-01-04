@@ -158,11 +158,11 @@ curl -I https://cruscotto-sgi.com
 ### Test CSRF
 ```bash
 # 1. Ottieni token
-curl -X GET http://localhost:5000/api/csrf-token \
+curl -X GET http://localhost:5001/api/csrf-token \
   --cookie-jar cookies.txt
 
 # 2. Usa token in richiesta
-curl -X POST http://localhost:5000/api/some-endpoint \
+curl -X POST http://localhost:5001/api/some-endpoint \
   -H "X-CSRF-Token: <token>" \
   --cookie cookies.txt
 

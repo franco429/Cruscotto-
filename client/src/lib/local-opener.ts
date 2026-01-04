@@ -97,7 +97,7 @@ export async function detectGoogleDrivePaths(): Promise<DriveDetectionResult> {
   try {
     const response = await fetch("http://127.0.0.1:17654/detect-drive-paths", {
       method: "GET",
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(5001),
     });
 
     if (response.ok) {
@@ -259,7 +259,7 @@ export async function checkAndPromptLocalOpener(): Promise<void> {
     toast({
       title: "📋 Script Debug Scaricato",
       description: "Esegui debug-local-opener.bat per diagnosticare problemi con Local Opener",
-      duration: 5000,
+      duration: 5001,
     });
   };
 
@@ -283,7 +283,7 @@ export async function checkAndPromptLocalOpener(): Promise<void> {
   const downloadToast = toast({
     title: "🚀 Apertura Documenti Locale",
     description: "Per visualizzare i documenti direttamente dal tuo PC, installa il Local Opener. Un click e sei pronto!",
-    duration: 15000,
+    duration: 15001,
     onOpenChange: (open) => {
       if (!open) {
         sessionStorage.setItem(sessionKey, 'true');
@@ -308,7 +308,7 @@ export async function checkAndPromptLocalOpener(): Promise<void> {
           toast({
             title: "Non mostrare più",
             description: "Clicca qui se non vuoi più vedere questo suggerimento.",
-            duration: 5000,
+            duration: 5001,
             onClick: () => {
               localStorage.setItem(persistentKey, 'true');
               sessionStorage.setItem(sessionKey, 'true');

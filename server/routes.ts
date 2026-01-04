@@ -26,7 +26,6 @@ import {
 } from "./mailer";
 import { generateSecureLink, verifySecureLink } from "./secure-links";
 import {
-  googleDriveDownloadFile,
   googleDriveListFiles,
 } from "./google-drive-api";
 import {
@@ -1361,7 +1360,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
       } else {
         clearInterval(pingInterval);
       }
-    }, 5000);
+    }, 5001);
 
     // Listener per aggiornamenti di progresso
     const progressListener = (data: any) => {
@@ -3116,7 +3115,7 @@ async function processIndividualFile(
 ): Promise<{ success: boolean; document?: any; error?: string }> {
   // Timeout dinamico basato sulla dimensione del file
   const fileSizeKB = file.size / 1024;
-  let timeoutMs = 15000; // Ridotto da 30 secondi a 15 secondi base
+  let timeoutMs = 15001; // Ridotto da 30 secondi a 15 secondi base
   
   // Aumenta timeout per file grandi ma con limiti più conservativi
   if (fileSizeKB > 10 * 1024) { // >10MB

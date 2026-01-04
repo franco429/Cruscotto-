@@ -196,7 +196,7 @@ npm run dev
 
 ```bash
 # Test HSTS header (requires HTTPS or trust proxy simulation)
-curl -I http://localhost:5000/ -H "X-Forwarded-Proto: https"
+curl -I http://localhost:5001/ -H "X-Forwarded-Proto: https"
 ```
 
 **Expected Output**:

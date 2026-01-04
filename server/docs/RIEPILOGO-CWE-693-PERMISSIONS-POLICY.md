@@ -94,7 +94,7 @@ npx tsx server/scripts/test-security-headers.ts
 
 ```bash
 # Test locale
-curl -I http://localhost:5000/ | grep -i permissions-policy
+curl -I http://localhost:5001/ | grep -i permissions-policy
 
 # Test produzione
 curl -I https://cruscotto-sgi.com/ | grep -i permissions-policy
@@ -107,7 +107,7 @@ permissions-policy: geolocation=(), microphone=(), camera=(), payment=(), usb=()
 
 ### Opzione 4: Verifica con Browser
 
-1. Aprire https://cruscotto-sgi.com (o http://localhost:5000)
+1. Aprire https://cruscotto-sgi.com (o http://localhost:5001)
 2. Aprire DevTools (F12)
 3. Andare alla tab **Network**
 4. Ricaricare la pagina (Ctrl+R)

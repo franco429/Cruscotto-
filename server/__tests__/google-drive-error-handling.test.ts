@@ -8,7 +8,18 @@ vi.mock('../mongo-storage');
 vi.mock('../google-oauth');
 vi.mock('../logger');
 vi.mock('fs/promises');
-vi.mock('path');
+vi.mock('path', async () => {
+  return {
+    default: {
+      join: (...args: string[]) => args.join('/'),
+      resolve: (...args: string[]) => args.join('/'),
+    },
+    join: (...args: string[]) => args.join('/'),
+    resolve: (...args: string[]) => args.join('/'),
+    extname: (p: string) => '.pdf', // Default mock
+    basename: (p: string) => p.split('/').pop() || p,
+  };
+});
 vi.mock('os');
 
 describe('Google Drive Error Handling', () => {
@@ -93,22 +104,26 @@ describe('Google Drive Error Handling', () => {
           list: vi.fn().mockResolvedValue({
             data: {
               files: [
-                { id: 'file1', name: 'test1.pdf', webViewLink: 'http://test1' },
-                { id: 'file2', name: 'test2.pdf', webViewLink: 'http://test2' }
+                { id: 'file1', name: 'test1.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', webViewLink: 'http://test1' },
+                { id: 'file2', name: 'test2.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', webViewLink: 'http://test2' }
               ]
             }
-          })
+          }),
+          get: vi.fn()
+             // First file: Metadata check (success) -> Download (success)
+            .mockResolvedValueOnce({ data: { name: 'test1.xlsx', size: '1000' } })
+            .mockResolvedValueOnce({ data: new ArrayBuffer(100) }) 
+            // Second file: Metadata check (success) -> Download (FAILURE)
+            .mockResolvedValueOnce({ data: { name: 'test2.xlsx', size: '1000' } })
+            .mockRejectedValueOnce(new Error('Download failed'))
         }
       };
 
       const { getDriveClientForClient } = await import('../google-oauth');
       vi.mocked(getDriveClientForClient).mockResolvedValue(mockDriveClient);
 
-      // Mock file download to fail for one file
-      const { googleDriveDownloadFile } = await import('../google-drive');
-      vi.mocked(googleDriveDownloadFile)
-        .mockResolvedValueOnce(undefined)
-        .mockRejectedValueOnce(new Error('Download failed')); 
+      // We don't need to mock googleDriveDownloadFile anymore as it's not used
+ 
 
       const result = await syncWithGoogleDrive('test-folder', 1);
 

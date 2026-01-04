@@ -9,7 +9,7 @@ import { v4 as uuidv4 } from "uuid";
 import { mongoStorage } from "../server/mongo-storage";
 import {
   googleDriveListFiles,
-  googleDriveDownloadFile,
+  googleDriveGetStream,
 } from "./google-drive-api";
 
 import { google } from "googleapis";
@@ -33,7 +33,7 @@ const syncIntervals: Record<number, NodeJS.Timeout> = {};
 const SYNC_CONFIG = {
   maxRetries: 2, // Ridotto da 3 a 2 per evitare timeout Render
   retryDelay: 500, // Ridotto da 1s a 500ms
-  maxRetryDelay: 15000, // Ridotto da 30s a 15s per ambiente Render
+  maxRetryDelay: 15001, // Ridotto da 30s a 15s per ambiente Render
   timeout: 20000, // Ridotto da 30s a 20s per operazioni Google Drive
   batchSize: 100, // ULTRA-MASSIMO: aumentato da 50 a 100 per velocità estrema
   maxConcurrentNonExcel: 30, // ULTRA-MASSIMO: aumentato da 15 a 30 (file non-Excel sono veloci)

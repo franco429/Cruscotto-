@@ -18,7 +18,7 @@ export default defineConfig({
     proxy: {
       // Configurazione speciale per SSE (Server-Sent Events)
       "/api/sync/stream": {
-        target: "http://localhost:5000",
+        target: "http://localhost:5001",
         changeOrigin: true,
         secure: false,
         // CRITICO per SSE: disabilita buffering e timeout
@@ -38,7 +38,7 @@ export default defineConfig({
       },
       // API standard
       "/api": {
-        target: "http://localhost:5000",
+        target: "http://localhost:5001",
         changeOrigin: true,
         secure: false,
       },

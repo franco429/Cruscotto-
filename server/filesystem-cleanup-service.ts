@@ -11,20 +11,26 @@ type CleanupResult = {
 
 const BACKUP_DIR = path.join(process.cwd(), "backups");
 const LOGS_DIR = path.join(process.cwd(), "logs");
+const UPLOADS_DIR = path.join(process.cwd(), "server", "uploads");
+const ENCRYPTED_CACHE_DIR = path.join(process.cwd(), "encrypted_cache");
 
 // Policy di sicurezza disco (Render ha storage limitato)
-const BACKUP_RETENTION_DAYS = 14;          // Mantieni backup per 14 giorni
-const BACKUP_MAX_TOTAL_MB = 500;           // Limita dimensione totale backup a 500MB
-const LOGS_RETENTION_DAYS = 15;            // Log file compressi oltre 15 giorni vengono rimossi
-const LOGS_MAX_TOTAL_MB = 200;             // Limita i log file totali a 200MB
+const BACKUP_RETENTION_DAYS = 3;           // Ridotto da 14 a 3 giorni per risparmiare spazio
+const BACKUP_MAX_TOTAL_MB = 200;           // Ridotto da 500MB a 200MB
+const LOGS_RETENTION_DAYS = 7;             // Ridotto da 15 a 7 giorni
+const LOGS_MAX_TOTAL_MB = 100;             // Ridotto da 200MB a 100MB
+const UPLOADS_RETENTION_HOURS = 2;         // File upload orfani rimossi dopo 2 ore
+const ENCRYPTED_CACHE_RETENTION_HOURS = 12; // Cache crittografata locale rimossa dopo 12 ore
 
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+const ONE_HOUR_MS = 60 * 60 * 1000;
 
 interface CleanupPolicy {
   retentionMs: number;
   maxTotalBytes: number;
   allowedExtensions: string[];
   name: string;
+  recursive?: boolean;
 }
 
 async function ensureDirExists(dir: string): Promise<boolean> {
@@ -59,7 +65,10 @@ async function cleanupDirectory(
       if (!stat || !stat.isFile()) return null;
 
       const ext = path.extname(file).toLowerCase();
-      if (!policy.allowedExtensions.includes(ext)) return null;
+      if (policy.allowedExtensions.length > 0 && !policy.allowedExtensions.includes("*") && !policy.allowedExtensions.includes(ext)) return null;
+      
+      // Ignora .gitkeep
+      if (file === ".gitkeep") return null;
 
       return {
         name: file,
@@ -154,31 +163,55 @@ export async function cleanupLogFiles(): Promise<CleanupResult> {
   });
 }
 
+// Cleanup per la directory uploads (file orfani)
+export async function cleanupUploads(): Promise<CleanupResult> {
+  return cleanupDirectory(UPLOADS_DIR, {
+    retentionMs: UPLOADS_RETENTION_HOURS * 60 * 60 * 1000,
+    maxTotalBytes: 500 * 1024 * 1024, // Max 500MB per uploads
+    allowedExtensions: ["*"], // Tutti i file
+    name: "uploads",
+  });
+}
+
+// Cleanup per la cache crittografata locale
+export async function cleanupEncryptedCache(): Promise<CleanupResult> {
+  return cleanupDirectory(ENCRYPTED_CACHE_DIR, {
+    retentionMs: ENCRYPTED_CACHE_RETENTION_HOURS * 60 * 60 * 1000,
+    maxTotalBytes: 500 * 1024 * 1024, // Max 500MB per cache
+    allowedExtensions: [".enc"],
+    name: "encrypted_cache",
+  });
+}
+
 export function startFilesystemCleanupScheduler(): void {
-  logger.info("Avvio scheduler cleanup filesystem (backups/logs)", {
+  logger.info("Avvio scheduler cleanup filesystem (backups/logs/uploads/cache)", {
     backupRetentionDays: BACKUP_RETENTION_DAYS,
     backupMaxMB: BACKUP_MAX_TOTAL_MB,
     logsRetentionDays: LOGS_RETENTION_DAYS,
     logsMaxMB: LOGS_MAX_TOTAL_MB,
-    intervalHours: 6,
+    uploadsRetentionHours: UPLOADS_RETENTION_HOURS,
+    encryptedCacheRetentionHours: ENCRYPTED_CACHE_RETENTION_HOURS,
+    intervalHours: 1,
   });
 
+  // Funzione helper per eseguire tutti i cleanup
+  const runAllCleanups = async () => {
+    try {
+      await cleanupBackups();
+      await cleanupLogFiles();
+      await cleanupUploads();
+      await cleanupEncryptedCache();
+    } catch (error) {
+      logger.error("Errore durante il ciclo di cleanup", { error: error instanceof Error ? error.message : String(error) });
+    }
+  };
+
   // Esegui subito all'avvio
-  cleanupBackups().catch((error) =>
-    logger.warn("Cleanup iniziale backups fallito", { error: error instanceof Error ? error.message : String(error) })
-  );
-  cleanupLogFiles().catch((error) =>
-    logger.warn("Cleanup iniziale log files fallito", { error: error instanceof Error ? error.message : String(error) })
-  );
+  runAllCleanups();
 
   const interval = setInterval(() => {
-    cleanupBackups().catch((error) =>
-      logger.warn("Cleanup schedulato backups fallito", { error: error instanceof Error ? error.message : String(error) })
-    );
-    cleanupLogFiles().catch((error) =>
-      logger.warn("Cleanup schedulato log files fallito", { error: error instanceof Error ? error.message : String(error) })
-    );
-  }, SIX_HOURS_MS);
+    runAllCleanups();
+  }, ONE_HOUR_MS); // Ogni ora
 
   const stop = () => {
     clearInterval(interval);
@@ -192,5 +225,7 @@ export function startFilesystemCleanupScheduler(): void {
 export default {
   cleanupBackups,
   cleanupLogFiles,
+  cleanupUploads,
+  cleanupEncryptedCache,
   startFilesystemCleanupScheduler,
 };

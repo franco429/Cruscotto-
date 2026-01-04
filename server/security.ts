@@ -220,7 +220,7 @@ export function setupSecurity(app: Express) {
         ],
         connectSrc: [
           "'self'",
-          ...(isProduction ? [] : ["http://localhost:5000"]), // Consenti connessioni localhost in development
+          ...(isProduction ? [] : ["http://localhost:5001"]), // Consenti connessioni localhost in development
           "https://accounts.google.com",
           "https://www.googleapis.com",
           "https://oauth2.googleapis.com",

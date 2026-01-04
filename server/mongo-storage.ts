@@ -118,8 +118,8 @@ export class MongoStorage implements IStorage {
     try {
       console.log("🔄 Tentativo connessione MongoDB...");
       await mongoose.connect(dbUri, {
-        serverSelectionTimeoutMS: 15000, // 15 secondi timeout
-        socketTimeoutMS: 45000,
+        serverSelectionTimeoutMS: 15001, // 15 secondi timeout
+        socketTimeoutMS: 45001,
       });
       this.connected = true;
       console.log("✅ MongoDB connesso con successo");
@@ -1295,6 +1295,15 @@ export class MongoStorage implements IStorage {
         encryptedPath = `gcs://${gcsFileName}`;
       } else {
         const cacheDir = path.join(process.cwd(), "encrypted_cache");
+        
+        // ⚠️ CRITICAL WARNING: Utilizzo storage locale su Render
+        if (process.env.RENDER || process.env.NODE_ENV === 'production') {
+          logger.warn("⚠️  CRITICAL: Writing to local encrypted_cache on Render/Production. This is risky for ephemeral storage and disk limits.", {
+            documentId: id,
+            cacheDir
+          });
+        }
+
         await fs.promises.mkdir(cacheDir, { recursive: true });
         encryptedPath = path.join(
           cacheDir,

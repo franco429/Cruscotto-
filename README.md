@@ -166,7 +166,7 @@ CSRF_SECRET=your_csrf_secret
 ENCRYPTION_KEY=your-strong-32chars-min-key
 
 # URL di base del server (obbligatoria)
-SERVER_BASE_URL=http://localhost:5000
+SERVER_BASE_URL=http://localhost:5001
 # URL del frontend (obbligatoria)
 FRONTEND_URL=http://localhost:5173
 ```
@@ -700,7 +700,7 @@ SESSION_SECRET=your_session_secret
 CSRF_SECRET=your_csrf_secret
 
 # URL di base del server (obbligatoria)
-SERVER_BASE_URL=http://localhost:5000
+SERVER_BASE_URL=http://localhost:5001
 # URL del frontend (obbligatoria)
 FRONTEND_URL=http://localhost:5173
 ```

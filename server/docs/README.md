@@ -163,7 +163,7 @@ npx tsx server/scripts/test-proxy-disclosure.ts
 npx tsx server/scripts/verify-permissions-policy.ts
 
 # 3. Test manuale con curl
-curl -I http://localhost:5000/ | grep -i "x-frame-options\|permissions-policy"
+curl -I http://localhost:5001/ | grep -i "x-frame-options\|permissions-policy"
 ```
 
 **Tutti i test dovrebbero passare con successo** ✅

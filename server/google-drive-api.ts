@@ -1,13 +1,13 @@
 import { google, drive_v3 } from "googleapis";
 import fs from "fs";
 import { pipeline } from "stream/promises";
+import { Readable } from "stream";
 import { GaxiosResponse } from "gaxios";
 
-export async function googleDriveDownloadFile(
+export async function googleDriveGetStream(
   drive: drive_v3.Drive,
-  fileId: string,
-  destPath: string
-): Promise<void> {
+  fileId: string
+): Promise<Readable> {
   const metadata = await drive.files.get({
     fileId,
     fields: "mimeType, name",
@@ -15,50 +15,28 @@ export async function googleDriveDownloadFile(
   });
 
   const mimeType = metadata.data.mimeType;
-  const name = metadata.data.name;
 
-  if (!mimeType) {
-    throw new Error("Impossibile determinare il mimeType del file");
-  }
-
-  let streamRes;
-
-  if (mimeType.startsWith("application/vnd.google-apps")) {
-    let exportMime: string;
-
-    switch (mimeType) {
-      case "application/vnd.google-apps.spreadsheet":
-        exportMime =
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-        break;
-      case "application/vnd.google-apps.document":
-        exportMime =
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-        break;
-      case "application/vnd.google-apps.presentation":
-        exportMime =
-          "application/vnd.openxmlformats-officedocument.presentationml.presentation";
-        break;
-      default:
-        throw new Error(`Tipo Google non supportato: ${mimeType}`);
-    }
-
-    // Note: files.export does not support supportsAllDrives parameter
-    // Access to shared drives is controlled by the authentication token
-    streamRes = await drive.files.export(
+  if (mimeType?.startsWith("application/vnd.google-apps")) {
+    let exportMime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    if (mimeType.includes("document")) exportMime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    
+    const res = await drive.files.export(
       { fileId, mimeType: exportMime },
       { responseType: "stream" }
     );
+    return res.data;
   } else {
-    streamRes = await drive.files.get(
+    const res = await drive.files.get(
       { fileId, alt: "media", supportsAllDrives: true },
       { responseType: "stream" }
     );
+    return res.data;
   }
-
-  const dest = fs.createWriteStream(destPath);
-  await pipeline(streamRes.data, dest);
 }
+
+// Function googleDriveDownloadFile removed to prevent temporary file creation issues.
+// Use googleDriveGetStream or in-memory processing instead.
+
 
 /**
  * Elenca tutti i file in una cartella di Google Drive (OAuth2)

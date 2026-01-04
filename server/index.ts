@@ -59,75 +59,13 @@ logger.info("Avvio server...");
 console.log("📋 Configurazione ambiente:");
 console.log("   NODE_ENV:", process.env.NODE_ENV || "development");
 console.log("   DB_URI:", process.env.DB_URI ? "✅ configurata" : "❌ MANCANTE!");
-console.log("   PORT:", process.env.PORT || "5000 (default)");
+console.log("   PORT:", process.env.PORT || "5001 (default)");
 console.log("   SMTP_HOST:", process.env.SMTP_HOST ? "✅ configurata" : "⚠️ non configurata");
 
 // RIMOSSO: Monitor /tmp non più necessario con Cloud Storage
 // Tutti i file temporanei ora vanno su Google Cloud Storage con lifecycle automatico
 
-// 🆕 Job periodico: Cleanup file orfani in server/uploads ogni 30 minuti
-const uploadsCleanupJob = setInterval(async () => {
-  try {
-    const uploadsDir = path.join(process.cwd(), "server", "uploads");
-    
-    // Verifica che la directory esista
-    if (!fs.existsSync(uploadsDir)) {
-      return;
-    }
-    
-    const files = await fs.promises.readdir(uploadsDir);
-    
-    if (files.length === 0) {
-      return; // Nessun file da pulire
-    }
-    
-    logger.info("Starting periodic cleanup of uploads directory", {
-      totalFiles: files.length
-    });
-    
-    let deletedCount = 0;
-    let failedCount = 0;
-    const now = Date.now();
-    const MAX_AGE_MS = 2 * 60 * 60 * 1000; // 2 ore
-    
-    for (const file of files) {
-      try {
-        const filePath = path.join(uploadsDir, file);
-        const stats = await fs.promises.stat(filePath);
-        
-        // Elimina file più vecchi di 2 ore (probabilmente orfani)
-        if (now - stats.mtimeMs > MAX_AGE_MS) {
-          await fs.promises.unlink(filePath);
-          deletedCount++;
-          logger.debug("Deleted old orphaned file", {
-            fileName: file,
-            ageHours: Math.round((now - stats.mtimeMs) / (60 * 60 * 1000))
-          });
-        }
-      } catch (error) {
-        failedCount++;
-        logger.warn("Failed to delete file during cleanup", {
-          fileName: file,
-          error: error instanceof Error ? error.message : String(error)
-        });
-      }
-    }
-    
-    if (deletedCount > 0 || failedCount > 0) {
-      logger.info("Uploads directory cleanup completed", {
-        totalFiles: files.length,
-        deleted: deletedCount,
-        failed: failedCount,
-        remaining: files.length - deletedCount
-      });
-    }
-  } catch (error) {
-    // Non bloccare l'applicazione per errori di cleanup
-    logger.warn("Uploads cleanup job failed", {
-      error: error instanceof Error ? error.message : String(error)
-    });
-  }
-}, 30 * 60 * 1000); // 30 minuti
+// RIMOSSO: Job periodico pulizia uploads (gestito centralmente da filesystem-cleanup-service)
 
 // Monitoraggio Cloud Storage ogni 30 minuti (opzionale - solo per statistiche)
 const cloudStorageMonitor = setInterval(async () => {
@@ -196,14 +134,14 @@ const memoryMonitor = setInterval(() => {
 process.on('SIGTERM', () => {
   clearInterval(memoryMonitor);
   clearInterval(cloudStorageMonitor);
-  clearInterval(uploadsCleanupJob);
+  // clearInterval(uploadsCleanupJob); // Rimosso
   logger.info("All monitoring jobs stopped (memory, Cloud Storage, uploads cleanup)");
 });
 
 process.on('SIGINT', () => {
   clearInterval(memoryMonitor);
   clearInterval(cloudStorageMonitor);
-  clearInterval(uploadsCleanupJob);
+  // clearInterval(uploadsCleanupJob); // Rimosso
   logger.info("All monitoring jobs stopped (memory, Cloud Storage, uploads cleanup)");
 });
 
@@ -239,7 +177,7 @@ const allowedOrigins = [
   "https://www.cruscotto-sgi.com",
   ...(process.env.CORS_ORIGIN
     ? process.env.CORS_ORIGIN.split(",").map(origin => origin.trim())
-    : ["http://localhost:5173", "http://localhost:5000"]),
+    : ["http://localhost:5173", "http://localhost:5001"]),
 ];
 
 // Log configurazione solo all'avvio (non su ogni richiesta per evitare log flooding)
@@ -316,7 +254,7 @@ setupCSRF(app);
 //  Timeout middleware per Render (25 secondi - sotto il limite di 30s di Render)
 app.use((req, res, next) => {
   // Timeout più aggressivo per upload di file
-  const timeoutMs = req.path.includes('/upload') ? 25000 : 20000;
+  const timeoutMs = req.path.includes('/upload') ? 25001 : 20000;
   
   req.setTimeout(timeoutMs, () => {
     if (!res.headersSent) {
@@ -573,11 +511,11 @@ app.use((req, res, next) => {
     startLogCleanupScheduler();
     logger.info("Pulizia automatica log avviata (ogni 24 ore)");
 
-  // Scheduler per cleanup backup e log file su disco (spazio Render)
+  // Scheduler per cleanup backup, log file, uploads e cache locale su disco (spazio Render)
   startFilesystemCleanupScheduler();
-  logger.info("Cleanup filesystem (backups/logs) avviato (ogni 6 ore)");
+  logger.info("Cleanup filesystem (backups/logs/uploads/cache) avviato (ogni 1 ora)");
 
-    const port = process.env.PORT || 5000;
+    const port = process.env.PORT || 5001;
     app.listen(port, () => {
       logger.info(`Server avviato su porta ${port}`, {
         environment: process.env.NODE_ENV,

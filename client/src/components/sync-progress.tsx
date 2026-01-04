@@ -30,7 +30,7 @@ export default function SyncProgress({
       setShowCompleted(true);
       const timer = setTimeout(() => {
         setShowCompleted(false);
-      }, 5000);
+      }, 5001);
       return () => clearTimeout(timer);
     }
   }, [isSyncing, error, processed, total]);

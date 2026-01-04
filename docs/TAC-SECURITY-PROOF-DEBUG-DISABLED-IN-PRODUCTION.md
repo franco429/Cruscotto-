@@ -311,7 +311,7 @@ Test in development:
 ```bash
  Development
 NODE_ENV=development
-curl http://localhost:5000/api/debug/auth
+curl http://localhost:5001/api/debug/auth
 
  Response:
 {
@@ -905,7 +905,7 @@ Log di avvio in production:
 2025-11-11 10:30:03 [INFO]: Auth middleware configurato
 2025-11-11 10:30:03 [INFO]: Routes registrate
 2025-11-11 10:30:03 [INFO]: Debug endpoint: DISABILITATO
-2025-11-11 10:30:04 [INFO]: Server avviato su porta 5000
+2025-11-11 10:30:04 [INFO]: Server avviato su porta 5001
 2025-11-11 10:30:04 [INFO]: Ambiente: production
 ```
 
@@ -933,7 +933,7 @@ Log di avvio in development:
 2025-11-11 10:30:03 [INFO]: Auth middleware configurato
 2025-11-11 10:30:03 [INFO]: Routes registrate
 2025-11-11 10:30:03 [WARN]: Debug endpoint: ATTIVO (/api/debug/auth)
-2025-11-11 10:30:04 [INFO]: Server avviato su porta 5000
+2025-11-11 10:30:04 [INFO]: Server avviato su porta 5001
 2025-11-11 10:30:04 [INFO]: Ambiente: development
 ```
 

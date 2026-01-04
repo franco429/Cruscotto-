@@ -322,10 +322,10 @@ Lo script verifica:
 #### Test Header di Sicurezza
 ```bash
 # Test header su homepage
-curl -I http://localhost:5000/
+curl -I http://localhost:5001/
 
 # Test header su endpoint API
-curl -I http://localhost:5000/api/csrf-token
+curl -I http://localhost:5001/api/csrf-token
 
 # Verificare la presenza di:
 # - X-Frame-Options: DENY
@@ -339,30 +339,30 @@ curl -I http://localhost:5000/api/csrf-token
 #### Test Proxy Disclosure Prevention
 ```bash
 # Test TRACE bloccato (dovrebbe restituire 405)
-curl -X TRACE http://localhost:5000/api/test
+curl -X TRACE http://localhost:5001/api/test
 
 # Test OPTIONS senza Origin bloccato (dovrebbe restituire 405)
-curl -X OPTIONS http://localhost:5000/api/test
+curl -X OPTIONS http://localhost:5001/api/test
 
 # Test OPTIONS con Origin permesso (dovrebbe funzionare)
-curl -X OPTIONS http://localhost:5000/api/test \
+curl -X OPTIONS http://localhost:5001/api/test \
   -H "Origin: http://localhost:5173" \
   -H "Access-Control-Request-Method: GET"
 
 # Verifica assenza X-Powered-By e Server header
-curl -I http://localhost:5000/ | grep -i "x-powered-by\|server:"
+curl -I http://localhost:5001/ | grep -i "x-powered-by\|server:"
 # Non dovrebbe restituire nulla
 
 # Test HSTS (richiede HTTPS o simulazione trust proxy)
-curl -I http://localhost:5000/ -H "X-Forwarded-Proto: https" | grep -i strict-transport-security
+curl -I http://localhost:5001/ -H "X-Forwarded-Proto: https" | grep -i strict-transport-security
 # Dovrebbe restituire: strict-transport-security: max-age=63072000; includeSubDomains; preload
 
 # Test Cache-Control per API
-curl -I http://localhost:5000/api/csrf-token | grep -i cache-control
+curl -I http://localhost:5001/api/csrf-token | grep -i cache-control
 # Dovrebbe restituire: cache-control: no-store, no-cache, must-revalidate, private
 
 # Test Cache-Control per HTML
-curl -I http://localhost:5000/ | grep -i cache-control
+curl -I http://localhost:5001/ | grep -i cache-control
 # Dovrebbe restituire: cache-control: no-store, no-cache, must-revalidate, private
 
 # Test Cache-Control per asset statici (simulato)

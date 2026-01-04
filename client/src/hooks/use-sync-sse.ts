@@ -122,7 +122,7 @@ export function useSyncSSE(options: UseSyncSSEOptions = {}): UseSyncSSEReturn {
         // Chiudi la connessione SSE dopo il completamento (dai tempo al refetch)
         setTimeout(() => {
           cleanup();
-        }, 5000);
+        }, 5001);
       } catch (error) {
         console.error('[Sync SSE] Error parsing completed event:', error);
       }

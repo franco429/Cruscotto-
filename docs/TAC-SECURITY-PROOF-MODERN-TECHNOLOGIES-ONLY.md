@@ -133,7 +133,7 @@ export default defineConfig({
     port: 5173,                            // ✅ Dev server HMR
     proxy: {                               // ✅ Proxy API moderna
       "/api": {
-        target: "http://localhost:5000",
+        target: "http://localhost:5001",
         changeOrigin: true,
         secure: false,
       },
@@ -678,7 +678,7 @@ npm outdated
 const value = user?.profile?.name;
 
 // ✅ Nullish Coalescing
-const port = config.port ?? 5000;
+const port = config.port ?? 5001;
 
 // ✅ BigInt (per calcoli precisi)
 const largeNumber = 9007199254740991n;

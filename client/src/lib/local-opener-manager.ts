@@ -86,7 +86,7 @@ class LocalOpenerManager {
       const isAvailable = await checkLocalOpenerAvailability({
         forceRefresh: true,
         debug: this.options.debug,
-        timeout: 5000
+        timeout: 5001
       });
 
       const responseTime = Date.now() - startTime;

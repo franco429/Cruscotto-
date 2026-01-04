@@ -70,7 +70,7 @@ npx tsx server/scripts/test-hsts-header.ts
 
 ```bash
 # Simula HTTPS con trust proxy
-curl -I http://localhost:5000/ -H "X-Forwarded-Proto: https"
+curl -I http://localhost:5001/ -H "X-Forwarded-Proto: https"
 ```
 
 **Cerca**: `strict-transport-security: max-age=63072000; includeSubDomains; preload`
@@ -229,7 +229,7 @@ res.setHeader('Strict-Transport-Security', 'max-age=0');
 ## ❓ FAQ
 
 ### Q: L'header HSTS funziona in development?
-**A**: Sì, con simulazione trust proxy: `curl -I http://localhost:5000/ -H "X-Forwarded-Proto: https"`
+**A**: Sì, con simulazione trust proxy: `curl -I http://localhost:5001/ -H "X-Forwarded-Proto: https"`
 
 ### Q: Cosa succede se disabilito HTTPS?
 **A**: I browser che hanno memorizzato HSTS continueranno a forzare HTTPS fino allo scadere di max-age (2 anni).

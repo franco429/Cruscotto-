@@ -113,7 +113,7 @@ npx tsx server/scripts/test-hsts-header.ts
 
 ```bash
 # Simula HTTPS con trust proxy
-curl -I http://localhost:5000/ -H "X-Forwarded-Proto: https"
+curl -I http://localhost:5001/ -H "X-Forwarded-Proto: https"
 ```
 
 Cerca nell'output:
