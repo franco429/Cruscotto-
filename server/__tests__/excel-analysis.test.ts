@@ -5,17 +5,18 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
-// Mock ExcelJS
-vi.mock('exceljs', () => ({
-  default: {
-    Workbook: vi.fn().mockImplementation(() => ({
-      xlsx: {
-        readFile: vi.fn()
-      },
-      getWorksheet: vi.fn()
-    }))
-  }
-}));
+    // Mock ExcelJS
+    vi.mock('exceljs', () => ({
+      default: {
+        Workbook: vi.fn().mockImplementation(() => ({
+          xlsx: {
+            readFile: vi.fn(),
+            read: vi.fn()
+          },
+          getWorksheet: vi.fn()
+        }))
+      }
+    }));
 
 describe('Excel Analysis Tests', () => {
   let mockWorkbook: any;
@@ -39,7 +40,8 @@ describe('Excel Analysis Tests', () => {
     // Setup mock workbook
     mockWorkbook = {
       xlsx: {
-        readFile: vi.fn().mockResolvedValue(undefined)
+        readFile: vi.fn().mockResolvedValue(undefined),
+        read: vi.fn().mockResolvedValue(undefined)
       },
       getWorksheet: vi.fn().mockReturnValue(mockWorksheet)
     };
