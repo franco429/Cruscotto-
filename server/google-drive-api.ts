@@ -67,8 +67,17 @@ export async function googleDriveListFiles(
   }
 
   // Coda per l'esplorazione Breadth-First Search (BFS) delle cartelle.
+  const visited = new Set<string>();
+  
   while (pending.length) {
     const current = pending.pop()!;
+    
+    // Evita cicli infiniti se una cartella è contenuta in se stessa o c'è un loop
+    if (visited.has(current)) {
+      continue;
+    }
+    visited.add(current);
+
     let pageToken: string | undefined;
 
     do {

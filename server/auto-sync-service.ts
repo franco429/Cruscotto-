@@ -13,6 +13,7 @@ interface AutoSyncConfig {
   enabled: boolean;
   intervalMinutes: number;
   lastSyncTime: Date;
+  isSyncing?: boolean;
 }
 
 // Store configurazioni attive
@@ -400,12 +401,22 @@ export function startAutoSync(
     // Avvia intervallo periodico
     const interval = setInterval(() => {
       if (config.enabled) {
-        performAutoSync(config).catch(error => {
-          logger.error("Auto-sync interval error", {
-            clientId,
-            error: error instanceof Error ? error.message : String(error),
+        if (config.isSyncing) {
+          logger.info("Auto-sync skipped: previous sync still running", { clientId: config.clientId });
+          return;
+        }
+
+        config.isSyncing = true;
+        performAutoSync(config)
+          .catch(error => {
+            logger.error("Auto-sync interval error", {
+              clientId,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          })
+          .finally(() => {
+            config.isSyncing = false;
           });
-        });
       }
     }, intervalMinutes * 60 * 1000); // Converti minuti in millisecondi
 
@@ -419,12 +430,17 @@ export function startAutoSync(
     });
 
     // Esegui sync immediata
-    performAutoSync(config).catch(error => {
-      logger.error("Initial auto-sync error", {
-        clientId,
-        error: error instanceof Error ? error.message : String(error),
+    config.isSyncing = true;
+    performAutoSync(config)
+      .catch(error => {
+        logger.error("Initial auto-sync error", {
+          clientId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      })
+      .finally(() => {
+        config.isSyncing = false;
       });
-    });
 
     return true;
   } catch (error) {

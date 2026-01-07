@@ -26,7 +26,9 @@ import {
 } from "./google-cloud-storage";
 import { Readable } from "stream";
 
-const syncIntervals: Record<number, NodeJS.Timeout> = {};
+// Assicurati che questa variabile sia definita fuori dalla funzione (a livello di file)
+// Serve per memorizzare i timer attivi per ogni utente
+const activeSyncTimers: Record<number, NodeJS.Timeout> = {};
 
 // Configurazione MASSIMA ottimizzata per Render con Cloud Storage
 // AGGIORNAMENTO: Parallelizzazione aumentata per supportare 50K+ documenti
@@ -1693,54 +1695,41 @@ interface BatchResult {
   errors: any[];
 }
 
-export function startAutomaticSync(syncFolder: string, userId: number): void {
-  stopAutomaticSync(userId);
-
-  const intervalId = setInterval(async () => {
-    try {
-      const result = await syncWithGoogleDrive(syncFolder, userId);
-
-      // Se ci sono troppi errori consecutivi, aumenta l'intervallo
-      if (!result.success && result.failed > result.processed) {
-        logger.warn("High failure rate detected, increasing sync interval", {
-          userId,
-          processed: result.processed,
-          failed: result.failed,
-        });
-
-        // Aumenta l'intervallo temporaneamente
-        clearInterval(intervalId);
-        setTimeout(() => {
-          startAutomaticSync(syncFolder, userId);
-        }, 5 * 60 * 1000); // 5 minuti invece di 30 secondi
-      }
-    } catch (error) {
-      logger.error("Automatic sync failed", {
-        userId,
-        syncFolder,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }, 30 * 1000);
-
-  syncIntervals[userId] = intervalId;
-
-  // Esegui la prima sincronizzazione immediatamente
-  syncWithGoogleDrive(syncFolder, userId).catch((error) => {
-    logger.error("Initial sync failed", {
-      userId,
-      syncFolder,
-      error: error instanceof Error ? error.message : String(error),
-    });
-  });
+export function stopAutomaticSync(userId: number): void {
+  if (activeSyncTimers[userId]) {
+    clearTimeout(activeSyncTimers[userId]);
+    delete activeSyncTimers[userId];
+    logger.info("Sync stopped manually", { userId });
+  }
 }
 
-export function stopAutomaticSync(userId: number): void {
-  const interval = syncIntervals[userId];
-  if (interval) {
-    clearInterval(interval);
-    delete syncIntervals[userId];
-  }
+export function startAutomaticSync(syncFolder: string, userId: number): void {
+  // 1. Pulizia preventiva: fermiamo vecchi timer per questo utente
+  stopAutomaticSync(userId);
+
+  const runSync = async () => {
+    try {
+      // Esegue la sincronizzazione e ATTENDE il completamento (Bloccante per questo flusso)
+      const result = await syncWithGoogleDrive(syncFolder, userId);
+
+      // Logica intelligente per il ritardo
+      // Se falliscono più file di quelli processati, rallentiamo a 10 min, altrimenti 5 min
+      const isHighFailure = !result.success && (result.failed || 0) > (result.processed || 0);
+      const nextDelay = isHighFailure ? 10 * 60 * 1000 : 5 * 60 * 1000;
+
+      // 2. PROGRAMMAZIONE INTELLIGENTE
+      // Salviamo il timer nella mappa globale così possiamo stopparlo se serve
+      activeSyncTimers[userId] = setTimeout(runSync, nextDelay);
+
+    } catch (error) {
+      logger.error("Automatic sync critical error, retrying in 15m", { userId, error });
+      // In caso di crash totale della funzione, riproviamo tra 15 minuti
+      activeSyncTimers[userId] = setTimeout(runSync, 15 * 60 * 1000);
+    }
+  };
+
+  // Lanciamo la prima esecuzione immediata
+  runSync();
 }
 
 // Flag per evitare sync multiple simultanee
