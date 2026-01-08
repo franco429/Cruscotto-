@@ -568,6 +568,21 @@ export class MongoStorage implements IStorage {
     return client ? (client as Client) : undefined;
   }
 
+  async updateClientSyncToken(
+    clientId: number,
+    syncToken: string
+  ): Promise<Client | undefined> {
+    const client = await ClientModel.findOneAndUpdate(
+      { legacyId: clientId },
+      { $set: { "google.syncToken": syncToken } },
+      { new: true }
+    )
+      .lean()
+      .exec();
+
+    return client ? (client as Client) : undefined;
+  }
+
   async clearClientTokens(clientId: number): Promise<void> {
     try {
       await ClientModel.updateOne(

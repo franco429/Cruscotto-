@@ -47,6 +47,8 @@ export default function ActionsBar({
   const { toast } = useToast();
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const { user } = useAuth();
+  const [cooldown, setCooldown] = useState(false);
+
   const handleSearch = (value: string) => {
     onSearch(value);
   };
@@ -68,6 +70,18 @@ export default function ActionsBar({
       });
       return;
     }
+
+    if (cooldown) {
+      toast({
+        title: "Info",
+        description: "Attendere qualche secondo prima di riprovare...",
+      });
+      return;
+    }
+
+    // Attiva cooldown di 10 secondi
+    setCooldown(true);
+    setTimeout(() => setCooldown(false), 30000);
 
     try {
       onSync();
@@ -156,13 +170,18 @@ export default function ActionsBar({
           {/* Sync Button */}
           <Button
             onClick={handleSyncNow}
-            disabled={isSyncing || !driveFolderId}
+            disabled={isSyncing || !driveFolderId || cooldown}
             className="flex items-center gap-2 w-full md:w-auto"
           >
             {isSyncing ? (
               <>
                 <RefreshCw className="h-4 w-4 animate-spin" />
                 Sincronizzando...
+              </>
+            ) : cooldown ? (
+              <>
+                <RefreshCw className="h-4 w-4 animate-pulse opacity-50" />
+                Attendi 10s...
               </>
             ) : (
               <>
@@ -210,7 +229,7 @@ export default function ActionsBar({
                       title: "File troppo grandi",
                       description: `Alcuni file superano 10MB e sono stati esclusi (${tooLarge.length}). Usa Google Drive per file grandi.`,
                       variant: "destructive",
-                    });
+                      });
                   }
 
                   const validFiles = files.filter((f: any) => f.size <= MAX_FILE_BYTES);

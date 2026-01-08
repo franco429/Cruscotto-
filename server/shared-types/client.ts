@@ -8,6 +8,7 @@ export interface ClientDocument {
     accessToken?: string;
     refreshToken?: string;
     expiryDate?: number;
+    syncToken?: string;
   };
   localOpenerConfig?: {
     drivePaths: string[];

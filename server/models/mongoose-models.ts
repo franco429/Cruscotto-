@@ -90,6 +90,7 @@ const clientSchema = new Schema<ClientDocument & MongooseDocument>({
     accessToken: { type: String, required: false },
     refreshToken: { type: String, required: false },
     expiryDate: { type: Number, required: false },
+    syncToken: { type: String, required: false },
   },
   localOpenerConfig: {
     drivePaths: { type: [String], required: false, default: [] },

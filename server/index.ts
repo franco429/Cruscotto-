@@ -501,7 +501,7 @@ app.use((req, res, next) => {
     logger.info("Avvio sincronizzazione automatica...");
     const { startAutomaticSyncForAllClients } = await import("./google-drive");
     startAutomaticSyncForAllClients();
-    logger.info("Sincronizzazione automatica avviata (ogni 15 minuti)");
+    logger.info("Sincronizzazione automatica avviata (ogni 60 secondi)");
 
     const { startExpirationChecks } = await import("./notification-service");
     startExpirationChecks();

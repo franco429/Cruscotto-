@@ -98,13 +98,6 @@ export default function SyncProgress({
               </div>
             )}
             
-            {!isComplete && (
-              <div className="p-3 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-md">
-                <p className="text-xs text-blue-600 dark:text-blue-400">
-                  ⚡ Sincronizzazione ultra-veloce in corso • {Math.round((processed / total) * 100)}% completato
-                </p>
-              </div>
-            )}
           </>
         )}
       </CardContent>

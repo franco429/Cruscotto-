@@ -10,6 +10,8 @@ import { mongoStorage } from "../server/mongo-storage";
 import {
   googleDriveListFiles,
   googleDriveGetStream,
+  googleDriveGetStartPageToken,
+  googleDriveGetChanges,
 } from "./google-drive-api";
 
 import { google } from "googleapis";
@@ -576,8 +578,6 @@ async function analyzeExcelContentStreamOptimizedFromStream(
   }
 }
 
-// REMOVED: analyzeExcelContentFallback - no more document mode fallback for memory safety
-
 // ===== ALERT STATUS CALCULATOR =====
 function calculateAlertStatus(expiryDate: Date | null | undefined): Alert {
   // Se non c'è data di scadenza, il documento è considerato valido (non scaduto)
@@ -1061,7 +1061,7 @@ async function processBatchOptimized(
 
 /**
  * Sincronizza una cartella Google Drive (e tutte le sue sottocartelle) con il DB.
- * Versione ottimizzata per velocità e performance.
+ * Versione ottimizzata per velocità e performance con Sync Ibrida (Full vs Incrementale).
  */
 export async function syncWithGoogleDrive(
   syncFolder: string,
@@ -1129,14 +1129,16 @@ export async function syncWithGoogleDrive(
       throw error;
     }
 
-    // Recupera il nome del client per le notifiche
+    // Recupera il client completo per verificare il token di sync
+    let client: any = null;
     try {
-      const client = await mongoStorage.getClient(clientId);
+      client = await mongoStorage.getClient(clientId);
       clientName = client?.name || "Unknown";
       logger.info("Client data retrieved", {
         clientId,
         clientName,
         hasGoogleTokens: !!client?.google?.refreshToken,
+        hasSyncToken: !!client?.google?.syncToken,
         driveFolderId: client?.driveFolderId,
       });
     } catch (clientError) {
@@ -1193,75 +1195,149 @@ export async function syncWithGoogleDrive(
 
     logger.info("Google Drive connection validated successfully", { clientId });
 
-    // 4. Elenco ricorsivo dei file
-    const files = await withRetry(
-      () => googleDriveListFiles(drive, folderId),
-      "listFiles",
-      3
-    );
+    // 4. Bivio: Sync Incrementale vs Full Sync
+    const syncToken = client?.google?.syncToken;
 
-    logger.info(`Found ${files.length} files to process`, {
-      userId,
-      clientId,
-      folderId,
-      fileCount: files.length,
-    });
+    if (syncToken) {
+      // CASO B: Incremental Sync (Token Presente)
+      logger.info("Executing Incremental Sync using token", { syncToken: syncToken.substring(0, 10) + "..." });
+      
+      try {
+        const { changes, newStartPageToken } = await googleDriveGetChanges(drive, syncToken);
+        
+        logger.info(`Found ${changes.length} changes to process`, { count: changes.length });
 
-    // Report progresso iniziale
-    if (onProgress) {
-      onProgress(0, files.length, 0, 1);
-    }
-
-    // 5. Processamento in batch ottimizzato con analisi contenuti
-    const batches = [];
-    for (let i = 0; i < files.length; i += SYNC_CONFIG.batchSize) {
-      batches.push(files.slice(i, i + SYNC_CONFIG.batchSize));
-    }
-
-    for (const [batchIndex, batch] of batches.entries()) {
-      logger.debug(`Processing batch ${batchIndex + 1}/${batches.length}`, {
-        batchSize: batch.length,
-        userId,
-        clientId,
-      });
-
-      const batchResults = await processBatchWithAnalysis(
-        drive,
-        batch,
-        userId,
-        clientId!,
-        (processed, total, currentBatch, totalBatches) => {
-          if (onProgress) {
-            const totalProcessed = result.processed + processed;
-            const totalFiles = files.length;
-            // Passa il batch globale, non quello locale del sub-batch
-            onProgress(
-              totalProcessed,
-              totalFiles,
-              batchIndex + 1,
-              batches.length
-            );
+        // Processa le modifiche
+        for (const change of changes) {
+          if (change.removed || change.file?.trashed) {
+            // Gestione Cancellazioni
+            const googleFileId = change.fileId;
+            if (googleFileId) {
+              const doc = await mongoStorage.getDocumentByGoogleFileId(googleFileId);
+              if (doc) {
+                // Marcalo come obsoleto o cancellalo
+                await mongoStorage.markDocumentObsolete(doc.legacyId);
+                logger.info(`Document marked obsolete (deleted in Drive): ${doc.title}`, { googleFileId });
+                result.processed++;
+              }
+            }
+          } else if (change.file) {
+            // Gestione Aggiornamenti / Creazioni
+            // Processa come un normale file
+            const processingResult = await processFileWithErrorHandlingOptimized(drive, change.file, userId, clientId);
+            if (processingResult.success) {
+              result.processed++;
+            } else {
+              result.failed++;
+              if (processingResult.error) result.errors.push(processingResult.error);
+            }
           }
         }
+
+        // Aggiorna il token
+        await mongoStorage.updateClientSyncToken(clientId, newStartPageToken);
+        logger.info("Incremental Sync completed, token updated", { newStartPageToken: newStartPageToken.substring(0, 10) + "..." });
+        
+        result.success = result.failed === 0;
+
+      } catch (incrementalError: any) {
+        // Se il token è scaduto o invalido (410 Gone, 400 Bad Request), fallback a Full Sync
+        if (incrementalError.code === 410 || (incrementalError.response?.status === 410)) {
+           logger.warn("Sync token expired (410), falling back to Full Sync");
+           // Resetta token e procedi con full sync
+           await mongoStorage.updateClientSyncToken(clientId, "");
+           return syncWithGoogleDrive(syncFolder, userId, onProgress); // Ricorsione sicura (token vuoto)
+        }
+        throw incrementalError;
+      }
+
+    } else {
+      // CASO A: Full Sync (Primo Avvio / Nessun Token)
+      logger.info("Executing Full Sync (No token found)");
+
+      // Ottieni subito il token per il futuro (prima del list per non perdere eventi futuri, 
+      // anche se tecnicamente c'è una race condition minima, è la practice standard)
+      // Oppure: List -> Save -> Get Token -> Save. 
+      // Se faccio Get Token prima, e poi List, se un file cambia durante il List, lo vedo nel List.
+      // E al prossimo incremental sync (dal Token in poi), lo rivedo. Meglio processare due volte che perdere dati.
+      // Quindi prendiamo il token PRIMA.
+      /* 
+         Tuttavia, l'utente ha chiesto specificamente: 
+         "Esegui drive.files.list... Salva tutto... Chiedi a Google il startPageToken attuale e salvalo."
+         Seguirò l'istruzione dell'utente per aderenza ai requisiti.
+      */
+      
+      const files = await withRetry(
+        () => googleDriveListFiles(drive, folderId),
+        "listFiles",
+        3
       );
 
-      // Aggiorna risultati totali
-      result.processed += batchResults.processed;
-      result.failed += batchResults.failed;
-      result.errors.push(...batchResults.errors);
+      logger.info(`Found ${files.length} files to process`, {
+        userId,
+        clientId,
+        folderId,
+        fileCount: files.length,
+      });
 
-      // Pausa ottimizzata tra i batch (ridotta per velocità)
-      if (batchIndex < batches.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, SYNC_CONFIG.batchPauseMs));
+      if (onProgress) {
+        onProgress(0, files.length, 0, 1);
       }
+
+      const batches = [];
+      for (let i = 0; i < files.length; i += SYNC_CONFIG.batchSize) {
+        batches.push(files.slice(i, i + SYNC_CONFIG.batchSize));
+      }
+
+      for (const [batchIndex, batch] of batches.entries()) {
+        logger.debug(`Processing batch ${batchIndex + 1}/${batches.length}`, {
+          batchSize: batch.length,
+          userId,
+          clientId,
+        });
+
+        const batchResults = await processBatchWithAnalysis(
+          drive,
+          batch,
+          userId,
+          clientId!,
+          (processed, total, currentBatch, totalBatches) => {
+            if (onProgress) {
+              const totalProcessed = result.processed + processed;
+              const totalFiles = files.length;
+              onProgress(
+                totalProcessed,
+                totalFiles,
+                batchIndex + 1,
+                batches.length
+              );
+            }
+          }
+        );
+
+        result.processed += batchResults.processed;
+        result.failed += batchResults.failed;
+        result.errors.push(...batchResults.errors);
+
+        if (batchIndex < batches.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, SYNC_CONFIG.batchPauseMs));
+        }
+      }
+
+      // DOPO aver salvato tutto, prendiamo il token per la prossima volta
+      const newStartPageToken = await googleDriveGetStartPageToken(drive);
+      await mongoStorage.updateClientSyncToken(clientId, newStartPageToken);
+      logger.info("Full Sync completed, startPageToken saved", { newStartPageToken: newStartPageToken.substring(0, 10) + "..." });
+      
+      result.success = result.failed === 0;
     }
 
-    result.success = result.failed === 0;
     result.duration = Date.now() - startTime;
 
-    // Report progresso finale (100%)
-    if (onProgress) {
-      onProgress(result.processed, files.length, batches.length, batches.length);
+    // Report progresso finale (100%) se non incrementale (che ha pochi file)
+    if (onProgress && !syncToken) {
+       // Per sync full, garantiamo 100%
+       onProgress(result.processed, result.processed + result.failed, 1, 1);
     }
 
     logger.info("Optimized Google Drive sync completed", {
@@ -1272,10 +1348,9 @@ export async function syncWithGoogleDrive(
       failed: result.failed,
       duration: result.duration,
       errorCount: result.errors.length,
-      avgTimePerFile: result.duration / (result.processed + result.failed),
+      mode: syncToken ? 'incremental' : 'full'
     });
 
-    // Log dettagliato degli errori se ce ne sono
     if (result.errors.length > 0) {
       logger.warn("Sync completed with errors", {
         userId,
@@ -1288,7 +1363,6 @@ export async function syncWithGoogleDrive(
       });
     }
 
-    // Invia notifiche per errori critici
     if (result.errors.length > 0) {
       try {
         await sendSyncErrorNotifications(result.errors, {
@@ -1340,7 +1414,6 @@ export async function syncWithGoogleDrive(
       context: syncError.context,
     });
 
-    // Invia notifiche anche per errori fatali
     if (clientId) {
       try {
         await sendSyncErrorNotifications([syncError], {
@@ -1736,12 +1809,12 @@ export function startAutomaticSync(syncFolder: string, userId: number): void {
 let isGlobalSyncRunning = false;
 
 export function startAutomaticSyncForAllClients(): void {
-  logger.info("Starting automatic sync for all clients (every 15 minutes)");
+  // Sync ogni 60 secondi (invece di 15 min) come richiesto
+  logger.info("Starting automatic sync for all clients (every 60 seconds)");
 
   // Esegui la prima sync immediatamente
   syncAllClientsOnce();
 
-  // Sync ogni 15 minuti per bilanciare reattività e carico server
   setInterval(() => {
     if (isGlobalSyncRunning) {
       logger.info("Skipping scheduled sync - previous sync still running");
@@ -1750,7 +1823,7 @@ export function startAutomaticSyncForAllClients(): void {
 
     logger.info("Running scheduled automatic sync for all clients");
     syncAllClientsOnce();
-  }, 15 * 60 * 1000); // 15 minuti
+  }, 60 * 1000); // 60 secondi
 }
 
 async function syncAllClientsOnce(): Promise<void> {
