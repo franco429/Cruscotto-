@@ -7,7 +7,6 @@ import {
   verifyMFALogin,
   regenerateBackupCodes,
 } from "./mfa-service";
-import { startAutomaticSync } from "./google-drive";
 import { logAuth, logError } from "./logger";
 import logger from "./logger";
 
@@ -246,12 +245,6 @@ export function registerMFARoutes(app: Express) {
                     clientDetails = await mongoStorage.getClient(
                       updatedUser.clientId
                     );
-                    if (clientDetails?.driveFolderId) {
-                      startAutomaticSync(
-                        clientDetails.driveFolderId,
-                        updatedUser.legacyId
-                      );
-                    }
                   }
 
                   const { password, mfaSecret, mfaBackupCodes, ...safeUser } =

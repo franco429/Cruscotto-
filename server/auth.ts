@@ -6,7 +6,6 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { mongoStorage as storage } from "./mongo-storage";
 import { UserDocument as User } from "./shared-types/schema";
-import { startAutomaticSync } from "./google-drive";
 import { strongPasswordSchema } from "./shared-types/validators";
 import { logAuth, logError } from "./logger";
 
@@ -259,12 +258,6 @@ export function setupAuth(app: Express) {
                 let clientDetails = null;
                 if (updatedUser?.clientId) {
                   clientDetails = await storage.getClient(updatedUser.clientId);
-                  if (clientDetails?.driveFolderId) {
-                    startAutomaticSync(
-                      clientDetails.driveFolderId,
-                      updatedUser.legacyId
-                    );
-                  }
                 }
 
                 const { password, mfaSecret, mfaBackupCodes, ...safeUser } = updatedUser || user;
