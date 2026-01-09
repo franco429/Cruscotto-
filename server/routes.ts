@@ -189,6 +189,11 @@ const isAdmin = (req: Request, res: Response, next: NextFunction) => {
     
     // Per richieste SSE, invia un evento di errore invece di JSON
     if (req.url.includes('/stream') || req.headers.accept?.includes('text/event-stream')) {
+      logger.warn("Sending SSE authentication error", { url: req.url });
+      
+      // IMPORTANTE: Non impostare status 401, altrimenti EventSource chiude la connessione
+      // senza leggere il body. Rispondiamo 200 OK con evento 'error'.
+      res.status(200);
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
