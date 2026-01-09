@@ -20,14 +20,14 @@ interface UseSyncSSEOptions {
   autoConnect?: boolean;
 }
 
-interface UseSyncSSEReturn {
-  progress: SyncProgress;
-  isConnected: boolean;
-  connect: () => void;
-  disconnect: () => void;
-  startSync: () => Promise<{ success: boolean; syncId?: string; error?: string }>;
-  reset: () => void;
-}
+  interface UseSyncSSEReturn {
+    progress: SyncProgress;
+    isConnected: boolean;
+    connect: (token?: string) => void;
+    disconnect: () => void;
+    startSync: () => Promise<{ success: boolean; syncId?: string; error?: string }>;
+    reset: () => void;
+  }
 
 const initialProgress: SyncProgress = {
   status: 'idle',
@@ -57,18 +57,19 @@ export function useSyncSSE(options: UseSyncSSEOptions = {}): UseSyncSSEReturn {
   }, []);
 
   // Connessione SSE per ricevere aggiornamenti in tempo reale
-  const connectSSE = useCallback(() => {
+  const connectSSE = useCallback((token?: string) => {
     // Evita connessioni multiple
     if (eventSourceRef.current) {
       return;
     }
 
-    console.log('[Sync SSE] Connecting to /api/sync/stream...');
+    const url = token ? `/api/sync/stream?token=${token}` : '/api/sync/stream';
+    console.log(`[Sync SSE] Connecting to ${url}...`);
     
     // EventSource include automaticamente i cookie per richieste same-origin
     // Tuttavia, esplicitiamo withCredentials: true per garantire l'invio dei cookie
     // anche in ambienti di produzione complessi o dietro proxy.
-    const eventSource = new EventSource('/api/sync/stream', { withCredentials: true });
+    const eventSource = new EventSource(url, { withCredentials: true });
     eventSourceRef.current = eventSource;
 
     eventSource.onopen = () => {
@@ -217,8 +218,8 @@ export function useSyncSSE(options: UseSyncSSEOptions = {}): UseSyncSSEReturn {
   }, [onProgress, onCompleted, onError, cleanup]);
 
   // Connect (alias per connectSSE)
-  const connect = useCallback(() => {
-    connectSSE();
+  const connect = useCallback((token?: string) => {
+    connectSSE(token);
   }, [connectSSE]);
 
   // Disconnect
@@ -288,7 +289,8 @@ export function useSyncSSE(options: UseSyncSSEOptions = {}): UseSyncSSEReturn {
 
       // Connetti all'SSE per monitorare il progresso
       isSyncingRef.current = true;
-      connectSSE();
+      // Passa il syncId come token per l'autenticazione SSE
+      connectSSE(data.syncId);
 
       return { success: true, syncId: data.syncId };
     } catch (error) {

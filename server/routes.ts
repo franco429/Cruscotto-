@@ -1304,23 +1304,64 @@ export async function registerRoutes(app: Express): Promise<Express> {
     error?: string;
   }>();
 
+  // Mappa per token temporanei di stream (token -> { clientId, userId, timestamp })
+  const streamTokens = new Map<string, { clientId: number; userId: number; timestamp: number }>();
+
   // Endpoint SSE per streaming stato sincronizzazione in tempo reale
   // NOTA: NON usare async qui - causa chiusura prematura della connessione
-  app.get("/api/sync/stream", isAdmin, (req, res) => {
-    const clientId = req.user?.clientId;
-    const userId = req.user?.legacyId;
+  app.get("/api/sync/stream", async (req, res) => {
+    let clientId: number | undefined;
+    let userId: number | undefined;
 
-    logger.info("[SSE] Client connecting to sync stream", { clientId, userId });
+    // Metodo 1: Autenticazione via Cookie (Standard)
+    if (req.isAuthenticated() && req.user) {
+      clientId = req.user.clientId;
+      userId = req.user.legacyId;
+      
+      // Controllo permessi admin (inline per non bloccare con middleware)
+      if (req.user.role !== "admin" && req.user.role !== "superadmin") {
+        logger.warn("SSE access denied - insufficient permissions (cookie)", { clientId, userId });
+        res.status(200);
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.write(`event: error\n`);
+        res.write(`data: ${JSON.stringify({ message: "Accesso negato", code: "FORBIDDEN" })}\n\n`);
+        return res.end();
+      }
+    } 
+    // Metodo 2: Autenticazione via Token (Fallback per problemi cookie/SSE)
+    else if (req.query.token && typeof req.query.token === 'string') {
+      const tokenData = streamTokens.get(req.query.token);
+      if (tokenData) {
+        // Verifica scadenza token (60 secondi)
+        if (Date.now() - tokenData.timestamp < 60000) {
+          clientId = tokenData.clientId;
+          userId = tokenData.userId;
+          logger.info("SSE authenticated via token", { clientId, userId });
+        } else {
+          logger.warn("SSE token expired", { token: req.query.token });
+          streamTokens.delete(req.query.token);
+        }
+      }
+    }
 
+    // Se l'autenticazione fallisce in entrambi i modi
     if (!clientId || !userId) {
-      // Per SSE, invia evento di errore invece di JSON
+      logger.warn("SSE authentication failed", { 
+        hasCookie: !!req.isAuthenticated(), 
+        hasToken: !!req.query.token,
+        headers: req.headers 
+      });
+      
+      res.status(200); // 200 OK per permettere al client di leggere l'evento
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
       res.write(`event: error\n`);
-      res.write(`data: ${JSON.stringify({ message: "Nessun cliente associato." })}\n\n`);
+      res.write(`data: ${JSON.stringify({ message: "Non autenticato", code: "NOT_AUTHENTICATED" })}\n\n`);
       return res.end();
     }
+
+    logger.info("[SSE] Client connecting to sync stream", { clientId, userId });
 
     // CRITICO: Disabilita timeout per connessioni SSE long-lived
     req.socket?.setTimeout(0);
@@ -1331,8 +1372,6 @@ export async function registerRoutes(app: Express): Promise<Express> {
     res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no'); // Disabilita buffering per Nginx/Render
-    // RIMOSSO: Access-Control-Allow-Origin: * è incompatibile con withCredentials: true
-    // Il middleware CORS globale gestirà correttamente gli header origin e credentials.
     
     // Flush headers immediatamente
     res.flushHeaders();
@@ -1377,7 +1416,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
           total: data.total,
           currentBatch: data.currentBatch,
           totalBatches: data.totalBatches,
-          duration: Date.now() - (activeSyncs.get(clientId)?.startTime || Date.now()),
+          duration: Date.now() - (activeSyncs.get(clientId!)?.startTime || Date.now()),
         });
       }
     };
@@ -1483,7 +1522,11 @@ export async function registerRoutes(app: Express): Promise<Express> {
       });
 
       // Inizializza stato sincronizzazione
-      const syncId = Date.now().toString();
+      const syncId = uuidv4(); // Usa UUID per sicurezza token
+      
+      // Salva token temporaneo per SSE auth
+      streamTokens.set(syncId, { clientId, userId, timestamp: Date.now() });
+      
       activeSyncs.set(clientId, {
         status: 'syncing',
         processed: 0,
