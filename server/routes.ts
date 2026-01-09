@@ -1331,7 +1331,8 @@ export async function registerRoutes(app: Express): Promise<Express> {
     res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no'); // Disabilita buffering per Nginx/Render
-    res.setHeader('Access-Control-Allow-Origin', '*'); // Per CORS se necessario
+    // RIMOSSO: Access-Control-Allow-Origin: * è incompatibile con withCredentials: true
+    // Il middleware CORS globale gestirà correttamente gli header origin e credentials.
     
     // Flush headers immediatamente
     res.flushHeaders();
