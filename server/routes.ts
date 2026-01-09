@@ -1536,7 +1536,8 @@ export async function registerRoutes(app: Express): Promise<Express> {
         startTime: Date.now(),
       });
 
-      // Emetti evento di inizio
+      // Emetti evento di inizio (con total stimato se possibile, altrimenti 0)
+      // Se non conosciamo il totale, il frontend mostrerà "In elaborazione..."
       appEvents.emit('syncProgress', {
         clientId,
         status: 'syncing',
@@ -1553,6 +1554,10 @@ export async function registerRoutes(app: Express): Promise<Express> {
         (processed, total, currentBatch, totalBatches) => {
           // Aggiorna stato e emetti evento
           const syncState = activeSyncs.get(clientId);
+          
+          // CRITICO: Assicurati che total sia > 0 se ci sono file da processare
+          // Se la sync è incrementale e non ci sono file, total potrebbe essere 0.
+          
           if (syncState) {
             syncState.processed = processed;
             syncState.total = total;

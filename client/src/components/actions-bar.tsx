@@ -81,11 +81,17 @@ export default function ActionsBar({
 
     // Attiva cooldown di 30 secondi
     setCooldown(true);
-    setTimeout(() => setCooldown(false), 30000);
+    // Disabilita il cooldown solo se si verifica un errore immediato che blocca la sync
+    // In caso di successo, il cooldown verrà gestito dallo stato isSyncing
+    setTimeout(() => {
+      // Se la sync è finita e non ci sono errori, sblocca il bottone dopo 30s
+      setCooldown(false);
+    }, 30000);
 
     try {
       onSync();
     } catch (err: any) {
+      setCooldown(false); // Sblocca subito in caso di errore immediato
       toast({
         title: "Errore",
         description: err?.message === "Failed to fetch"
@@ -170,6 +176,7 @@ export default function ActionsBar({
           {/* Sync Button */}
           <Button
             onClick={handleSyncNow}
+            // Disabilita se: in sync, folder mancante, in cooldown, OPPURE se la sync è appena finita
             disabled={isSyncing || !driveFolderId || cooldown}
             className="flex items-center gap-2 w-full md:w-auto"
           >

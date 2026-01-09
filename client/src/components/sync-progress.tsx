@@ -26,7 +26,9 @@ export default function SyncProgress({
 
   // Mostra il messaggio di completamento per 5 secondi (tempo per caricare i documenti)
   React.useEffect(() => {
-    if (!isSyncing && !error && processed > 0 && total > 0) {
+    // MODIFICA: Ora consideriamo completato anche se processed e total sono 0 (nessuna modifica)
+    // purché non sia più in syncing e non ci siano errori
+    if (!isSyncing && !error && (processed > 0 || total >= 0)) {
       setShowCompleted(true);
       const timer = setTimeout(() => {
         setShowCompleted(false);
@@ -39,7 +41,8 @@ export default function SyncProgress({
   if (!isSyncing && !error && !showCompleted) return null;
 
   const progressPercentage = total > 0 ? (processed / total) * 100 : 0;
-  const isComplete = (!isSyncing && processed >= total && total > 0) || showCompleted;
+  // MODIFICA: Logica di completamento più robusta
+  const isComplete = (!isSyncing && !error) || showCompleted;
 
   return (
     <Card className="mb-6 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
@@ -73,17 +76,17 @@ export default function SyncProgress({
           <>
             <div className="space-y-2">
               <div className="flex justify-between text-sm text-blue-700 dark:text-blue-300">
-                <span>File processati: {processed} / {total}</span>
-                <span>Batch: {currentBatch} / {totalBatches}</span>
+                <span>File processati: {processed} {total > 0 ? `/ ${total}` : ""}</span>
+                {totalBatches > 0 && <span>Batch: {currentBatch} / {totalBatches}</span>}
               </div>
               
               <Progress 
-                value={progressPercentage} 
-                className="h-2"
+                value={total > 0 ? progressPercentage : 100} 
+                className={`h-2 ${total === 0 ? "animate-pulse" : ""}`}
               />
               
               <div className="flex justify-between text-xs text-blue-600 dark:text-blue-400">
-                <span>{Math.round(progressPercentage)}% completato</span>
+                <span>{total > 0 ? `${Math.round(progressPercentage)}% completato` : "Ricerca modifiche..."}</span>
                 <span>
                   {isComplete ? "Completato" : "In elaborazione..."}
                 </span>
@@ -93,7 +96,9 @@ export default function SyncProgress({
             {isComplete && (
               <div className="p-3 bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-md">
                 <p className="text-sm text-green-700 dark:text-green-300">
-                  ✅ Sincronizzazione completata! {processed} documenti sincronizzati. Caricamento in corso...
+                  {total === 0 && processed === 0 
+                    ? "✅ Nessuna modifica rilevata. I documenti sono già aggiornati."
+                    : `✅ Sincronizzazione completata! ${processed} documenti sincronizzati.`}
                 </p>
               </div>
             )}
