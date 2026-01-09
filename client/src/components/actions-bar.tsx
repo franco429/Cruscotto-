@@ -79,7 +79,7 @@ export default function ActionsBar({
       return;
     }
 
-    // Attiva cooldown di 10 secondi
+    // Attiva cooldown di 30 secondi
     setCooldown(true);
     setTimeout(() => setCooldown(false), 30000);
 
@@ -181,7 +181,7 @@ export default function ActionsBar({
             ) : cooldown ? (
               <>
                 <RefreshCw className="h-4 w-4 animate-pulse opacity-50" />
-                Attendi 10s...
+                Attendi 30s...
               </>
             ) : (
               <>

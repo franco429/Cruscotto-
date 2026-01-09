@@ -66,7 +66,9 @@ export function useSyncSSE(options: UseSyncSSEOptions = {}): UseSyncSSEReturn {
     console.log('[Sync SSE] Connecting to /api/sync/stream...');
     
     // EventSource include automaticamente i cookie per richieste same-origin
-    const eventSource = new EventSource('/api/sync/stream');
+    // Tuttavia, esplicitiamo withCredentials: true per garantire l'invio dei cookie
+    // anche in ambienti di produzione complessi o dietro proxy.
+    const eventSource = new EventSource('/api/sync/stream', { withCredentials: true });
     eventSourceRef.current = eventSource;
 
     eventSource.onopen = () => {
