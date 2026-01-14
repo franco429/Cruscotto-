@@ -1954,6 +1954,80 @@ async function syncAllClientsOnce(): Promise<void> {
   }
 }
 
+// Funzione per aggiornare le date di scadenza di TUTTI i client (Daily Job)
+export async function updateAllClientsExcelExpiryDates(): Promise<void> {
+  if (isGlobalSyncRunning) {
+    logger.info("Skipping Excel expiry update - Global sync is running");
+    return;
+  }
+
+  // Usiamo il flag di sync globale per evitare conflitti
+  isGlobalSyncRunning = true;
+  const startTime = Date.now();
+  
+  try {
+    logger.info("Starting DAILY Excel/Google Sheets expiry dates update for ALL clients");
+
+    const clients = await mongoStorage.getAllClients();
+    const users = await mongoStorage.getAllUsers();
+
+    for (const client of clients) {
+      const admin = users.find(
+        (u) => u.clientId === client.legacyId && u.role === "admin"
+      );
+
+      if (!admin) {
+        logger.warn("No admin user found for client (skipping Excel update)", {
+          clientId: client.legacyId,
+        });
+        continue;
+      }
+
+      const userId = admin.legacyId;
+
+      try {
+        // Inizializza Drive Client
+        const drive = await getDriveClientForClient(client.legacyId);
+        
+        // Esegui aggiornamento
+        await updateExcelExpiryDates(drive, userId);
+        
+      } catch (error) {
+        logger.error("Failed to update Excel dates for client", {
+          clientId: client.legacyId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+    
+    logger.info("Daily Excel expiry update completed", {
+      duration: Date.now() - startTime
+    });
+
+  } catch (error) {
+    logger.error("Daily Excel expiry update failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  } finally {
+    isGlobalSyncRunning = false;
+  }
+}
+
+// Scheduler per l'aggiornamento giornaliero delle date Excel
+export function startDailyExcelRefresh(): void {
+  // Eseguiamo il job ogni 24 ore
+  const INTERVAL_MS = 24 * 60 * 60 * 1000;
+  
+  // Calcola il tempo fino alla prossima esecuzione (es. 03:00 AM)
+  // Per ora, avviamo semplicemente un intervallo
+  setInterval(() => {
+    logger.info("Running scheduled Daily Excel expiry refresh");
+    updateAllClientsExcelExpiryDates();
+  }, INTERVAL_MS);
+  
+  logger.info("Daily Excel expiry refresh scheduler started (every 24h)");
+}
+
 // Funzione per aggiornare le date di scadenza dei documenti Excel e Google Sheets esistenti
 export async function updateExcelExpiryDates(
   drive: any,

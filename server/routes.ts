@@ -54,6 +54,9 @@ import multer from "multer";
 // Configurazione sicura di multer con limiti e validazioni (In-Memory per Render)
 const multerStorage = multer.memoryStorage();
 
+// Segreto per endpoint cron interno (protezione semplice via header)
+const CRON_SECRET = process.env.CRON_SECRET;
+
 const fileFilter = (req: Express.Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   // Verifica il tipo MIME del file
   const allowedMimeTypes = [
@@ -309,6 +312,44 @@ export async function registerRoutes(app: Express): Promise<Express> {
   
   // Registra routes per Local Opener
   registerLocalOpenerRoutes(app);
+
+  /**
+   * Endpoint interno per avviare manualmente l'aggiornamento scadenze e l'invio notifiche.
+   * Protetto da header X-CRON-SECRET (valore in env CRON_SECRET).
+   * Usare con un cron esterno (es. Render Cron Job) 1 volta al giorno.
+   */
+  app.post("/api/internal/expiry-refresh", async (req, res) => {
+    try {
+      if (!CRON_SECRET) {
+        logger.warn("CRON_SECRET non configurato, accesso negato.");
+        return res.status(503).json({ message: "Cron non configurato" });
+      }
+
+      const headerSecret = req.get("X-CRON-SECRET") || "";
+      if (headerSecret !== CRON_SECRET) {
+        logger.warn("Accesso cron rifiutato: secret errato", {
+          remoteAddress: req.ip,
+        });
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      logger.info("Cron expiry-refresh avviato");
+
+      const { updateAllClientsExcelExpiryDates } = await import("./google-drive");
+      const { checkDocumentExpirations } = await import("./notification-service");
+
+      await updateAllClientsExcelExpiryDates();
+      await checkDocumentExpirations();
+
+      logger.info("Cron expiry-refresh completato");
+      return res.json({ message: "OK" });
+    } catch (error) {
+      logger.error("Errore nel cron expiry-refresh", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return res.status(500).json({ message: "Errore interno" });
+    }
+  });
   app.post("/api/register/admin", upload.any(), handleMulterError, async (req, res) => {
     try {
       // I campi arrivano sempre come stringa da FormData, quindi normalizzo

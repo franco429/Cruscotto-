@@ -89,6 +89,8 @@ export async function checkDocumentExpirations(
         count: expiredDocuments.length,
       });
       await sendExpirationNotifications(expiredDocuments, "expired");
+    } else {
+      logger.info("Nessun documento scaduto trovato da notificare.");
     }
 
     // Invia notifiche per documenti in scadenza
@@ -97,6 +99,8 @@ export async function checkDocumentExpirations(
         count: warningDocuments.length,
       });
       await sendExpirationNotifications(warningDocuments, "warning");
+    } else {
+      logger.info("Nessun documento in scadenza trovato da notificare.");
     }
   } catch (error) {
     logger.error("Errore durante il controllo scadenze documentali", {

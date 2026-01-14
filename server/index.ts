@@ -499,9 +499,10 @@ app.use((req, res, next) => {
     });
 
     logger.info("Avvio sincronizzazione automatica...");
-    const { startAutomaticSyncForAllClients } = await import("./google-drive");
+    const { startAutomaticSyncForAllClients, startDailyExcelRefresh } = await import("./google-drive");
     startAutomaticSyncForAllClients();
-    logger.info("Sincronizzazione automatica avviata (ogni 60 secondi)");
+    startDailyExcelRefresh();
+    logger.info("Sincronizzazione automatica avviata (ogni 60 secondi) e Daily Excel Refresh (ogni 24 ore)");
 
     const { startExpirationChecks } = await import("./notification-service");
     startExpirationChecks();
