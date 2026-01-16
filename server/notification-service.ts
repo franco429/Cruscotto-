@@ -396,44 +396,25 @@ async function sendExpirationNotifications(
  * @param warningDays Giorni di preavviso per le scadenze
  */
 export function startExpirationChecks(
-  checkIntervalHours: number = 1, // MODIFICATO: Default a 1 ora per maggiore affidabilità
+  checkIntervalHours: number = 1, // Non più usato in modalità cron, mantenuto per compatibilità firma
   warningDays: number = DEFAULT_WARNING_DAYS
 ): void {
-  // Convertiamo in millisecondi
-  const intervalMs = checkIntervalHours * 60 * 60 * 1000;
-
   logger.info(
-    "Sistema di controllo scadenze avviato.",
+    "Sistema di controllo scadenze inizializzato (MODALITÀ CRON ESTERNO).",
     {
-      checkIntervalHours,
-      warningDays,
-      intervalMs
+      mode: "external_cron",
+      endpoint: "/api/internal/expiry-refresh",
+      note: "Schedulazione interna disabilitata in favore di Render Cron Job"
     }
   );
 
   // Assicurati che non ci siano altri intervalli attivi
   stopExpirationChecks();
 
-  // Ascolta l'evento UNA SOLA VOLTA per il controllo iniziale post-sync
-  appEvents.once("initialSyncComplete", (syncData) => {
-    logger.info("Segnale 'initialSyncComplete' ricevuto. Esecuzione controllo immediato.");
-    checkDocumentExpirations(warningDays);
-  });
-
-  // Imposta l'intervallo. 
-  // Eseguiamo il controllo ogni ora. La funzione checkDocumentExpirations -> shouldSendNotification
-  // si assicurerà di inviare la mail solo una volta al giorno per cliente.
-  expirationCheckInterval = setInterval(() => {
-    logger.info("Esecuzione controllo periodico scadenze (Heartbeat orario)");
-    checkDocumentExpirations(warningDays);
-  }, intervalMs);
-  
-  // Eseguiamo anche un controllo immediato all'avvio del server per non attendere 1 ora
-  // (Utile se il server si riavvia spesso)
-  setTimeout(() => {
-      logger.info("Esecuzione controllo scadenze all'avvio del servizio");
-      checkDocumentExpirations(warningDays);
-  }, 10000); // Aspetta 10 secondi dall'avvio per dare tempo al DB di connettersi
+  // NOTA: Non avviamo più setInterval o setTimeout automatici.
+  // Il controllo viene attivato esclusivamente tramite chiamata HTTP POST
+  // all'endpoint /api/internal/expiry-refresh protetto da CRON_SECRET.
+  // Questo evita problemi di mancato invio se il server si riavvia spesso o dorme.
 }
 
 /**

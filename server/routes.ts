@@ -18,7 +18,7 @@ import {
   updateExcelExpiryDates,
   calculateDynamicAlertStatus,
 } from "./google-drive";
-import { startExpirationChecks } from "./notification-service";
+import { startExpirationChecks, checkDocumentExpirations } from "./notification-service";
 import {
   handleContactRequest,
   handlePasswordReset,
@@ -313,43 +313,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
   // Registra routes per Local Opener
   registerLocalOpenerRoutes(app);
 
-  /**
-   * Endpoint interno per avviare manualmente l'aggiornamento scadenze e l'invio notifiche.
-   * Protetto da header X-CRON-SECRET (valore in env CRON_SECRET).
-   * Usare con un cron esterno (es. Render Cron Job) 1 volta al giorno.
-   */
-  app.post("/api/internal/expiry-refresh", async (req, res) => {
-    try {
-      if (!CRON_SECRET) {
-        logger.warn("CRON_SECRET non configurato, accesso negato.");
-        return res.status(503).json({ message: "Cron non configurato" });
-      }
 
-      const headerSecret = req.get("X-CRON-SECRET") || "";
-      if (headerSecret !== CRON_SECRET) {
-        logger.warn("Accesso cron rifiutato: secret errato", {
-          remoteAddress: req.ip,
-        });
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      logger.info("Cron expiry-refresh avviato");
-
-      const { updateAllClientsExcelExpiryDates } = await import("./google-drive");
-      const { checkDocumentExpirations } = await import("./notification-service");
-
-      await updateAllClientsExcelExpiryDates();
-      await checkDocumentExpirations();
-
-      logger.info("Cron expiry-refresh completato");
-      return res.json({ message: "OK" });
-    } catch (error) {
-      logger.error("Errore nel cron expiry-refresh", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      return res.status(500).json({ message: "Errore interno" });
-    }
-  });
   app.post("/api/register/admin", upload.any(), handleMulterError, async (req, res) => {
     try {
       // I campi arrivano sempre come stringa da FormData, quindi normalizzo
@@ -3805,6 +3769,44 @@ async function processFileWithTimeout(
       
       res.status(500).json({
         message: "Errore nell'aggiornamento della configurazione auto-sync"
+      });
+    }
+  });
+
+  // Endpoint interno per cron job di notifiche scadenze (escluso da CSRF)
+  app.post("/api/internal/expiry-refresh", async (req, res) => {
+    try {
+      // Verifica segreto CRON
+      const authHeader = req.headers.authorization;
+      if (!CRON_SECRET || authHeader !== `Bearer ${CRON_SECRET}`) {
+        logger.warn("Tentativo di accesso non autorizzato a endpoint cron", {
+          ip: req.ip,
+          userAgent: req.get("User-Agent")
+        });
+        return res.status(401).json({ message: "Non autorizzato" });
+      }
+
+      logger.info("Avvio manuale controllo scadenze via cron job");
+      
+      // Aggiorna prima le date di scadenza dai file Excel (se presenti)
+      const { updateAllClientsExcelExpiryDates } = await import("./google-drive");
+      await updateAllClientsExcelExpiryDates();
+
+      // Esegui il controllo scadenze e invio notifiche
+      await checkDocumentExpirations();
+
+      res.json({
+        success: true,
+        message: "Controllo scadenze completato con successo",
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      logger.error("Errore durante l'esecuzione del cron scadenze", {
+        error: error instanceof Error ? error.message : String(error)
+      });
+      res.status(500).json({
+        success: false,
+        message: "Errore durante il controllo scadenze"
       });
     }
   });

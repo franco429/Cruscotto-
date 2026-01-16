@@ -708,59 +708,42 @@ export class MongoStorage implements IStorage {
       .lean()
       .exec()) as Document[];
 
-    // Separa documenti locali e Google Drive
-    const localDocuments = documents.filter(doc => !doc.googleFileId);
-    const driveDocuments = documents.filter(doc => doc.googleFileId);
-
-    // Gestione documenti locali: raggruppa per path+title
-    const localDocumentGroups = new Map<string, Document[]>();
-    localDocuments.forEach((doc) => {
-      const key = `${doc.path}__${doc.title}`;
-      if (!localDocumentGroups.has(key)) localDocumentGroups.set(key, []);
-      localDocumentGroups.get(key)!.push(doc);
-    });
-
-    // Marca obsolete solo i documenti locali con revisioni inferiori
-    for (const group of localDocumentGroups.values()) {
-      if (group.length > 1) {
-        // Ordina per numero revisione decrescente
-        const sorted = group.sort((a, b) => {
-          const aRev = parseInt(a.revision.replace(/[^0-9]/g, ""), 10);
-          const bRev = parseInt(b.revision.replace(/[^0-9]/g, ""), 10);
-          return bRev - aRev;
-        });
-        
-        // Marca obsolete tutte le revisioni tranne la più alta
-        for (let i = 1; i < sorted.length; i++) {
-          if (!sorted[i].isObsolete) {
-            await this.markDocumentObsolete(sorted[i].legacyId);
-          }
-        }
+    // Unifica la logica: raggruppa TUTTI i documenti (Locali e Drive) per path+title
+    // Questo risolve il problema dove file diversi su Drive (ID diversi) ma stesso contenuto logico (Rev.0 vs Rev.1) non venivano confrontati.
+    const allDocumentGroups = new Map<string, Document[]>();
+    
+    documents.forEach((doc) => {
+      // Normalizza la chiave di raggruppamento: Path + Title (case insensitive per sicurezza)
+      // Es: "7.2__formazione personale"
+      const key = `${doc.path.trim().toLowerCase()}__${doc.title.trim().toLowerCase()}`;
+      
+      if (!allDocumentGroups.has(key)) {
+        allDocumentGroups.set(key, []);
       }
-    }
-
-    // Gestione documenti Google Drive: raggruppa per googleFileId
-    const driveDocumentGroups = new Map<string, Document[]>();
-    driveDocuments.forEach((doc) => {
-      const key = doc.googleFileId!;
-      if (!driveDocumentGroups.has(key)) driveDocumentGroups.set(key, []);
-      driveDocumentGroups.get(key)!.push(doc);
+      allDocumentGroups.get(key)!.push(doc);
     });
 
-    // Marca obsolete solo i documenti Google Drive con revisioni inferiori
-    for (const group of driveDocumentGroups.values()) {
+    // Analizza ogni gruppo per trovare e marcare le revisioni obsolete
+    for (const group of allDocumentGroups.values()) {
       if (group.length > 1) {
-        // Ordina per numero revisione decrescente
+        // Ordina per numero revisione decrescente (es: Rev.2, Rev.1, Rev.0)
         const sorted = group.sort((a, b) => {
           const aRev = parseInt(a.revision.replace(/[^0-9]/g, ""), 10);
           const bRev = parseInt(b.revision.replace(/[^0-9]/g, ""), 10);
+          // Se le revisioni sono uguali, preferisci il documento più recente (aggiornato per ultimo)
+          if (bRev === aRev) {
+            return new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime();
+          }
           return bRev - aRev;
         });
         
-        // Marca obsolete tutte le revisioni tranne la più alta
+        // Il primo elemento (indice 0) è la revisione CORRENTE (la più alta/recente).
+        // Tutti gli altri (indice 1+) sono OBSOLETI.
         for (let i = 1; i < sorted.length; i++) {
-          if (!sorted[i].isObsolete) {
-            await this.markDocumentObsolete(sorted[i].legacyId);
+          const docToMark = sorted[i];
+          if (!docToMark.isObsolete) {
+             console.log(`[OBSOLETE-MARKER] Marking as obsolete: ${docToMark.path} ${docToMark.title} ${docToMark.revision} (Current is: ${sorted[0].revision})`);
+             await this.markDocumentObsolete(docToMark.legacyId);
           }
         }
       }

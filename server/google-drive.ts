@@ -891,6 +891,25 @@ async function processFileWithErrorHandlingOptimized(
     const existingByGoogleId = await mongoStorage.getDocumentByGoogleFileId(file.id);
 
     if (existingByGoogleId) {
+      // FIX: Se è un file Excel/Sheet aggiornato, dobbiamo RI-ANALIZZARE il contenuto
+      // altrimenti sovrascriviamo la vecchia data con null/none.
+      if (
+        (doc.fileType === "xlsx" ||
+          doc.fileType === "xls" ||
+          doc.fileType === "xlsm" ||
+          doc.fileType === "gsheet") &&
+        !SYNC_CONFIG.skipExcelAnalysis
+      ) {
+        try {
+           const excelAnalysis = await analyzeExcelContentOptimized(drive, file.id!);
+           doc.alertStatus = excelAnalysis.alertStatus;
+           doc.expiryDate = excelAnalysis.expiryDate;
+           logger.debug(`Re-analyzed updated Excel: ${file.name}`, { expiryDate: doc.expiryDate });
+        } catch (err) {
+           logger.warn(`Failed to re-analyze updated Excel: ${file.name}`, { error: err });
+        }
+      }
+
       await mongoStorage.updateDocument(existingByGoogleId.legacyId, {
         ...doc,
         clientId,

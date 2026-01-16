@@ -533,6 +533,7 @@ export function setupCSRF(app: Express) {
         "/api/contact",
         "/api/verify-reset-link",
         "/api/csrf-token", // Escludi l'endpoint stesso
+        "/api/internal/expiry-refresh", // Endpoint Cron Job per notifiche email
       ];
 
       if (csrfExemptPaths.some((path) => req.path.startsWith(path))) {
