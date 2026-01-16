@@ -201,7 +201,7 @@ export default function Footer() {
                 pannellosgicontrollo@gmail.com
                 </span>
               </li>
-            </ul>
+               </ul>
           </div>
         </div>
 

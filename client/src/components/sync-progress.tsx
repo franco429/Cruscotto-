@@ -76,17 +76,42 @@ export default function SyncProgress({
           <>
             <div className="space-y-2">
               <div className="flex justify-between text-sm text-blue-700 dark:text-blue-300">
-                <span>File processati: {processed} {total > 0 ? `/ ${total}` : ""}</span>
+                <span>
+                  {total > 0 
+                    ? `File processati: ${processed} / ${total}` 
+                    : "Analisi modifiche in corso..."}
+                </span>
                 {totalBatches > 0 && <span>Batch: {currentBatch} / {totalBatches}</span>}
               </div>
               
-              <Progress 
-                value={total > 0 ? progressPercentage : 100} 
-                className={`h-2 ${total === 0 ? "animate-pulse" : ""}`}
-              />
+              {total > 0 ? (
+                <Progress 
+                  value={progressPercentage} 
+                  className="h-2"
+                />
+              ) : (
+                <div className="h-2 w-full bg-blue-100 dark:bg-blue-800 rounded-full overflow-hidden relative">
+                  <div className="absolute top-0 left-0 h-full w-1/3 bg-blue-500 rounded-full animate-[shimmer_2s_infinite_linear]" 
+                       style={{ 
+                         animation: "indeterminate 1.5s infinite linear",
+                         backgroundImage: "linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)"
+                       }} 
+                  />
+                  <style>{`
+                    @keyframes indeterminate {
+                      0% { transform: translateX(-100%); }
+                      100% { transform: translateX(400%); }
+                    }
+                  `}</style>
+                </div>
+              )}
               
               <div className="flex justify-between text-xs text-blue-600 dark:text-blue-400">
-                <span>{total > 0 ? `${Math.round(progressPercentage)}% completato` : "Ricerca modifiche..."}</span>
+                <span>
+                  {total > 0 
+                    ? `${Math.round(progressPercentage)}% completato` 
+                    : "Controllo cartelle Google Drive..."}
+                </span>
                 <span>
                   {isComplete ? "Completato" : "In elaborazione..."}
                 </span>
