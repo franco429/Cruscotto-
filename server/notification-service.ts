@@ -217,6 +217,26 @@ async function sendExpirationNotifications(
       return;
     }
 
+    // Ottieni TUTTI i clienti per gestire le cartelle condivise
+    const allClients = await mongoStorage.getAllClients();
+    
+    // Mappa: DriveFolderId -> Lista di ClientID che la usano
+    // Questo serve per collegare utenti diversi (es. Matteo, Ettore) che usano la stessa cartella di Fragenus
+    const sharedFoldersMap = new Map<string, number[]>();
+    
+    allClients.forEach(client => {
+      if (client.driveFolderId) {
+        if (!sharedFoldersMap.has(client.driveFolderId)) {
+          sharedFoldersMap.set(client.driveFolderId, []);
+        }
+        sharedFoldersMap.get(client.driveFolderId)!.push(client.legacyId);
+      }
+    });
+
+    logger.info("Mappa cartelle condivise costruita", {
+      sharedFolders: sharedFoldersMap.size
+    });
+
     // Raggruppa documenti per client per una migliore organizzazione
     const documentsByClient: { [clientId: string]: Document[] } = {};
 
@@ -251,16 +271,40 @@ async function sendExpirationNotifications(
         continue;
       }
 
-      // Trova gli utenti associati a questo client (admin, viewer, user, etc.)
-      // Logica: se il documento ha un clientId valido, invia solo a utenti di quel client
-      //         se il documento NON ha un clientId (default), invia solo a utenti "globali" (senza clientId)
+      // LOGICA UTENTI CONDIVISI
       const parsedClientId = parseInt(clientId);
       const isValidClientId = !isNaN(parsedClientId) && clientId !== "default";
+      
+      // Insieme di ID Client da notificare
+      const clientIdsToNotify = new Set<number>();
+      
+      if (isValidClientId) {
+        // 1. Aggiungi il client proprietario dei documenti
+        clientIdsToNotify.add(parsedClientId);
+        
+        // 2. Aggiungi tutti i client che condividono la STESSA cartella Drive
+        const ownerClient = allClients.find(c => c.legacyId === parsedClientId);
+        if (ownerClient && ownerClient.driveFolderId) {
+            const sharedWith = sharedFoldersMap.get(ownerClient.driveFolderId);
+            if (sharedWith) {
+                sharedWith.forEach(id => clientIdsToNotify.add(id));
+                
+                if (sharedWith.length > 1) {
+                  logger.info("Rilevata cartella condivisa tra più client", {
+                    folderId: ownerClient.driveFolderId,
+                    mainClient: parsedClientId,
+                    allClients: sharedWith
+                  });
+                }
+            }
+        }
+      }
 
+      // Trova gli utenti associati a questi client (admin, viewer, user, etc.)
       const targetUsers = allUsers.filter((user) => {
         if (isValidClientId) {
-          // Documento con clientId valido → invia a utenti di quel client
-          return user.clientId === parsedClientId;
+          // Documento con clientId valido → invia a utenti di QUEL client O di client CONDIVISI
+          return user.clientId && clientIdsToNotify.has(user.clientId);
         } else {
           // Documento senza clientId → invia a utenti "globali" (senza clientId assegnato)
           return !user.clientId;
