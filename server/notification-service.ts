@@ -205,17 +205,15 @@ async function sendExpirationNotifications(
       documentCount: documents.length,
     });
 
-    // Ottieni tutti gli utenti amministratori da mongoStorage
+    // Ottieni TUTTI gli utenti registrati (admin, viewer, user, etc.)
     const allUsers = await mongoStorage.getAllUsers();
-    const admins = allUsers.filter((user) => user.role === "admin");
 
-    logger.info("Amministratori trovati", {
+    logger.info("Utenti trovati nel sistema", {
       totalUsers: allUsers.length,
-      admins: admins.length,
     });
 
-    if (admins.length === 0) {
-      logger.warn("Nessun amministratore trovato per l'invio delle notifiche");
+    if (allUsers.length === 0) {
+      logger.warn("Nessun utente trovato nel sistema per l'invio delle notifiche");
       return;
     }
 
@@ -253,17 +251,24 @@ async function sendExpirationNotifications(
         continue;
       }
 
-      // Trova gli admin associati a questo client (o tutti gli admin se non c'è associazione)
-      const targetAdmins = allUsers.filter(
-        (user) =>
-          user.role === "admin" &&
-          (user.clientId === parseInt(clientId) ||
-            clientId === "default" ||
-            !user.clientId)
-      );
+      // Trova gli utenti associati a questo client (admin, viewer, user, etc.)
+      // Logica: se il documento ha un clientId valido, invia solo a utenti di quel client
+      //         se il documento NON ha un clientId (default), invia solo a utenti "globali" (senza clientId)
+      const parsedClientId = parseInt(clientId);
+      const isValidClientId = !isNaN(parsedClientId) && clientId !== "default";
 
-      if (targetAdmins.length === 0) {
-        logger.warn("Nessun amministratore trovato per il client", {
+      const targetUsers = allUsers.filter((user) => {
+        if (isValidClientId) {
+          // Documento con clientId valido → invia a utenti di quel client
+          return user.clientId === parsedClientId;
+        } else {
+          // Documento senza clientId → invia a utenti "globali" (senza clientId assegnato)
+          return !user.clientId;
+        }
+      });
+
+      if (targetUsers.length === 0) {
+        logger.warn("Nessun utente trovato per il client", {
           clientId,
         });
         continue;
@@ -272,7 +277,7 @@ async function sendExpirationNotifications(
       logger.info("Invio notifiche per client", {
         clientId,
         documentCount: clientDocs.length,
-        adminCount: targetAdmins.length,
+        userCount: targetUsers.length,
       });
 
       // Crea la lista di documenti in HTML
@@ -343,28 +348,28 @@ async function sendExpirationNotifications(
         </div>
       `;
 
-      // Invia email a tutti gli admin target
+      // Invia email a tutti gli utenti target
       const recipientEmails: string[] = [];
-      for (const admin of targetAdmins) {
+      for (const user of targetUsers) {
         try {
           const result = await transporter.sendMail({
             from: `"Pannello di Controllo SGI" <${
               process.env.SMTP_USER || "noreply@isodocmanager.it"
             }>`,
-            to: admin.email,
+            to: user.email,
             subject,
             html: emailHTML,
           });
 
-          recipientEmails.push(admin.email);
+          recipientEmails.push(user.email);
           logger.info("Email inviata con successo", {
-            adminEmail: admin.email,
+            userEmail: user.email,
             messageId: result.messageId,
             subject,
           });
         } catch (emailError) {
           logger.error("Errore nell'invio email", {
-            adminEmail: admin.email,
+            userEmail: user.email,
             error:
               emailError instanceof Error
                 ? emailError.message

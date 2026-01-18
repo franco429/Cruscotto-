@@ -2024,18 +2024,25 @@ export async function updateAllClientsExcelExpiryDates(): Promise<void> {
     const users = await mongoStorage.getAllUsers();
 
     for (const client of clients) {
-      const admin = users.find(
-        (u) => u.clientId === client.legacyId && u.role === "admin"
+      // CERCA QUALSIASI UTENTE ASSOCIATO AL CLIENT (Non solo Admin)
+      // Questo permette l'aggiornamento anche se il cliente ha solo utenti Viewer/User
+      const user = users.find(
+        (u) =>
+          u.clientId === client.legacyId &&
+          (u.role === "admin" || u.role === "user" || u.role === "viewer")
       );
 
-      if (!admin) {
-        logger.warn("No admin user found for client (skipping Excel update)", {
-          clientId: client.legacyId,
-        });
+      if (!user) {
+        logger.warn(
+          "No user found for client (skipping Excel update)",
+          {
+            clientId: client.legacyId,
+          }
+        );
         continue;
       }
 
-      const userId = admin.legacyId;
+      const userId = user.legacyId;
 
       try {
         // Inizializza Drive Client
