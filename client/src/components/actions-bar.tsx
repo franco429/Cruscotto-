@@ -13,6 +13,8 @@ import { useState } from "react";
 import ModernFileUpload from "./modern-file-upload";
 import { useToast } from "../hooks/use-toast";
 import { useAuth } from "../hooks/use-auth";
+import * as XLSX from "xlsx";
+import { parse } from "date-fns";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +34,103 @@ interface ActionsBarProps {
   onSync: () => void;
   isSyncing: boolean;
 }
+
+type AlertStatus = "none" | "warning" | "expired";
+
+const DATE_FORMATS = [
+  "dd/MM/yyyy",
+  "d/M/yyyy",
+  "dd/M/yyyy",
+  "d/MM/yyyy",
+  "dd/MM/yy",
+  "d/M/yy",
+  "dd/M/yy",
+  "d/MM/yy",
+  "yyyy-MM-dd",
+];
+
+const parseValueToUTCDate = (value: unknown): Date | null => {
+  if (value === null || value === undefined) return null;
+
+  let parsed: Date | null = null;
+
+  if (value instanceof Date) {
+    parsed = value;
+  } else if (typeof value === "number") {
+    if (value > 25569) {
+      const milliseconds = (value - 25569) * 86400 * 1000;
+      parsed = new Date(milliseconds);
+    }
+  } else if (typeof value === "string") {
+    for (const format of DATE_FORMATS) {
+      const tempDate = parse(value, format, new Date());
+      if (!isNaN(tempDate.getTime())) {
+        parsed = tempDate;
+        break;
+      }
+    }
+    if (!parsed) {
+      const tempDate = new Date(value);
+      if (!isNaN(tempDate.getTime())) {
+        parsed = tempDate;
+      }
+    }
+  }
+
+  if (parsed && !isNaN(parsed.getTime())) {
+    return new Date(
+      Date.UTC(
+        parsed.getUTCFullYear(),
+        parsed.getUTCMonth(),
+        parsed.getUTCDate()
+      )
+    );
+  }
+
+  return null;
+};
+
+const calculateAlertStatus = (expiryDate: Date | null): AlertStatus => {
+  if (!expiryDate) return "none";
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const thirtyDaysFromNow = new Date(today);
+  thirtyDaysFromNow.setDate(today.getDate() + 30);
+
+  if (expiryDate < today) return "expired";
+  if (expiryDate <= thirtyDaysFromNow) return "warning";
+  return "none";
+};
+
+const analyzeExcelInBrowser = async (
+  file: File
+): Promise<{ alertStatus: AlertStatus; expiryDate: string | null } | null> => {
+  const isExcel = /\.(xlsx|xls|xlsm)$/i.test(file.name);
+  if (!isExcel) return null;
+
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = new Uint8Array(event.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: "array", cellDates: true });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = firstSheetName ? workbook.Sheets[firstSheetName] : undefined;
+        const cellA1 = worksheet ? worksheet["A1"] : undefined;
+        const expiryDate = parseValueToUTCDate(cellA1?.v ?? cellA1);
+        const alertStatus = calculateAlertStatus(expiryDate);
+        resolve({
+          alertStatus,
+          expiryDate: expiryDate ? expiryDate.toISOString() : null,
+        });
+      } catch {
+        resolve(null);
+      }
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsArrayBuffer(file);
+  });
+};
 
 export default function ActionsBar({
   onFilterChange,
@@ -79,14 +178,15 @@ export default function ActionsBar({
       return;
     }
 
-    // Attiva cooldown di 30 secondi
+    // ✅ OTTIMIZZATO: Cooldown ridotto da 30s a 5s per permettere sync più frequenti
+    // La sync incrementale è veloce e non sovraccarica il server Render
     setCooldown(true);
     // Disabilita il cooldown solo se si verifica un errore immediato che blocca la sync
     // In caso di successo, il cooldown verrà gestito dallo stato isSyncing
     setTimeout(() => {
-      // Se la sync è finita e non ci sono errori, sblocca il bottone dopo 30s
+      // Se la sync è finita e non ci sono errori, sblocca il bottone dopo 5s
       setCooldown(false);
-    }, 30000);
+    }, 5000); // Ridotto da 30000 a 5000 (5 secondi)
 
     try {
       onSync();
@@ -188,7 +288,7 @@ export default function ActionsBar({
             ) : cooldown ? (
               <>
                 <RefreshCw className="h-4 w-4 animate-pulse opacity-50" />
-                Attendi 30s...
+                Attendi 5s...
               </>
             ) : (
               <>
@@ -240,6 +340,19 @@ export default function ActionsBar({
                   }
 
                   const validFiles = files.filter((f: any) => f.size <= MAX_FILE_BYTES);
+
+                  // Pre-analisi client-side per Excel: evita parsing server-side e aggiorna stato subito
+                  const fileMetadataMap: Record<
+                    string,
+                    { alertStatus: AlertStatus; expiryDate: string | null }
+                  > = {};
+                  for (const file of validFiles) {
+                    const analysis = await analyzeExcelInBrowser(file);
+                    if (analysis) {
+                      const key = (file as any).path || (file as any).webkitRelativePath || file.name;
+                      fileMetadataMap[key] = analysis;
+                    }
+                  }
 
                   // Partiziona i file in batch per dimensione E numero di file
                   const batches: any[][] = [];
@@ -295,10 +408,20 @@ export default function ActionsBar({
                       });
 
                       const formData = new FormData();
+                      const batchMetadata: Record<
+                        string,
+                        { alertStatus: AlertStatus; expiryDate: string | null }
+                      > = {};
                       batch.forEach((file: any) => {
                         const fileNameForUpload = file.path || file.webkitRelativePath || file.name;
                         formData.append("localFiles", file, fileNameForUpload);
+                        if (fileMetadataMap[fileNameForUpload]) {
+                          batchMetadata[fileNameForUpload] = fileMetadataMap[fileNameForUpload];
+                        }
                       });
+                      if (Object.keys(batchMetadata).length > 0) {
+                        formData.append("fileMetadata", JSON.stringify(batchMetadata));
+                      }
 
                       // Upload singolo batch
                       const response = await apiRequest("POST", "/api/documents/local-upload", formData);

@@ -71,6 +71,7 @@ export interface IStorage {
     clientId: number
   ) => Promise<Document[]>;
   getDocumentsByClientId(clientId: number): Promise<Document[]>;
+  getDocumentsCountByClientId(clientId: number): Promise<number>;
   getObsoleteDocuments: () => Promise<Document[]>;
   getObsoleteDocumentsByClientId(clientId: number): Promise<Document[]>;
   restoreAllObsoleteDocumentsForClient(clientId: number): Promise<{ restored: number; errors: string[] }>;
@@ -608,6 +609,14 @@ export class MemStorage implements IStorage {
       }
       return aParts.length - bParts.length;
     });
+  }
+
+  async getDocumentsCountByClientId(clientId: number): Promise<number> {
+    return Array.from(this.documents.values()).filter(
+      (doc) =>
+        !doc.isObsolete &&
+        (doc.clientId === clientId || doc.clientIds?.includes(clientId))
+    ).length;
   }
 
   async getObsoleteDocumentsByClientId(clientId: number): Promise<Document[]> {

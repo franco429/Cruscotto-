@@ -52,6 +52,10 @@ services:
       - key: API_GOOGLE_URL
         sync: false
       
+      # Cron Job Secret
+      - key: CRON_SECRET
+        sync: false
+      
       # Google Cloud Storage (Temporary Files)
       # IMPORTANTE: Usato per eliminare /tmp e prevenire fallimenti istanze Render
       - key: GCS_PROJECT_ID

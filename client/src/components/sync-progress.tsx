@@ -47,7 +47,7 @@ export default function SyncProgress({
   return (
     <Card className="mb-6 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-blue-900 dark:text-blue-100">
+        <CardTitle className="flex items-center gap-2 text-blue-900 dark:text-blue-100 flex-wrap">
           {error ? (
             <AlertCircle className="h-5 w-5 text-red-500" />
           ) : isComplete ? (
@@ -55,7 +55,28 @@ export default function SyncProgress({
           ) : (
             <RefreshCw className="h-5 w-5 text-blue-600 dark:text-blue-400 animate-spin" />
           )}
-          {error ? "Errore di sincronizzazione" : isComplete ? "Sincronizzazione completata" : "Sincronizzazione in corso..."}
+          <span>{error ? "Errore di sincronizzazione" : isComplete ? "Sincronizzazione completata" : "Sincronizzazione in corso..."}</span>
+          
+          {/* ✅ NUOVO: Badge modalità sync (Incrementale vs Completa) */}
+          {!error && isSyncing && (
+            <>
+              {total > 0 && total < 10 && (
+                <span className="ml-2 px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full font-normal">
+                  Sync Incrementale
+                </span>
+              )}
+              {total >= 10 && (
+                <span className="ml-2 px-2 py-1 text-xs bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full font-normal">
+                  Sync Completa
+                </span>
+              )}
+              {total === 0 && (
+                <span className="ml-2 px-2 py-1 text-xs bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-full font-normal">
+                  Analisi modifiche...
+                </span>
+              )}
+            </>
+          )}
         </CardTitle>
       </CardHeader>
       
@@ -74,48 +95,64 @@ export default function SyncProgress({
           </div>
         ) : (
           <>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm text-blue-700 dark:text-blue-300">
-                <span>
-                  {total > 0 
-                    ? `File processati: ${processed} / ${total}` 
-                    : "Analisi modifiche in corso..."}
-                </span>
-                {totalBatches > 0 && <span>Batch: {currentBatch} / {totalBatches}</span>}
-              </div>
-              
-              {total > 0 ? (
-                <Progress 
-                  value={progressPercentage} 
-                  className="h-2"
-                />
-              ) : (
-                <div className="h-2 w-full bg-blue-100 dark:bg-blue-800 rounded-full overflow-hidden relative">
-                  <div className="absolute top-0 left-0 h-full w-1/3 bg-blue-500 rounded-full animate-[shimmer_2s_infinite_linear]" 
-                       style={{ 
-                         animation: "indeterminate 1.5s infinite linear",
-                         backgroundImage: "linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)"
-                       }} 
-                  />
-                  <style>{`
-                    @keyframes indeterminate {
-                      0% { transform: translateX(-100%); }
-                      100% { transform: translateX(400%); }
-                    }
-                  `}</style>
+            <div className="space-y-3">
+              {/* ✅ NUOVO: Percentuale grande e visibile al centro */}
+              {total > 0 && (
+                <div className="flex flex-col items-center justify-center py-4">
+                  <div className="text-5xl font-bold text-blue-600 dark:text-blue-400">
+                    {Math.round(progressPercentage)}%
+                  </div>
+                  <div className="text-sm text-blue-700 dark:text-blue-300 mt-2">
+                    {processed} / {total} file processati
+                  </div>
+                  {totalBatches > 0 && (
+                    <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                      Batch {currentBatch} / {totalBatches}
+                    </div>
+                  )}
                 </div>
               )}
               
-              <div className="flex justify-between text-xs text-blue-600 dark:text-blue-400">
-                <span>
-                  {total > 0 
-                    ? `${Math.round(progressPercentage)}% completato` 
-                    : "Controllo cartelle Google Drive..."}
-                </span>
-                <span>
-                  {isComplete ? "Completato" : "In elaborazione..."}
-                </span>
-              </div>
+              {/* Barra di progresso */}
+              {total > 0 ? (
+                <div className="space-y-2">
+                  <Progress 
+                    value={progressPercentage} 
+                    className="h-3"
+                  />
+                  <div className="flex justify-between text-xs text-blue-600 dark:text-blue-400">
+                    <span>Inizio</span>
+                    <span>{isComplete ? "Completato ✓" : "In elaborazione..."}</span>
+                    <span>Fine</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex flex-col items-center justify-center py-4">
+                    <RefreshCw className="h-8 w-8 text-blue-600 dark:text-blue-400 animate-spin mb-2" />
+                    <div className="text-sm text-blue-700 dark:text-blue-300">
+                      Analisi modifiche in corso...
+                    </div>
+                    <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                      Controllo cartelle Google Drive
+                    </div>
+                  </div>
+                  <div className="h-2 w-full bg-blue-100 dark:bg-blue-800 rounded-full overflow-hidden relative">
+                    <div className="absolute top-0 left-0 h-full w-1/3 bg-blue-500 rounded-full" 
+                         style={{ 
+                           animation: "indeterminate 1.5s infinite linear",
+                           backgroundImage: "linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)"
+                         }} 
+                    />
+                    <style>{`
+                      @keyframes indeterminate {
+                        0% { transform: translateX(-100%); }
+                        100% { transform: translateX(400%); }
+                      }
+                    `}</style>
+                  </div>
+                </div>
+              )}
             </div>
             
             {isComplete && (

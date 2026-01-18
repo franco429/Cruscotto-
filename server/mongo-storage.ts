@@ -763,6 +763,11 @@ export class MongoStorage implements IStorage {
     return this.getAllDocuments(clientId);
   }
 
+  async getDocumentsCountByClientId(clientId: number): Promise<number> {
+    const query: any = { isObsolete: false, $or: [{ clientIds: clientId }, { clientId }] };
+    return DocumentModel.countDocuments(query);
+  }
+
   /**
    * NUOVO: Paginazione server-side ottimizzata per 50K+ documenti
    * Supporta filtri, ricerca e ordinamento

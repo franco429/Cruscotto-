@@ -884,6 +884,29 @@ async function processFileWithErrorHandlingOptimized(
       return { success: true };
     }
 
+    // ✅ OTTIMIZZAZIONE: Analizza IMMEDIATAMENTE i file Excel/Sheets PRIMA del dedup check
+    // Questo garantisce che lo status sia sempre aggiornato istantaneamente
+    if (
+      (doc.fileType === "xlsx" ||
+        doc.fileType === "xls" ||
+        doc.fileType === "xlsm" ||
+        doc.fileType === "gsheet") &&
+      !SYNC_CONFIG.skipExcelAnalysis
+    ) {
+      try {
+        const excelAnalysis = await analyzeExcelContentOptimized(drive, file.id!);
+        doc.alertStatus = excelAnalysis.alertStatus;
+        doc.expiryDate = excelAnalysis.expiryDate;
+        logger.debug(`Excel analyzed immediately: ${file.name}`, { 
+          expiryDate: doc.expiryDate,
+          alertStatus: doc.alertStatus 
+        });
+      } catch (err) {
+        logger.warn(`Failed to analyze Excel: ${file.name}`, { error: err });
+        // Continua comunque con alertStatus: "none"
+      }
+    }
+
     // Associa googleFileId per dedup globale
     (doc as any).googleFileId = file.id;
 
@@ -891,25 +914,7 @@ async function processFileWithErrorHandlingOptimized(
     const existingByGoogleId = await mongoStorage.getDocumentByGoogleFileId(file.id);
 
     if (existingByGoogleId) {
-      // FIX: Se è un file Excel/Sheet aggiornato, dobbiamo RI-ANALIZZARE il contenuto
-      // altrimenti sovrascriviamo la vecchia data con null/none.
-      if (
-        (doc.fileType === "xlsx" ||
-          doc.fileType === "xls" ||
-          doc.fileType === "xlsm" ||
-          doc.fileType === "gsheet") &&
-        !SYNC_CONFIG.skipExcelAnalysis
-      ) {
-        try {
-           const excelAnalysis = await analyzeExcelContentOptimized(drive, file.id!);
-           doc.alertStatus = excelAnalysis.alertStatus;
-           doc.expiryDate = excelAnalysis.expiryDate;
-           logger.debug(`Re-analyzed updated Excel: ${file.name}`, { expiryDate: doc.expiryDate });
-        } catch (err) {
-           logger.warn(`Failed to re-analyze updated Excel: ${file.name}`, { error: err });
-        }
-      }
-
+      // L'analisi è già stata fatta sopra, quindi usiamo direttamente i dati aggiornati
       await mongoStorage.updateDocument(existingByGoogleId.legacyId, {
         ...doc,
         clientId,
@@ -921,6 +926,8 @@ async function processFileWithErrorHandlingOptimized(
         fileName: file.name,
         userId,
         clientId,
+        alertStatus: doc.alertStatus,
+        expiryDate: doc.expiryDate,
       });
       return { success: true };
     }
@@ -942,18 +949,7 @@ async function processFileWithErrorHandlingOptimized(
       return { success: true };
     }
 
-    // Se è un file Excel/Google Sheets e l'analisi è abilitata, analizzalo
-    if (
-      (doc.fileType === "xlsx" ||
-        doc.fileType === "xls" ||
-        doc.fileType === "xlsm" ||
-        doc.fileType === "gsheet") &&
-      !SYNC_CONFIG.skipExcelAnalysis
-    ) {
-      const excelAnalysis = await analyzeExcelContentOptimized(drive, file.id!);
-      doc.alertStatus = excelAnalysis.alertStatus;
-      doc.expiryDate = excelAnalysis.expiryDate;
-    }
+    // L'analisi Excel è già stata fatta sopra, quindi qui creiamo solo il documento
 
     // Inserimento documento
     const createdDoc = await mongoStorage.createDocument({
@@ -1215,7 +1211,16 @@ export async function syncWithGoogleDrive(
     logger.info("Google Drive connection validated successfully", { clientId });
 
     // 4. Bivio: Sync Incrementale vs Full Sync
-    const syncToken = client?.google?.syncToken;
+    let syncToken = client?.google?.syncToken;
+    const documentCount = await mongoStorage.getDocumentsCountByClientId(clientId);
+    if (syncToken && documentCount === 0) {
+      logger.warn("Sync token present but no documents found. Forcing full sync.", {
+        clientId,
+        syncToken: syncToken.substring(0, 10) + "...",
+      });
+      await mongoStorage.updateClientSyncToken(clientId, "");
+      syncToken = "";
+    }
 
     if (syncToken) {
       // CASO B: Incremental Sync (Token Presente)
@@ -1342,6 +1347,12 @@ export async function syncWithGoogleDrive(
           await new Promise((resolve) => setTimeout(resolve, SYNC_CONFIG.batchPauseMs));
         }
       }
+
+      // ✅ CORREZIONE CRITICA: Marca le revisioni obsolete dopo il Full Sync
+      // Questo garantisce che documenti con stessa path+title ma revisione inferiore
+      // vengano correttamente marcati come obsoleti e spostati nella obsolete-page
+      await mongoStorage.markObsoleteRevisionsForClient(clientId);
+      logger.info("Obsolete revisions marked after Full Sync", { clientId });
 
       // DOPO aver salvato tutto, prendiamo il token per la prossima volta
       const newStartPageToken = await googleDriveGetStartPageToken(drive);
@@ -1573,6 +1584,29 @@ async function processBatchWithAnalysis(
   for (let excelIndex = 0; excelIndex < excelFiles.length; excelIndex++) {
     const file = excelFiles[excelIndex];
     try {
+      // ✅ OTTIMIZZAZIONE: Verifica se il file è già stato analizzato di recente (< 5 minuti)
+      // Questo evita duplicazioni quando processFileWithErrorHandlingOptimized ha già analizzato il file
+      const existingDoc = await mongoStorage.getDocumentByGoogleFileId(file.id);
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      
+      if (existingDoc && existingDoc.lastSynced && new Date(existingDoc.lastSynced) > fiveMinutesAgo) {
+        // File già analizzato e salvato di recente, skippa per evitare duplicazioni
+        logger.debug(`Excel already analyzed recently, skipping: ${file.name}`, {
+          lastSynced: existingDoc.lastSynced,
+          alertStatus: existingDoc.alertStatus
+        });
+        result.processed++;
+        
+        // Report progresso
+        if (onProgress) {
+          const currentBatch = totalChunks + excelIndex + 1;
+          const totalBatches = totalChunks + excelFiles.length;
+          onProgress(result.processed, files.length, currentBatch, totalBatches);
+        }
+        
+        continue;
+      }
+
       let analysis: ExcelAnalysis = { alertStatus: "none", expiryDate: null };
 
       try {
@@ -1607,8 +1641,6 @@ async function processBatchWithAnalysis(
         mimeType: file.mimeType,
         lastSynced: new Date(),
       };
-
-      const existingDoc = await mongoStorage.getDocumentByGoogleFileId(file.id);
 
       if (existingDoc) {
         await mongoStorage.updateDocument(existingDoc.legacyId, documentData);
@@ -1828,8 +1860,9 @@ export function startAutomaticSync(syncFolder: string, userId: number): void {
 let isGlobalSyncRunning = false;
 
 export function startAutomaticSyncForAllClients(): void {
-  // Sync ogni 60 secondi (invece di 15 min) come richiesto
-  logger.info("Starting automatic sync for all clients (every 60 seconds)");
+  // ✅ OTTIMIZZATO: Sync ogni 30 secondi per aggiornamenti più rapidi
+  // Impatto su Render: minimo (sync incrementali sono veloci)
+  logger.info("Starting automatic sync for all clients (every 30 seconds)");
 
   // Esegui la prima sync immediatamente
   syncAllClientsOnce();
@@ -1842,7 +1875,7 @@ export function startAutomaticSyncForAllClients(): void {
 
     logger.info("Running scheduled automatic sync for all clients");
     syncAllClientsOnce();
-  }, 60 * 1000); // 60 secondi
+  }, 30 * 1000); // ✅ 30 secondi (era 60)
 }
 
 async function syncAllClientsOnce(): Promise<void> {

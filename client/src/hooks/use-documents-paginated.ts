@@ -103,12 +103,14 @@ export function useDocumentsPaginated(options: UseDocumentsPaginatedOptions = {}
       return data;
     },
     enabled,
-    // Configurazione anti-refetch automatico
-    refetchInterval: false, // MAI refetch automatico con timer
-    staleTime: 24 * 60 * 60 * 1000, // Dati freschi per 24 ore - praticamente sempre
-    gcTime: 24 * 60 * 60 * 1000, // Mantieni in cache per 24 ore
+    // ✅ OTTIMIZZATO: Polling più frequente per aggiornamenti rapidi
+    // 1 richiesta ogni 30 secondi - impatto ancora minimo su Render
+    // Con 10 utenti attivi = ~20 req/min = 0.33 req/sec (trascurabile per Render)
+    refetchInterval: 30000, // 30 secondi - polling più frequente per aggiornamenti rapidi
+    staleTime: 25000, // Dati freschi per 25 secondi
+    gcTime: 5 * 60 * 1000, // Mantieni in cache per 5 minuti
     refetchOnMount: false, // Non refetch quando il componente monta
-    refetchOnWindowFocus: false, // Non refetch quando la finestra ottiene focus
+    refetchOnWindowFocus: true, // ✅ ABILITATO: Refetch quando torna il focus sulla finestra
     refetchOnReconnect: false, // Non refetch quando la connessione si ripristina
   });
 

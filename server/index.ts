@@ -502,7 +502,7 @@ app.use((req, res, next) => {
     const { startAutomaticSyncForAllClients, startDailyExcelRefresh } = await import("./google-drive");
     startAutomaticSyncForAllClients();
     startDailyExcelRefresh();
-    logger.info("Sincronizzazione automatica avviata (ogni 60 secondi) e Daily Excel Refresh (ogni 24 ore)");
+    logger.info("Sincronizzazione automatica avviata (ogni 30 secondi) e Daily Excel Refresh (ogni 24 ore)");
 
     const { startExpirationChecks } = await import("./notification-service");
     startExpirationChecks();

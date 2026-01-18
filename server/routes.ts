@@ -2898,6 +2898,28 @@ export async function registerRoutes(app: Express): Promise<Express> {
         const clientId = req.user.clientId;
         const userId = req.user.legacyId;
         const files = req.files as Express.Multer.File[];
+        let fileMetadataMap: Record<
+          string,
+          { alertStatus?: string; expiryDate?: string | null }
+        > = {};
+        const rawMetadata = (req.body as any)?.fileMetadata;
+        if (rawMetadata) {
+          try {
+            const metadataString = Array.isArray(rawMetadata)
+              ? rawMetadata[0]
+              : rawMetadata;
+            const parsed = JSON.parse(metadataString);
+            if (parsed && typeof parsed === "object") {
+              fileMetadataMap = parsed;
+            }
+          } catch (error) {
+            logger.warn("Invalid fileMetadata JSON, ignoring client metadata", {
+              userId,
+              clientId,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+        }
 
         if (!files || files.length === 0) {
           logger.warn("No files uploaded", { userId, clientId });
@@ -2939,7 +2961,7 @@ export async function registerRoutes(app: Express): Promise<Express> {
         });
 
         // Elaborazione asincrona in background
-        processFilesInBackground(files, clientId, userId, uploadId);
+        processFilesInBackground(files, clientId, userId, uploadId, fileMetadataMap);
 
       } catch (error) {
         logger.error("Error during local document upload", {
@@ -3020,10 +3042,11 @@ async function cleanupUploadedFile(file: Express.Multer.File): Promise<void> {
 
 // Funzione per elaborazione asincrona dei file con gestione memoria ottimizzata
 async function processFilesInBackground(
-  files: Express.Multer.File[], 
-  clientId: number, 
-  userId: number, 
-  uploadId: string
+  files: Express.Multer.File[],
+  clientId: number,
+  userId: number,
+  uploadId: string,
+  fileMetadataMap: Record<string, { alertStatus?: string; expiryDate?: string | null }>
 ) {
   const uploadStatus = {
     uploadId,
@@ -3067,8 +3090,8 @@ async function processFilesInBackground(
     }
 
     for (const batch of batches) {
-      const batchPromises = batch.map(file => 
-        processIndividualFile(file, clientId, userId, uploadId)
+    const batchPromises = batch.map(file => 
+        processIndividualFile(file, clientId, userId, uploadId, fileMetadataMap)
       );
 
       const batchResults = await Promise.allSettled(batchPromises);
@@ -3170,7 +3193,8 @@ async function processIndividualFile(
   file: Express.Multer.File,
   clientId: number,
   userId: number,
-  uploadId: string
+  uploadId: string,
+  fileMetadataMap: Record<string, { alertStatus?: string; expiryDate?: string | null }>
 ): Promise<{ success: boolean; document?: any; error?: string }> {
   // Timeout dinamico basato sulla dimensione del file
   const fileSizeKB = file.size / 1024;
@@ -3201,7 +3225,7 @@ async function processIndividualFile(
   
   try {
     const result = await Promise.race([
-      processFileWithTimeout(file, clientId, userId),
+      processFileWithTimeout(file, clientId, userId, fileMetadataMap),
       timeoutPromise
     ]);
 
@@ -3224,7 +3248,8 @@ async function processIndividualFile(
 async function processFileWithTimeout(
   file: Express.Multer.File,
   clientId: number,
-  userId: number
+  userId: number,
+  fileMetadataMap: Record<string, { alertStatus?: string; expiryDate?: string | null }>
 ): Promise<{ success: boolean; document?: any; error?: string }> {
   const startTime = Date.now();
   let retryCount = 0;
@@ -3261,11 +3286,25 @@ async function processFileWithTimeout(
         });
       }
 
+      const clientMetadata = fileMetadataMap[filePath];
+      const allowedStatuses = new Set(["none", "warning", "expired"]);
+      const clientAlertStatus =
+        clientMetadata && typeof clientMetadata.alertStatus === "string" && allowedStatuses.has(clientMetadata.alertStatus)
+          ? (clientMetadata.alertStatus as "none" | "warning" | "expired")
+          : null;
+      const clientExpiryDate =
+        clientMetadata && clientMetadata.expiryDate
+          ? new Date(clientMetadata.expiryDate)
+          : null;
+      const hasValidClientExpiryDate =
+        clientExpiryDate instanceof Date && !isNaN(clientExpiryDate.getTime());
+      const hasClientMetadata = Boolean(clientAlertStatus || hasValidClientExpiryDate);
+
       // Usa la logica già esistente per processare i file (estrai metadati, scadenze, revisioni)
       const docData = await processDocumentFile(
         filePath, // Usa il path completo per mantenere la gerarchia
         "",
-        fileBuffer
+        hasClientMetadata ? undefined : fileBuffer
       );
 
       if (!docData) {
@@ -3279,6 +3318,12 @@ async function processFileWithTimeout(
       docData.googleFileId = null;
       // Nessun path su disco: usa null per encryptedCachePath
       docData.encryptedCachePath = null;
+      if (clientAlertStatus) {
+        docData.alertStatus = clientAlertStatus;
+      }
+      if (hasValidClientExpiryDate) {
+        docData.expiryDate = clientExpiryDate as Date;
+      }
 
       logger.debug("Document data processed", {
         fileName: file.originalname,
@@ -3776,15 +3821,19 @@ async function processFileWithTimeout(
   // Endpoint interno per cron job di notifiche scadenze (escluso da CSRF)
   app.post("/api/internal/expiry-refresh", async (req, res) => {
     try {
-      // Verifica segreto CRON
-      const authHeader = req.headers.authorization;
-      if (!CRON_SECRET || authHeader !== `Bearer ${CRON_SECRET}`) {
+      // --- QUESTA PARTE È FONDAMENTALE PER L'AUTH ---
+      // 1. Leggi l'header in minuscolo (come lo manda Render/Curl)
+      const cronHeader = req.headers['x-cron-secret'];
+      
+      // 2. Confrontalo con la variabile d'ambiente
+      if (!process.env.CRON_SECRET || cronHeader !== process.env.CRON_SECRET) {
         logger.warn("Tentativo di accesso non autorizzato a endpoint cron", {
           ip: req.ip,
           userAgent: req.get("User-Agent")
         });
         return res.status(401).json({ message: "Non autorizzato" });
       }
+      // ----------------------------------------------
 
       logger.info("Avvio manuale controllo scadenze via cron job");
       

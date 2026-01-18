@@ -159,13 +159,13 @@ export default function HomePage() {
   }, []);
 
   const handleSyncCompleted = useCallback((result: SyncProgressType) => {
-    console.log('🔄 [Sync Completed] Sync completata, attendo 2s per stabilizzazione database...');
+    console.log('🔄 [Sync Completed] Sync completata, invalidando cache...');
     
     // Disattiva refetch automatico
     setIsSyncActive(false);
     
-    // IMPORTANTE: Aspetta 2 secondi per dare tempo a MongoDB di completare
-    // tutte le operazioni di scrittura prima di ricaricare i documenti
+    // ✅ OTTIMIZZATO: Ridotto da 2000ms a 500ms (il server già aspetta 500ms alla linea 1595 di routes.ts)
+    // Questo garantisce un aggiornamento quasi istantaneo dello status dei documenti
     setTimeout(() => {
       console.log('🔄 [Sync Completed] Invalidando cache documenti...');
       
@@ -178,13 +178,20 @@ export default function HomePage() {
       
       // Invalida anche le stats dei documenti obsoleti
       queryClient.invalidateQueries({ queryKey: ["/api/documents/obsolete"] });
-    }, 2000);
+    }, 500);
     
-    // Mostra messaggio di completamento
+    // ✅ OTTIMIZZATO: Messaggi di completamento con info sulla modalità sync
     if (result.success) {
-      toast.success(`Sincronizzazione completata! ${result.processed} documenti sincronizzati.`);
+      // Determina se è stata una sync incrementale o completa
+      const syncMode = result.processed < 10 ? 'incrementale' : 'completa';
+      const message = result.processed === 0 
+        ? '✅ Nessuna modifica rilevata. Documenti già aggiornati!' 
+        : `✅ Sincronizzazione ${syncMode} completata! ${result.processed} documenti processati.`;
+      
+      toast.success(message);
     } else if (result.failed && result.failed > 0) {
-      toast.success(`Sincronizzazione completata con ${result.failed} errori. ${result.processed} documenti sincronizzati.`);
+      const syncMode = result.processed < 10 ? 'incrementale' : 'completa';
+      toast.success(`⚠️ Sincronizzazione ${syncMode} completata con ${result.failed} errori. ${result.processed} documenti sincronizzati.`);
     }
   }, [queryClient]);
 
