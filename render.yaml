@@ -86,3 +86,16 @@ services:
       memory: 2GB
       disk: 10GB
 
+  - type: cron
+    name: daily-expiry-check
+    env: node
+    plan: starter
+    region: frankfurt
+    schedule: "0 6 * * *"
+    command: curl -X POST -H "x-cron-secret: $CRON_SECRET" https://api.cruscotto-sgi.com/api/internal/expiry-refresh
+    envVars:
+      - key: CRON_SECRET
+        fromService:
+          type: web
+          name: cruscotto-backend
+          envVarKey: CRON_SECRET
