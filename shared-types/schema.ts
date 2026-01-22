@@ -24,6 +24,7 @@ export interface DocumentDocument {
   ownerId: number | null;
   clientId: number | null;
   createdAt: Date | null;
+  insertedAt: Date | null;
   updatedAt: Date | null;
   legacyId: number;
 }
@@ -43,6 +44,7 @@ export interface InsertDocumento {
   clientId?: number;
   ownerId?: number;
   createdAt: Date | null;
+  insertedAt: Date | null;
   updatedAt: Date | null;
   legacyId: number;
 }
@@ -50,7 +52,9 @@ export interface InsertDocumento {
 export type InsertDocument = Omit<
   InsertDocumento,
   "legacyId" | "createdAt" | "updatedAt" | "expiryDate" | "alertStatus"
->;
+> & {
+  insertedAt?: Date | null;
+};
 
 export interface LogDocument {
   userId: number;

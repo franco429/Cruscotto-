@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { DocumentDocument as Document } from "../../../shared-types/schema";
 import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
 import {
   Table,
   TableBody,
@@ -24,11 +25,18 @@ import {
   ChevronLeft,
   ChevronRight,
   Trash2, // aggiunto
+  Calendar,
 } from "lucide-react";
 import { format } from "date-fns";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "../hooks/use-toast";
 import { ToastAction } from "../components/ui/toast";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../components/ui/tooltip";
 import { apiRequest } from "../lib/queryClient";
 import { openLocalDocument } from "../lib/local-opener";
 import {
@@ -60,6 +68,8 @@ export default function DocumentTable({
   const [currentPage, setCurrentPage] = useState(1);
   const [documentToDelete, setDocumentToDelete] = useState<Document | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [insertedAtDrafts, setInsertedAtDrafts] = useState<Record<number, string>>({});
+  const queryClient = useQueryClient();
   
   // Calculate total pages
   const totalPages = Math.ceil(documents.length / pageSize);
@@ -135,6 +145,36 @@ export default function DocumentTable({
   };
 
   const { toast } = useToast();
+  const updateInsertedAtMutation = useMutation({
+    mutationFn: async ({
+      legacyId,
+      insertedAt,
+    }: {
+      legacyId: number;
+      insertedAt: string | null;
+    }) => {
+      await apiRequest("PUT", `/api/documents/${legacyId}`, { insertedAt });
+    },
+    onSuccess: (_data, variables) => {
+      toast({
+        title: "Data inserimento aggiornata",
+        description: "La data di inserimento è stata salvata correttamente.",
+      });
+      setInsertedAtDrafts((prev) => {
+        const next = { ...prev };
+        delete next[variables.legacyId];
+        return next;
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore aggiornamento",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
   const deleteMutation = useMutation({
     mutationFn: async (legacyId: number) => {
       await apiRequest("DELETE", `/api/documents/${legacyId}`);
@@ -171,6 +211,13 @@ export default function DocumentTable({
   const cancelDelete = () => {
     setShowDeleteDialog(false);
     setDocumentToDelete(null);
+  };
+
+  const formatDateForInput = (value: Date | string | null | undefined) => {
+    if (!value) return "";
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return "";
+    return format(parsed, "yyyy-MM-dd");
   };
 
   const handlePreview = async (document: Document) => {
@@ -229,6 +276,7 @@ export default function DocumentTable({
                 <TableHead>Documento</TableHead>
                 <TableHead className="hidden sm:table-cell">Revisione</TableHead>
                 <TableHead>Stato</TableHead>
+                <TableHead className="hidden md:table-cell">Inserito</TableHead>
                 <TableHead className="hidden md:table-cell">Aggiornato</TableHead>
                 <TableHead className="text-right">Azioni</TableHead>
               </TableRow>
@@ -236,7 +284,7 @@ export default function DocumentTable({
             <TableBody>
               {documents.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-4 sm:py-6">
+                  <TableCell colSpan={7} className="text-center py-4 sm:py-6">
                     <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm">
                       Nessun documento trovato
                     </p>
@@ -280,6 +328,81 @@ export default function DocumentTable({
                       <div className="flex items-center space-x-1">
                         {getStatusBadge(document.alertStatus || "valid")}
                       </div>
+                    </TableCell>
+                    <TableCell className="text-slate-500 dark:text-slate-400 hidden md:table-cell text-xs sm:text-sm">
+                      {isAdmin ? (
+                        <div className="flex items-center gap-0.5">
+                          <TooltipProvider delayDuration={0}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span
+                                  className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                                  onClick={() => {
+                                    const input = window.document.getElementById(
+                                      `inserted-at-${document.legacyId}`
+                                    ) as HTMLInputElement | null;
+                                    if (!input) return;
+                                    input.focus();
+                                    try {
+                                      (input as HTMLInputElement & { showPicker?: () => void })
+                                        .showPicker?.();
+                                    } catch {
+                                      // Ignore picker errors on unsupported/immutable states.
+                                    }
+                                  }}
+                                >
+                                  <Calendar className="h-3.5 w-3.5" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                Clicca sul campo per aprire il calendario
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <Input
+                            type="date"
+                            className="h-7 text-xs date-input-clean"
+                            id={`inserted-at-${document.legacyId}`}
+                            value={
+                              insertedAtDrafts[document.legacyId] ??
+                              formatDateForInput(document.insertedAt ?? document.createdAt)
+                            }
+                            onClick={(event) => {
+                              const input = event.currentTarget as HTMLInputElement & {
+                                showPicker?: () => void;
+                              };
+                              try {
+                                input.showPicker?.();
+                              } catch {
+                                // Ignore picker errors on unsupported/immutable states.
+                              }
+                            }}
+                            onChange={(event) => {
+                              const nextValue = event.target.value;
+                              setInsertedAtDrafts((prev) => ({
+                                ...prev,
+                                [document.legacyId]: nextValue,
+                              }));
+                              updateInsertedAtMutation.mutate({
+                                legacyId: document.legacyId,
+                                insertedAt: nextValue ? nextValue : null,
+                              });
+                            }}
+                            disabled={updateInsertedAtMutation.isPending}
+                            aria-label={`Data inserimento per ${document.title}`}
+                            title="Clicca per aprire il calendario"
+                          />
+                        </div>
+                      ) : document.insertedAt || document.createdAt ? (
+                        format(
+                          new Date(
+                            (document.insertedAt ?? document.createdAt) as unknown as string
+                          ),
+                          "yyyy-MM-dd"
+                        )
+                      ) : (
+                        "N/A"
+                      )}
                     </TableCell>
                     <TableCell className="text-slate-500 dark:text-slate-400 hidden md:table-cell text-xs sm:text-sm">
                       {document.updatedAt

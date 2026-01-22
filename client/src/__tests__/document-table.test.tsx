@@ -16,7 +16,14 @@ describe('DocumentTable Component Tests', () => {
       revision: 'Rev.1',
       fileType: 'pdf',
       alertStatus: 'valid',
+      expiryDate: null,
+      parentId: null,
       updatedAt: new Date('2025-01-01'),
+      createdAt: new Date('2025-01-01'),
+      insertedAt: new Date('2025-01-01'),
+      fileHash: null,
+      encryptedCachePath: null,
+      ownerId: null,
       clientId: 1,
       driveUrl: 'https://drive.google.com/test1',
       isObsolete: false
@@ -28,7 +35,14 @@ describe('DocumentTable Component Tests', () => {
       revision: 'Rev.2',
       fileType: 'docx',
       alertStatus: 'warning',
+      expiryDate: null,
+      parentId: null,
       updatedAt: new Date('2025-01-02'),
+      createdAt: new Date('2025-01-02'),
+      insertedAt: new Date('2025-01-02'),
+      fileHash: null,
+      encryptedCachePath: null,
+      ownerId: null,
       clientId: 1,
       driveUrl: 'https://drive.google.com/test2',
       isObsolete: false
@@ -40,7 +54,14 @@ describe('DocumentTable Component Tests', () => {
       revision: 'Rev.3',
       fileType: 'xlsx',
       alertStatus: 'expired',
+      expiryDate: null,
+      parentId: null,
       updatedAt: new Date('2025-01-03'),
+      createdAt: new Date('2025-01-03'),
+      insertedAt: new Date('2025-01-03'),
+      fileHash: null,
+      encryptedCachePath: null,
+      ownerId: null,
       clientId: 1,
       driveUrl: 'https://drive.google.com/test3',
       isObsolete: false
@@ -93,6 +114,7 @@ describe('DocumentTable Component Tests', () => {
       expect(screen.getByText('Documento')).toBeInTheDocument();
       expect(screen.getByText('Revisione')).toBeInTheDocument();
       expect(screen.getByText('Stato')).toBeInTheDocument();
+      expect(screen.getByText('Inserito')).toBeInTheDocument();
       expect(screen.getByText('Aggiornato')).toBeInTheDocument();
       expect(screen.getByText('Azioni')).toBeInTheDocument();
     });

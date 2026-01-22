@@ -524,7 +524,15 @@ export async function registerRoutes(app: Express): Promise<Express> {
         return res.status(404).json({ message: "Document not found" });
       }
 
-      if (existingDoc.clientId !== req.user?.clientId) {
+      const requesterClientId = req.user?.clientId ?? null;
+      const sharedClientIds = Array.isArray((existingDoc as any).clientIds)
+        ? ((existingDoc as any).clientIds as number[])
+        : [];
+      const hasAccess =
+        requesterClientId !== null &&
+        (existingDoc.clientId === requesterClientId ||
+          sharedClientIds.includes(requesterClientId));
+      if (!hasAccess) {
         return res.status(403).json({
           message:
             "Accesso negato: non puoi modificare documenti di altri client",

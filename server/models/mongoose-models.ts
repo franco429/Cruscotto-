@@ -57,6 +57,7 @@ export const documentSchema = new Schema<DocumentDocument & MongooseDocument>({
   clientIds: { type: [Number], default: [], index: true },
   ownerId: { type: Number, default: null },
   createdAt: { type: Date, default: Date.now },
+  insertedAt: { type: Date, default: Date.now, index: true },
   updatedAt: { type: Date, default: Date.now },
   googleFileId: { type: String, index: true, unique: true, sparse: true },
 });

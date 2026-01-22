@@ -662,10 +662,12 @@ export class MemStorage implements IStorage {
     const legacyId = this.documentIdCounter++;
     const createdAt = new Date();
     const updatedAt = new Date();
+    const insertedAt = insertDocument.insertedAt ?? createdAt;
     const document: Document = {
       ...insertDocument,
       legacyId,
       createdAt,
+      insertedAt,
       updatedAt,
       parentId: insertDocument.parentId ?? null,
       isObsolete: insertDocument.isObsolete || false,
@@ -687,10 +689,14 @@ export class MemStorage implements IStorage {
   ): Promise<Document | undefined> {
     const document = this.documents.get(id);
     if (!document) return undefined;
+    const updateKeys = Object.keys(documentUpdate);
+    const onlyInsertedAtUpdate =
+      updateKeys.length > 0 &&
+      updateKeys.every((key) => key === "insertedAt" || key === "clientId");
     const updatedDocument = {
       ...document,
       ...documentUpdate,
-      updatedAt: new Date(),
+      updatedAt: onlyInsertedAtUpdate ? document.updatedAt : new Date(),
     };
     this.documents.set(id, updatedDocument);
     return updatedDocument;

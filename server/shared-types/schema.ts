@@ -33,6 +33,7 @@ export interface DocumentDocument {
   ownerId: number | null;
   clientId: number | null;
   createdAt: Date;
+  insertedAt: Date;
   updatedAt: Date;
   googleFileId: string | null;
 }
@@ -75,5 +76,7 @@ export type InsertUser = Omit<UserDocument, "legacyId" | "createdAt">;
 export type InsertDocument = Omit<
   DocumentDocument,
   "legacyId" | "createdAt" | "updatedAt"
->;
+> & {
+  insertedAt?: Date | null;
+};
 export type InsertLog = Omit<LogDocument, "legacyId" | "timestamp">;

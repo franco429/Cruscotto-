@@ -182,7 +182,7 @@ export default function PublicHomePage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10 xl:gap-12 2xl:gap-14 mb-10 lg:mb-12 xl:mb-14 items-center">
               <div>
                 <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-bold text-white leading-tight mt-4">
-                  La tua conformita
+                  La tua conformità
                   <span className="block text-primary mt-3 mb-5">semplificata.</span>
                 </h1>
                 <p className="text-base sm:text-lg lg:text-xl text-slate-300 mt-6 leading-relaxed max-w-2xl">
@@ -249,7 +249,7 @@ export default function PublicHomePage() {
                 },
                 {
                   icon: <CheckCircle className="h-10 w-10 text-primary mb-4" />,
-                  title: "Conformita ISO Semplificata",
+                  title: "conformità ISO Semplificata",
                   text: "Riduci gli sforzi di compliance con checklist e controlli automatici."
                 },
                 {

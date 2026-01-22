@@ -941,6 +941,7 @@ export class MongoStorage implements IStorage {
     session?: ClientSession
   ): Promise<Document> {
     const legacyId = await getNextSequence("documentId");
+    const insertedAt = insertDocument.insertedAt ?? new Date();
     
     // Debug logging per file Excel
     const isExcel = insertDocument.fileType === 'xlsx' || insertDocument.fileType === 'xls' || insertDocument.fileType === 'xlsm';
@@ -967,6 +968,7 @@ export class MongoStorage implements IStorage {
       ...insertDocument,
       clientIds: normalizedClientIds,
       legacyId,
+      insertedAt,
       alertStatus: insertDocument.alertStatus || "none",
       googleFileId: insertDocument.googleFileId || undefined,
     });
@@ -999,11 +1001,15 @@ export class MongoStorage implements IStorage {
     if (!existing) return undefined;
 
     const mergedClientIds = this.mergeClientIds(existing, documentUpdate);
+    const updateKeys = Object.keys(documentUpdate);
+    const onlyInsertedAtUpdate =
+      updateKeys.length > 0 &&
+      updateKeys.every((key) => key === "insertedAt" || key === "clientId");
 
     const updatePayload: any = {
       ...documentUpdate,
       clientIds: mergedClientIds,
-      updatedAt: new Date(),
+      updatedAt: onlyInsertedAtUpdate ? existing.updatedAt : new Date(),
     };
 
     // Mantieni il campo legacy clientId per compatibilità (usa il primo disponibile)
