@@ -110,6 +110,16 @@ export default function AuthPage() {
   }, [user, isLoading, setLocation]);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get("tab");
+    if (tab === "register") {
+      setTabValue("register");
+    } else if (tab === "login") {
+      setTabValue("login");
+    }
+  }, []);
+
+  useEffect(() => {
     const registrationPending = registerMutation.isPending;
     const loginPending = loginMutation.isPending;
 
