@@ -50,6 +50,36 @@ import {
   AlertDialogTitle,
 } from "../components/ui/alert-dialog";
 
+// Helper per generare URL anteprima corretti (Google Drive)
+// Trasforma i link /edit in /view e forza la modalità file per permettere "Apri con Excel"
+const getGoogleDrivePreviewUrl = (url: string) => {
+  if (!url) return "";
+  
+  // CASO A: Se è solo un ID (non contiene protocollo http/https)
+  if (!url.includes('://')) {
+    return `https://drive.google.com/file/d/${url}/view`;
+  }
+
+  let newUrl = url;
+  
+  // CASO B: Sostituzione dominio/path per fogli Google
+  // Trasforma docs.google.com/spreadsheets/d/ in drive.google.com/file/d/
+  // Questo abilita la UI di anteprima file che contiene "Apri con"
+  if (newUrl.includes('docs.google.com/spreadsheets/d/')) {
+    newUrl = newUrl.replace('docs.google.com/spreadsheets/d/', 'drive.google.com/file/d/');
+  }
+  
+  // Forza il finale /view invece di /edit
+  if (newUrl.includes('/edit')) {
+    newUrl = newUrl.replace(/\/edit.*/, '/view');
+  } else if (!newUrl.endsWith('/view')) {
+    // Aggiunge /view se manca
+    newUrl = newUrl.endsWith('/') ? `${newUrl}view` : `${newUrl}/view`;
+  }
+  
+  return newUrl;
+};
+
 interface DocumentTableProps {
   documents: Document[];
   onPreview: (document: Document) => void;
@@ -441,8 +471,10 @@ export default function DocumentTable({
                               }
                               return;
                             }
-                            // Per documenti remoti (Drive), mantieni anteprima browser
-                            onPreview(document);
+                            // Per documenti remoti (Drive), apri direttamente in anteprima /view
+                            // Questo permette il flusso "Apri con Excel"
+                            const previewUrl = getGoogleDrivePreviewUrl(document.driveUrl);
+                            window.open(previewUrl, '_blank');
                           }}
                           title="Visualizza"
                           className="h-7 w-7 sm:h-8 sm:w-8 p-0"
