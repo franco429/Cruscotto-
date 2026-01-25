@@ -27,7 +27,6 @@ import { RefreshCw, Loader2, Eye, EyeOff, FolderOpen } from "lucide-react";
 import { Separator } from "../components/ui/separator";
 // Rimossi import non più necessari
 import { apiRequest } from "../lib/queryClient";
-import LocalOpenerConfig from "../components/local-opener-config";
 import MFASetup from "../components/mfa-setup";
 
 // La funzionalità di debug dell'autenticazione è stata rimossa
@@ -464,23 +463,6 @@ export default function SettingsPage() {
 
             <TabsContent value="application">
               <div className="grid gap-3 sm:gap-4 md:gap-6">
-                {/* Local Opener Configuration - Solo per Developer */}
-                {user?.role === "developer" && (
-                  <Card>
-                    <CardHeader className="p-3 sm:p-4 md:p-5 lg:p-6">
-                      <CardTitle className="flex items-center gap-1 sm:gap-2 text-base sm:text-lg md:text-xl">
-                        <FolderOpen className="h-4 sm:h-5 w-4 sm:w-5" />
-                        Apertura File Locali
-                      </CardTitle>
-                      <CardDescription className="text-xs sm:text-sm">
-                        Configura il servizio per aprire i documenti direttamente dal tuo PC
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-3 sm:p-4 md:p-5 lg:p-6 pt-0">
-                      <LocalOpenerConfig />
-                    </CardContent>
-                  </Card>
-                )}
 
                 {/* Google Drive Integration */}
                 <Card>

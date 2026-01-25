@@ -4,26 +4,21 @@
 
 ### **📖 Guide Principali**
 - **[README-CLIENTE.md](../README-CLIENTE.md)** - Guida principale per iniziare subito
-- **[guida-completa-cliente.md](../guida-completa-cliente.md)** - Guida completa Local Opener
+- **[guida-completa-cliente.md](../guida-completa-cliente.md)** - Guida all'apertura documenti e integrazione Cloud
 
 ### **👥 Manuali Utente**
 - **[manuale-utente.md](manuale-utente.md)** - Manuale completo per tutti gli utenti
-
-### **🔧 Risoluzione Problemi**
-- **[troubleshooting-local-opener-cliente.md](troubleshooting-local-opener-cliente.md)** - Risoluzione problemi Local Opener
 
 ---
 
 ## 🛠️ **PER SVILUPPATORI E TECNICI**
 
 ### **⚙️ Configurazione Tecnica**
-- **[GUIDA-COMPLETA-LOCAL-OPENER.md](GUIDA-COMPLETA-LOCAL-OPENER.md)** - Guida tecnica completa Local Opener
+- **[GOOGLE-CLOUD-STORAGE-SETUP.md](GOOGLE-CLOUD-STORAGE-SETUP.md)** - Configurazione Cloud Storage
 
-### **📋 Flussi e Processi**
-- *Flussi tecnici rimossi - consultare codice sorgente per dettagli implementativi*
-
-### **📧 Template e Comunicazioni**
-- *Template email rimossi - da creare su richiesta*
+### **🔐 Sicurezza e Compliance**
+- **[MFA-E-SICUREZZA.md](MFA-E-SICUREZZA.md)** - Guida completa MFA
+- **[SECURITY-COMPLIANCE-REPORT.md](SECURITY-COMPLIANCE-REPORT.md)** - Report conformità sicurezza
 
 ---
 
@@ -31,29 +26,27 @@
 
 ### **Se sei un CLIENTE:**
 1. Inizia da **[README-CLIENTE.md](../README-CLIENTE.md)**
-2. Segui la **[guida-completa-cliente.md](../guida-completa-cliente.md)** per Local Opener
-3. Consulta il **[manuale-utente.md](manuale-utente.md)** per funzionalità specifiche
+2. Consulta il **[manuale-utente.md](manuale-utente.md)** per funzionalità specifiche
 
 ### **Se sei un AMMINISTRATORE:**
-1. Configura Local Opener con **[GUIDA-COMPLETA-LOCAL-OPENER.md](GUIDA-COMPLETA-LOCAL-OPENER.md)**
-2. Usa **[troubleshooting-local-opener-cliente.md](troubleshooting-local-opener-cliente.md)** per risolvere problemi
+1. Configura il sistema seguendo le guide di setup
+2. Gestisci utenti e permessi tramite il pannello di controllo
 
 ### **Se sei uno SVILUPPATORE:**
-1. Studia **[GUIDA-COMPLETA-LOCAL-OPENER.md](GUIDA-COMPLETA-LOCAL-OPENER.md)** per l'architettura
-2. Consulta **[FLUSSO-CORRETTO-CARICAMENTO-DOCUMENTI-LOCALI.md](FLUSSO-CORRETTO-CARICAMENTO-DOCUMENTI-LOCALI.md)** per i flussi tecnici
+1. Consulta le guide tecniche per setup e manutenzione
+2. Fai riferimento alla documentazione di sicurezza per implementazioni critiche
 
 ---
 
 ## ✅ **DOCUMENTAZIONE PULITA E ORGANIZZATA**
 
-Tutte le documentazioni obsolete, duplicate o tecniche non necessarie per il cliente finale sono state rimosse. La documentazione è ora:
+La documentazione è stata aggiornata per riflettere la rimozione del Local Opener e l'adozione dell'integrazione nativa Cloud.
 
-- **🎯 Orientata al cliente** - Focus su usabilità e chiarezza
-- **📚 Organizzata logicamente** - Struttura chiara e navigabile
+- **🎯 Orientata al Cloud** - Focus su Google Drive e Cloud Storage
+- **📚 Semplificata** - Rimossi riferimenti a software legacy
 - **🔍 Facile da trovare** - Indice completo e link diretti
-- **⚡ Pronta all'uso** - Nessuna confusione o documentazione obsoleta
 
 ---
 
-*Ultimo aggiornamento: Settembre 2025*
-*Documentazione pulita e ottimizzata per il cliente finale*
+*Ultimo aggiornamento: Gennaio 2026*
+*Documentazione ottimizzata per il sistema Cloud-Centric*

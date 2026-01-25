@@ -14,21 +14,15 @@ Pannello Di Controllo SGI è il sistema di gestione documentale che ti permette 
 3. Inserisci le tue credenziali fornite dall'amministratore
 4. **Collega Google Drive** seguendo le istruzioni
 
-### **2. Configurazione Local Opener (Apertura Documenti)**
-Per aprire i documenti direttamente dal tuo PC senza scaricarli:
+### **2. Apertura Documenti (Cloud Integration)**
+Il sistema utilizza l'integrazione nativa con Google Drive per offrirti la massima flessibilità.
 
 1. **Login** nella web app
-2. **Apparirà automaticamente** un toast: "Apertura Documenti Locale - Installa il Local Opener"
-3. **Clicca** sul toast → Download automatico
-4. **Esegui** il file scaricato **COME AMMINISTRATORE**
-5. **Riavvia** il browser
-6. **Testa** cliccando l'icona occhio su un documento
+2. **Cerca** il documento che ti interessa
+3. **Clicca sull'icona occhio** ("Visualizza")
+4. Il documento si aprirà in una nuova scheda su Google Drive
 
-> ⚡ **Risultato**: I documenti si aprono direttamente (PDF con Acrobat, Word con Microsoft Word, ecc.)
-> 
-> ⚠️ **IMPORTANTE**: 
-> - Il PC deve essere collegato alla corrente elettrica (non a batteria)
-> - Usa SEMPRE lo stesso percorso scelto durante la registrazione
+> ⚡ **Tip Avanzato**: Se hai installato **Google Drive per Desktop** e l'estensione browser **Application Launcher for Drive**, potrai aprire e modificare i file direttamente con le tue app desktop (Word, Excel) cliccando su "Apri con" nell'anteprima di Google Drive!
 
 ---
 
@@ -36,27 +30,27 @@ Per aprire i documenti direttamente dal tuo PC senza scaricarli:
 
 ### **Per Utenti**
 - **[Manuale Utente Completo](docs/manuale-utente.md)** - Tutte le funzionalità del sistema
-- **[Guida Local Opener](guida-completa-cliente.md)** - Setup apertura documenti locali
+- **[Guida Apertura Documenti](guida-completa-cliente.md)** - Dettagli sull'integrazione Cloud
 
 ### **Per Amministratori**
-- **[Guida Tecnica Local Opener](docs/GUIDA-COMPLETA-LOCAL-OPENER.md)** - Configurazione avanzata
-- **[Risoluzione Problemi](docs/troubleshooting-local-opener-cliente.md)** - Troubleshooting
+- **[Configurazione Cloud Storage](docs/GOOGLE-CLOUD-STORAGE-SETUP.md)** - Setup tecnico
+- **[Sicurezza MFA](docs/MFA-E-SICUREZZA.md)** - Gestione accessi sicuri
 
 ---
 
 ## ⚡ **FUNZIONALITÀ PRINCIPALI**
 
 ### **👁️ Visualizzazione Documenti**
-- **Anteprima integrata** per PDF e immagini
-- **Apertura diretta** con Local Opener (PDF, Word, Excel, ecc.)
+- **Anteprima Cloud** diretta tramite Google Drive
+- **Modifica collaborativa** (tramite Google Docs/Sheets)
+- **Modifica desktop** (tramite Google Drive Desktop)
 - **Ricerca avanzata** per titolo, contenuto, tipo file
 - **Filtri** per data, stato, categoria
 
 ### **☁️ Sincronizzazione Google Drive**
 - **Sync automatica** ogni 15 minuti
-- **Solo lettura** - i tuoi file rimangono sicuri
 - **Rilevamento automatico** di nuove cartelle
-- **Gestione errori** automatica
+- **Gestione errori** automatica con notifiche intelligenti
 
 ### **👥 Gestione Utenti** (Solo Admin)
 - **Creazione utenti** aziendali
@@ -75,15 +69,14 @@ Per aprire i documenti direttamente dal tuo PC senza scaricarli:
 ## 🔧 **RISOLUZIONE PROBLEMI RAPIDA**
 
 ### **❌ "Il servizio non trova i documenti"**
-1. Verifica che Google Drive sia installato e configurato
-2. Controlla che i documenti siano nella cartella corretta
-3. Riavvia il PC con alimentatore collegato
-4. Contatta il supporto se persiste
+1. Verifica che Google Drive sia collegato correttamente nelle impostazioni
+2. Controlla che i documenti siano nella cartella Google Drive corretta
+3. Verifica i permessi di condivisione su Google Drive
 
 ### **❌ "Documenti non si aprono"**
-1. Verifica che le app predefinite siano configurate
-2. Clic destro su file → "Apri con" → Scegli app
-3. Controlla che l'antivirus non blocchi
+1. Verifica la tua connessione internet
+2. Assicurati di avere accesso al file su Google Drive (chiedi all'amministratore)
+3. Se usi l'apertura desktop, verifica che Google Drive per Desktop sia in esecuzione
 
 ### **❌ "Sync non funziona"**
 1. Verifica connessione internet
@@ -137,11 +130,6 @@ Quando contatti il supporto, fornisci:
 - macOS 10.15+
 - Linux (Ubuntu 18.04+)
 
-### **Per Local Opener**
-- Windows 10/11
-- Google Drive Desktop installato
-- Permessi amministratore (per installazione)
-
 ---
 
 ## 🎯 **RISULTATO FINALE**
@@ -149,7 +137,7 @@ Quando contatti il supporto, fornisci:
 Con Pannello Di Controllo SGI otterrai:
 
 1. **📁 Organizzazione perfetta** dei documenti
-2. **⚡ Apertura istantanea** senza download
+2. **⚡ Accesso universale** da qualsiasi dispositivo
 3. **🔄 Sincronizzazione automatica** con Google Drive
 4. **🔍 Ricerca potente** e filtri avanzati
 5. **👥 Gestione team** completa
@@ -159,5 +147,5 @@ Con Pannello Di Controllo SGI otterrai:
 
 ---
 
-*Ultimo aggiornamento: Settembre 2025*
-*Versione: 2.0*
+*Ultimo aggiornamento: Gennaio 2026*
+*Versione: 2.1 (Cloud Enhanced)*

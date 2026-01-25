@@ -24,8 +24,8 @@
 ### 🎯 Funzionalità Principali
 
 - **📁 Organizzazione Perfetta** dei documenti aziendali
-- **⚡ Apertura Istantanea Locale** senza download (Local Opener)
-- **🔄 Sincronizzazione Automatica** con Google Drive Browser
+- **⚡ Integrazione Google Drive Desktop** per apertura diretta in cloud
+- **🔄 Sincronizzazione Automatica** con Google Drive
 - **🔍 Ricerca Potente** e filtri avanzati
 - **👥 Gestione Team** con ruoli differenziati
 - **💾 Backup Automatici** e sicurezza totale
@@ -201,27 +201,15 @@ npm run dev
 3. **Distribuisci i codici** alle aziende per la registrazione
 4. **Configura Google Drive** per le aziende registrate
 
-#### Configurazione Documenti Locali
+#### Configurazione Documenti
 
-Le aziende possono scegliere tra due modalità di gestione documenti:
+Le aziende utilizzano Google Drive come fonte primaria per i documenti:
 
-**Opzione A: Google Drive**
+**Google Drive Integration**
 - Configura l'URL della cartella Google Drive durante la registrazione
 - Sincronizzazione automatica ogni 15 minuti
 - Backup automatico su Google Drive
-
-**Opzione B: Documenti Locali (Raccomandato)**
-- Carica cartelle di documenti direttamente dal computer
-- Processamento automatico dei metadati
-- Controllo completo sui file
-- Funziona offline
-
-
-Per utilizzare i documenti locali:
-1. Durante la registrazione, seleziona "Carica Cartella Locale" invece di inserire l'URL Google Drive
-2. Oppure, dopo la registrazione, usa il pulsante "Aggiorna documenti locali" nella dashboard admin
-3. Seleziona una cartella contenente i documenti da caricare
-4. Il sistema processerà automaticamente tutti i file
+- **Integrazione Google Drive Desktop**: Si utilizza l'estensione ufficiale di Google (Application Launcher for Drive) per aprire i file direttamente dal browser con le applicazioni desktop installate.
 
 ### 🔧 Tools di Amministrazione Solo per Sviluppatori della web App!
 
@@ -243,46 +231,42 @@ Pannello di Controllo SGI/
 ├── server/          # Backend Node.js + Express
 ├── shared-types/    # Tipi TypeScript condivisi
 ├── docs/           # Documentazione
+```
 
+### Architettura Cloud-Centric
 
-### Architettura Documenti Locali
-
-Il sistema supporta una **architettura ibrida** per la gestione documenti:
+Il sistema utilizza Google Drive come single source of truth:
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Google Drive  │    │  Documenti      │    │   Database      │
-│   (Cloud)       │    │  Locali         │    │   MongoDB       │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-         │                       │                       │
-         ▼                       ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐
+│   Google Drive  │    │   Database      │
+│   (Cloud)       │    │   MongoDB       │
+└─────────────────┘    └─────────────────┘
+         │                       │
+         ▼                       ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Backend Server                              │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
-│  │ Google API  │  │ File Upload │  │ Document    │            │
-│  │ Integration │  │ Processing  │  │ Management  │            │
+│  │ Google API  │  │ Excel       │  │ Document    │            │
+│  │ Integration │  │ Analysis    │  │ Management  │            │
 │  └─────────────┘  └─────────────┘  └─────────────┘            │
 └─────────────────────────────────────────────────────────────────┘
-         │                       │                       │
-         ▼                       ▼                       ▼
+         │                       │
+         ▼                       ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Frontend Client                             │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
-│  │ Drive Sync  │  │ Local Upload│  │ Document    │            │
-│  │ Interface   │  │ Interface   │  │ Viewer      │            │
+│  │ Drive Sync  │  │ Desktop     │  │ Document    │            │
+│  │ Interface   │  │ Launcher    │  │ Viewer      │            │
 │  └─────────────┘  └─────────────┘  └─────────────┘            │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 **Componenti Chiave:**
-- **File Upload Handler**: Gestisce upload di cartelle complete
-- **Document Processor**: Estrae metadati dai nomi file
+- **Drive Sync**: Sincronizza metadati e file
 - **Excel Analyzer**: Analizza contenuto Excel per scadenze
-- **Storage Manager**: Gestisce file locali  Drive in modo unificato
-- **Preview Engine**: Visualizzazione integrata per entrambi i tipi
-- **Confirmation Toast System**: Sistema di conferma moderno per operazioni critiche
-- **Document Management**: Gestione completa con eliminazione sicura
+- **Google Drive Launcher**: Integrazione nativa con estensione Google
+- **Document Management**: Gestione centralizzata
 
 ### Componenti UI Moderni
 
@@ -319,7 +303,6 @@ Il sistema include componenti UI avanzati per un'esperienza utente ottimale:
 - **Lucide React** - Icone
 - **Framer Motion** - Animazioni
 - **Toast System** - Sistema di notifiche e conferme moderne
-- **Confirmation Components** - Componenti di conferma per operazioni critiche
 
 ### Backend (Server)
 
@@ -361,7 +344,6 @@ Il sistema include componenti UI avanzati per un'esperienza utente ottimale:
    - Tutte le funzioni Viewer
    - Gestione utenti aziendali
    - Configurazione Google Drive
-   - **Gestione Documenti Locali** (upload cartelle, aggiornamento documenti)
    - **Gestione Eliminazione Documenti** (eliminazione sicura con conferma)
    - Gestione documenti
    - Visualizzazione audit logs
@@ -424,144 +406,7 @@ Il sistema include componenti UI avanzati per un'esperienza utente ottimale:
 - **Sincronizzazione Manuale** su richiesta
 - **Gestione Errori** con retry automatico
 - **Notifiche** per errori di sincronizzazione
-
-### 📂 Gestione Documenti Locali
-
-Il sistema supporta il caricamento e la gestione di documenti locali, offrendo un'alternativa completa alla sincronizzazione Google Drive.
-
-#### Funzionalità Documenti Locali
-
-- **Upload Cartella Completa**: Caricamento di intere cartelle di documenti con un singolo click
-- **Processamento Intelligente**: Estrazione automatica di metadati dai nomi file (titolo, revisione, percorso ISO)
-- **Analisi Excel Avanzata**: Estrazione automatica di scadenze e stati di allerta da file Excel
-- **Gestione Duplicati**: Controllo automatico per evitare duplicati e aggiornamento documenti esistenti
-- **Preview Integrata**: Visualizzazione diretta di documenti locali senza download
-- **Compatibilità Completa**: Funziona in parallelo con Google Drive senza conflitti
-
-#### Processo di Upload
-
-1. **Selezione Cartella**: L'admin seleziona una cartella dal proprio computer
-2. **Processamento Automatico**: Il sistema analizza ogni file e estrae:
-   - Titolo del documento dal nome file
-   - Numero di revisione
-   - Percorso ISO standardizzato
-   - Tipo di file
-   - Scadenze (per file Excel)
-3. **Salvataggio Sicuro**: I file vengono salvati nel server con crittografia
-4. **Aggiornamento Database**: Metadati e informazioni vengono memorizzati in MongoDB
-
-#### Implementazione tecnica (Backend + Frontend)
-
-- Endpoint upload cartella locale (solo Admin):
-  - Metodo: POST
-  - URL: `/api/documents/local-upload`
-  - Autenticazione: richiesta; ruoli: `admin` o `superadmin`
-  - Campo form: `localFiles` (multiplo). La UI preserva la gerarchia usando `webkitRelativePath`
-  - Limiti e sicurezza:
-    - Dimensione max file: 100MB
-    - Max file per richiesta: 2000
-    - Tipi consentiti: PDF, DOC, DOCX, XLS, XLSX, XLSM, ODS, CSV, immagini (JPG/PNG), TXT
-    - Validazione MIME e gestione errori di upload con risposte chiare (400/207)
-  - Comportamento: per ogni file
-    - Estrae metadati dal nome file (percorso ISO, titolo, revisione, tipo)
-    - Se Excel/Sheet locale, analizza `A1` per data scadenza e calcola `alertStatus`
-    - Evita duplicati basati su combinazione `(path, title, revision, clientId)`
-    - Al termine marca come obsolete le revisioni inferiori dello stesso documento
-
-- Endpoint elenco e gestione documenti:
-  - GET `/api/documents` (autenticato)
-  - GET `/api/documents/obsolete` (admin)
-  - GET `/api/documents/:id` (autenticato)
-  - PUT `/api/documents/:legacyId` (admin) — aggiorna metadati
-  - DELETE `/api/documents/:legacyId` (admin) — eliminazione definitiva
-  - POST `/api/documents/:legacyId/restore` (admin) — ripristino singolo obsoleto
-  - POST `/api/documents/restore-all-obsolete` (admin) — ripristino di massa
-
-- Endpoint preview e download (locali):
-  - GET `/api/documents/:id/preview` (autenticato) — apre inline i file locali supportati
-  - GET `/api/documents/:id/download` (autenticato) — scarica file locali; i file Drive reindirizzano al link Drive
-
-- Endpoint scadenze e stato allerta:
-  - POST `/api/excel/update-expiry-dates` (admin) — aggiorna scadenze per Excel/Sheets sincronizzati da Drive
-  - POST `/api/documents/update-alert-status` (admin) — ricalcola dinamicamente gli `alertStatus` partendo da `expiryDate`
-
-- Crittografia e integrità (opzionale, lato admin):
-  - POST `/api/documents/:id/encrypt` — calcola hash, cifra il file in cache (richiede `ENCRYPTION_KEY` in produzione)
-  - GET `/api/documents/:id/verify` — verifica l'integrità confrontando l'hash
-
-#### Convenzioni nome file (parsing automatico)
-
-- Pattern atteso: `ISO_PATH_Titolo_Rev.REVISIONE_YYYY-MM-DD.EXT`
-  - Esempio: `10.2.3_Manuale Qualità_Rev.4_2025-12-31.pdf`
-  - Estrazioni:
-    - `path`: `10.2.3` (o `cartella/subcartella/10.2.3` se presente gerarchia)
-    - `title`: `Manuale Qualità`
-    - `revision`: `Rev.4`
-    - `fileType`: `pdf|docx|xlsx|xlsm|...`
-    - `expiryDate` e `alertStatus` per Excel/Sheets se `A1` contiene data o formula supportata (es. `=TODAY()+30`, `=DATE(2025,12,31)`)
-
-Note: i file che non rispettano il pattern vengono ignorati nella creazione del documento.
-
-#### Flusso UI (Frontend)
-
-- Registrazione Admin (`/auth`):
-  - Campo “Carica Documenti Locali (opzionale)” con `SimpleFileUpload`
-  - I file inviati durante la registrazione sono processati e associati al nuovo client
-
-- Dashboard Admin → “Aggiorna documenti locali” (Actions Bar):
-  - Dialog con `ModernFileUpload` (drag & drop o selezione cartella)
-  - Invia `FormData` a `/api/documents/local-upload` preservando `webkitRelativePath`
-  - Toast moderni per conferma, avanzamento e risultato
-
-#### Storage e sicurezza
-
-- Posizione storage file: `server/uploads/`
-- Campi documento rilevanti (DB): `path`, `title`, `revision`, `fileType`, `alertStatus`, `expiryDate`, `filePath` (locali), `driveUrl` (Drive), `googleFileId` (Drive)
-- Duplicati: evitati per `(path,title,revision,clientId)`
-- Obsoleti: post-processing per marcare revisioni precedenti come obsolete
-- ENCRYPTION_KEY obbligatoria in produzione (altrimenti il server non avvia); usare una chiave forte (≥ 32 caratteri)
-
-#### Tipi di File Supportati
-
-- **Excel**: XLSX, XLS, XLSM, ODS, CSV
-- **Word**: DOCX, DOC
-- **PDF**: Documenti PDF
-- **Google Sheets**: GSheet (se sincronizzati da Drive)
-
-#### Vantaggi dei Documenti Locali
-
-- **Indipendenza da Google Drive**: Funziona anche senza connessione a Google
-- **Controllo Completo**: I file rimangono sotto il controllo dell'azienda
-- **Velocità**: Upload diretto senza dipendenze esterne
-- **Flessibilità**: Supporto per qualsiasi struttura di cartelle
-- **Sicurezza**: Crittografia locale e controllo accessi
-
-### 🎯 Sistema di Conferma Moderno
-
-Il sistema utilizza **toast di conferma eleganti** invece di modali tradizionali per operazioni critiche, migliorando significativamente l'esperienza utente.
-
-#### Caratteristiche del Sistema Toast
-
-- **Design Moderno**: Toast eleganti con animazioni fluide
-- **Non Bloccante**: L'utente può continuare a lavorare durante la conferma
-- **Responsive**: Si adatta automaticamente a tutti i dispositivi
-- **Tema Supportato**: Funziona perfettamente con tema chiaro e scuro
-- **Accessibilità**: Supporto completo per screen reader e navigazione da tastiera
-
-#### Operazioni Supportate solo all' interno della web app non all' esterno es:
-Google Drive
-
-- **Eliminazione Documenti**: Conferma sicura con toast distruttivo (rosso)
-- **Eliminazione Backup**: Conferma per rimozione backup con avvisi chiari
-- **Ripristino Backup**: Conferma per operazioni di ripristino (warning)
-- **Operazioni Critiche**: Qualsiasi operazione che richiede conferma
-
-#### Vantaggi Rispetto ai Modali
-
-- **UX Migliorata**: Non copre l'intera schermata
-- **Performance**: Transizioni più fluide e veloci
-- **Sicurezza Mantenuta**: Conferma obbligatoria per operazioni critiche
-- **Feedback Immediato**: Stati di loading e messaggi chiari
+- **Integrazione Google Drive Desktop**: Utilizziamo l'estensione ufficiale di Google per permettere l'apertura dei file direttamente dal browser con le applicazioni native installate sul computer (es. Excel, Word), garantendo la massima sicurezza e affidabilità.
 
 ### Tipi di Documenti Supportati
 
@@ -574,11 +419,10 @@ Google Drive
 
 - **Ricerca Avanzata** per titolo, contenuto, tipo
 - **Filtri** per stato, scadenza, tipo file
-- **Visualizzazione Integrata Universale** - Preview diretta di PDF, XLSX, XLS, XLSM, DOCX senza download
-- **Apertura Locale Diretta** - Apri i documenti con l'applicazione predefinita del sistema (vedere [local-opener-setup.md](docs/local-opener-setup.md))
+- **Visualizzazione Integrata Universale** - Preview diretta
+- **Apertura Cloud Diretta** - Apri i file con Google Drive Desktop via estensione browser
 - **Gestione Versioni** e revisioni
 - **Notifiche Scadenze** automatiche
-- **Supporto Ibrido** - Documenti Google Drive e locali nella stessa interfaccia
 - **Gestione Eliminazione** - Eliminazione sicura di documenti con conferma toast moderna
 - **Sistema di Conferma Moderno** - Toast eleganti per operazioni critiche invece di modali bloccanti
 
@@ -819,5 +663,3 @@ Per supporto tecnico o domande:
 
 - Consulta la documentazione nella cartella `docs/`
 - Contatta il team di sviluppo.
-
- 

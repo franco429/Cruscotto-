@@ -44,7 +44,6 @@
      - **Nome Azienda**: Nome della tua organizzazione
      - **Codice Aziendale**: Codice fornito dal SuperAdmin
      - **URL Cartella Google Drive**: Link alla cartella Drive da sincronizzare
-     - **⚠️ CRITICO**: Scegli attentamente il percorso per i documenti locali - NON potrai cambiarlo successivamente!
 
 3. **Configurazione Google Drive**
    - Dopo la registrazione, vai su **"Google Drive"** nel menu

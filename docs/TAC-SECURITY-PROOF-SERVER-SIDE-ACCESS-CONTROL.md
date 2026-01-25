@@ -1674,7 +1674,6 @@ Data: 11 Novembre 2025
 - `server/routes.ts` - Middleware di autorizzazione e endpoint protetti  
 - `server/mfa-routes.ts` - Endpoint MFA con controlli specifici  
 - `server/backup-routes.ts` - Operazioni critiche backup con multilevel checks  
-- `server/local-opener-routes.ts` - Endpoint per local opener (alcuni pubblici per funzionalità)  
 - `server/index.ts` - Setup Express con security middleware globali  
 - `client/src/lib/protected-route.tsx` - UI hiding client-side (NO enforcement)  
 - `client/src/pages/*` - Pagine con UI checks (NO enforcement)  

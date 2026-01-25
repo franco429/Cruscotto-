@@ -283,7 +283,6 @@ const adminRegistrationSchema = z.object({
   companyCode: z.string().min(1, "Il codice aziendale è obbligatorio"),
 });
 
-import { registerLocalOpenerRoutes } from './local-opener-routes';
 import * as crypto from 'crypto';
 import { 
   startAutoSync, 
@@ -310,8 +309,6 @@ async function calculateFileHash(filePathOrBuffer: string | Buffer): Promise<str
 
 export async function registerRoutes(app: Express): Promise<Express> {
   
-  // Registra routes per Local Opener
-  registerLocalOpenerRoutes(app);
 
 
   app.post("/api/register/admin", upload.any(), handleMulterError, async (req, res) => {

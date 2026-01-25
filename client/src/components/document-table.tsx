@@ -30,7 +30,6 @@ import {
 import { format } from "date-fns";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "../hooks/use-toast";
-import { ToastAction } from "../components/ui/toast";
 import {
   Tooltip,
   TooltipContent,
@@ -38,7 +37,6 @@ import {
   TooltipTrigger,
 } from "../components/ui/tooltip";
 import { apiRequest } from "../lib/queryClient";
-import { openLocalDocument } from "../lib/local-opener";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -250,48 +248,6 @@ export default function DocumentTable({
     return format(parsed, "yyyy-MM-dd");
   };
 
-  const handlePreview = async (document: Document) => {
-    if (document.driveUrl) {
-      // Documento remoto - usa preview esistente
-      setSelectedDocument(document);
-      setShowPreview(true);
-    } else {
-      // Documento locale - prova ad aprirlo con Local Opener
-      try {
-        const { openLocalDocument } = await import("../lib/local-opener");
-        const result = await openLocalDocument(document);
-        
-        if (result.ok) {
-          toast({
-            title: "Documento aperto",
-            description: "Il documento è stato aperto con successo nell'applicazione locale.",
-          });
-        } else {
-          // Fallback: offri download
-          toast({
-            title: " Impossibile aprire localmente",
-            description: result.message || "Il documento non può essere aperto localmente. Vuoi scaricarlo?",
-            action: (
-              <ToastAction altText="Scarica documento" onClick={() => handleDownload(document)}>
-                Scarica
-              </ToastAction>
-            ),
-          });
-        }
-      } catch (error) {
-        // Errore nel caricamento di Local Opener - fallback a download
-        toast({
-          title: " Errore apertura locale",
-          description: "Impossibile aprire il documento localmente. Vuoi scaricarlo?",
-          action: (
-            <ToastAction altText="Scarica documento" onClick={() => handleDownload(document)}>
-              Scarica
-            </ToastAction>
-          ),
-        });
-      }
-    }
-  };
 
   return (
     <>
@@ -447,34 +403,16 @@ export default function DocumentTable({
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={async () => {
-                            // Per documenti locali, prova apertura diretta via servizio locale
-                            if (!document.driveUrl) {
-                              const res = await openLocalDocument(document);
-                              if (!res.ok) {
-                                // Se l'apertura locale fallisce, offri il download come fallback
-                                toast({
-                                  title: "Servizio locale non disponibile",
-                                  description: "Il servizio di apertura locale non è attivo. Vuoi scaricare il file invece?",
-                                  action: (
-                                    <ToastAction
-                                      altText="Scarica file"
-                                      onClick={() => {
-                                        // Scarica il file dal backend
-                                        window.open(`/api/documents/${document.legacyId}/download`, '_blank');
-                                      }}
-                                    >
-                                      Scarica
-                                    </ToastAction>
-                                  ),
-                                });
-                              }
-                              return;
+                          onClick={() => {
+                            if (document.driveUrl) {
+                              // Per documenti remoti (Drive), apri direttamente in anteprima /view
+                              // Questo permette il flusso "Apri con Excel" tramite estensione
+                              const previewUrl = getGoogleDrivePreviewUrl(document.driveUrl);
+                              window.open(previewUrl, '_blank');
+                            } else {
+                              // Per documenti locali, usa il preview modale standard
+                              onPreview(document);
                             }
-                            // Per documenti remoti (Drive), apri direttamente in anteprima /view
-                            // Questo permette il flusso "Apri con Excel"
-                            const previewUrl = getGoogleDrivePreviewUrl(document.driveUrl);
-                            window.open(previewUrl, '_blank');
                           }}
                           title="Visualizza"
                           className="h-7 w-7 sm:h-8 sm:w-8 p-0"
