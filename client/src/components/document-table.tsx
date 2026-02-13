@@ -60,11 +60,16 @@ const getGoogleDrivePreviewUrl = (url: string) => {
 
   let newUrl = url;
   
-  // CASO B: Sostituzione dominio/path per fogli Google
+  // CASO B: Sostituzione dominio/path per fogli Google e documenti Word
   // Trasforma docs.google.com/spreadsheets/d/ in drive.google.com/file/d/
   // Questo abilita la UI di anteprima file che contiene "Apri con"
   if (newUrl.includes('docs.google.com/spreadsheets/d/')) {
     newUrl = newUrl.replace('docs.google.com/spreadsheets/d/', 'drive.google.com/file/d/');
+  }
+  
+  // Aggiunto per gestire anche i documenti Word/Docs allo stesso modo
+  if (newUrl.includes('docs.google.com/document/d/')) {
+    newUrl = newUrl.replace('docs.google.com/document/d/', 'drive.google.com/file/d/');
   }
   
   // Forza il finale /view invece di /edit
