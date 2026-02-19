@@ -192,13 +192,25 @@ export default function Footer() {
               <li className="flex items-center space-x-2 sm:space-x-3 text-xs sm:text-sm">
                 <Phone className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
                 <span className="text-slate-600 dark:text-slate-400">
-                  +39 3351375593 / +39 3791341270
+                  +39 3351375593
+                </span>
+              </li>
+              <li className="flex items-center space-x-2 sm:space-x-3 text-xs sm:text-sm">
+                <Phone className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
+                <span className="text-slate-600 dark:text-slate-400">
+                   +39 3791341270
                 </span>
               </li>
               <li className="flex items-center space-x-2 sm:space-x-3 text-xs sm:text-sm">
                 <Mail className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
                 <span className="text-slate-600 dark:text-slate-400">
-                info@pannellodicontrollosgi.com
+                info@cruscotto-sgi.com
+                </span>
+              </li>
+              <li className="flex items-center space-x-2 sm:space-x-3 text-xs sm:text-sm">
+                <Mail className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
+                <span className="text-slate-600 dark:text-slate-400">
+                assistenza@cruscotto-sgi.com
                 </span>
               </li>
                </ul>
